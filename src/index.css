@@ -1,0 +1,274 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,200;14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* TRMNL exact monochrome palette - pure black & white focus */
+  --eink-white: #ffffff;
+  --eink-light: #f5f5f5;
+  --eink-mid: #888888;
+  --eink-dark: #333333;
+  --eink-black: #000000;
+
+  /* TRMNL-style spacing scale */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+}
+
+/* Base styling - TRMNL uses clean, tight typography */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  background-color: var(--eink-white);
+  color: var(--eink-black);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.02em;
+  font-feature-settings: 'cv01', 'cv02', 'cv03', 'cv04';
+}
+
+/* Clean container - no texture for true e-ink feel */
+.eink-container {
+  background-color: var(--eink-white);
+}
+
+/* Typography - TRMNL style: bold hierarchy, tight tracking */
+.eink-heading {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--eink-black);
+}
+
+.eink-body {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--eink-dark);
+}
+
+.eink-mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+}
+
+/* TRMNL-style label - uppercase, small, tracked */
+.eink-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.625rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--eink-mid);
+}
+
+/* TRMNL hero numbers - extra large, thin weight */
+.eink-hero {
+  font-family: 'Inter', sans-serif;
+  font-weight: 200;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+/* TRMNL display numbers - large stats */
+.eink-display {
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+/* Card styling - TRMNL uses ultra-minimal borders */
+.eink-card {
+  background-color: var(--eink-white);
+  border: 1px solid var(--eink-light);
+  border-radius: 0;
+}
+
+.eink-card-elevated {
+  background-color: var(--eink-white);
+  border: 2px solid var(--eink-black);
+  border-radius: 0;
+}
+
+/* TRMNL focus card - thick left border accent */
+.eink-card-accent {
+  background-color: var(--eink-white);
+  border-left: 3px solid var(--eink-black);
+  padding-left: var(--space-md);
+}
+
+/* Simple divider */
+.eink-divider {
+  border-top: 1px solid var(--eink-light);
+}
+
+/* Subtle loading animation */
+.eink-loading {
+  animation: eink-fade 2.5s ease-in-out infinite;
+}
+
+@keyframes eink-fade {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+/* Smooth screen transitions */
+.screen-enter {
+  opacity: 0;
+}
+
+.screen-enter-active {
+  opacity: 1;
+  transition: opacity 400ms ease-out;
+}
+
+.screen-exit {
+  opacity: 1;
+}
+
+.screen-exit-active {
+  opacity: 0;
+  transition: opacity 300ms ease-in;
+}
+
+/* Minimal scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--eink-mid);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--eink-dark);
+}
+
+/* Kiosk mode */
+.kiosk-mode {
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+/* Navigation dots - minimal */
+.nav-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--eink-light);
+  transition: all 0.2s ease;
+}
+
+.nav-dot.active {
+  background: var(--eink-black);
+}
+
+/* Email item - subtle interaction */
+.email-item {
+  transition: background-color 0.15s ease;
+}
+
+.email-item:hover {
+  background-color: var(--eink-light);
+}
+
+/* Unread indicator - small solid dot */
+.unread-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--eink-black);
+}
+
+/* Large numbers - TRMNL uses ultra-thin weight for elegance */
+.stat-number {
+  font-family: 'Inter', sans-serif;
+  font-weight: 200;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+/* TRMNL percentage/change indicators */
+.stat-change {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 400;
+  font-size: 0.875rem;
+}
+
+.stat-change.positive {
+  color: var(--eink-black);
+}
+
+.stat-change.negative {
+  color: var(--eink-dark);
+}
+
+/* TRMNL list item - clean, minimal */
+.trmnl-list-item {
+  padding: var(--space-md) 0;
+  border-bottom: 1px solid var(--eink-light);
+}
+
+.trmnl-list-item:last-child {
+  border-bottom: none;
+}
+
+/* TRMNL quote styling */
+.trmnl-quote {
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+  font-size: 1.5rem;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
+.trmnl-quote-author {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--eink-dark);
+}
+
+/* Weather icons - thin strokes */
+.weather-icon {
+  stroke: var(--eink-black);
+  stroke-width: 1.25;
+  fill: none;
+}
+
+/* Focus states for accessibility */
+button:focus-visible {
+  outline: 2px solid var(--eink-black);
+  outline-offset: 2px;
+}
+
+/* Reduce motion for e-ink feel */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
