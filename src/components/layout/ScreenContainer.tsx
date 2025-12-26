@@ -1,8 +1,7 @@
 import { useRef, TouchEvent } from 'react';
+import { format } from 'date-fns';
 import { useScreen } from '../../contexts/ScreenContext';
-import { ClockWidget } from './ClockWidget';
-import { ScreenCycler } from './ScreenCycler';
-import { ConnectionStatus } from '../ui/ConnectionStatus';
+import { useSettings } from '../../contexts/SettingsContext';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { EmailScreen } from '../screens/EmailScreen';
 import { CalendarScreen } from '../screens/CalendarScreen';
@@ -12,6 +11,14 @@ import { HackerNewsScreen } from '../screens/HackerNewsScreen';
 import { QuotesScreen } from '../screens/QuotesScreen';
 import { NewsScreen } from '../screens/NewsScreen';
 import { ScreenType } from '../../types/settings';
+import {
+  LayoutDashboard,
+  Cloud,
+  TrendingUp,
+  Flame,
+  Quote,
+  Newspaper,
+} from 'lucide-react';
 
 const screens: Record<ScreenType, React.ComponentType> = {
   dashboard: DashboardScreen,
@@ -24,11 +31,23 @@ const screens: Record<ScreenType, React.ComponentType> = {
   news: NewsScreen,
 };
 
-export function ScreenContainer() {
-  const { currentScreen, nextScreen, prevScreen } = useScreen();
-  const ScreenComponent = screens[currentScreen];
+const screenInfo: Record<ScreenType, { title: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }> = {
+  dashboard: { title: 'Dashboard', Icon: LayoutDashboard },
+  emails: { title: 'Mail', Icon: LayoutDashboard },
+  calendar: { title: 'Calendar', Icon: LayoutDashboard },
+  weather: { title: 'Weather', Icon: Cloud },
+  stocks: { title: 'Markets', Icon: TrendingUp },
+  hackernews: { title: 'Hacker News', Icon: Flame },
+  quotes: { title: 'Quote', Icon: Quote },
+  news: { title: 'News', Icon: Newspaper },
+};
 
-  // Touch/swipe handling
+export function ScreenContainer() {
+  const { currentScreen, currentIndex, totalScreens, nextScreen, prevScreen, goToScreen } = useScreen();
+  const { settings } = useSettings();
+  const ScreenComponent = screens[currentScreen];
+  const { title, Icon } = screenInfo[currentScreen];
+
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
 
@@ -38,42 +57,42 @@ export function ScreenContainer() {
   };
 
   const handleTouchEnd = (e: TouchEvent) => {
-    const touchEndX = e.changedTouches[0].clientX;
-    const touchEndY = e.changedTouches[0].clientY;
-    const deltaX = touchEndX - touchStartX.current;
-    const deltaY = touchEndY - touchStartY.current;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
 
-    // Only trigger if horizontal swipe is greater than vertical (not scrolling)
     if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
-      if (deltaX > 0) {
-        prevScreen(); // Swipe right = previous
-      } else {
-        nextScreen(); // Swipe left = next
-      }
+      deltaX > 0 ? prevScreen() : nextScreen();
     }
   };
 
   return (
     <div
-      className="eink-container min-h-screen w-full relative overflow-hidden kiosk-mode"
+      className="screen kiosk"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Header bar */}
-      <header className="absolute top-0 left-0 right-0 z-50 flex items-start justify-between p-6">
-        <ConnectionStatus />
-        <ClockWidget />
-      </header>
+      <div className="view">
+        <div className="layout">
+          <ScreenComponent />
+        </div>
+      </div>
 
-      {/* Main screen content */}
-      <main className="h-screen w-full pt-20 pb-16 px-8 overflow-auto">
-        <ScreenComponent />
-      </main>
+      <div className="title_bar">
+        <Icon size={16} strokeWidth={2} />
+        <span className="title">{title}</span>
 
-      {/* Footer navigation */}
-      <footer className="absolute bottom-0 left-0 right-0 z-50 flex justify-center p-4">
-        <ScreenCycler />
-      </footer>
+        <div className="nav-dots">
+          {settings.screenOrder.slice(0, totalScreens).map((screen, i) => (
+            <button
+              key={screen}
+              onClick={() => goToScreen(screen)}
+              className={`nav-dot ${i === currentIndex ? 'active' : ''}`}
+            />
+          ))}
+        </div>
+
+        <span className="time">{format(new Date(), 'h:mm a')}</span>
+      </div>
     </div>
   );
 }

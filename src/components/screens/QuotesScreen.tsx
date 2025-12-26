@@ -1,59 +1,29 @@
-import { format } from 'date-fns';
-import { RefreshCw } from 'lucide-react';
 import { useQuotes } from '../../hooks/useQuotes';
-import { Loading } from '../ui/Loading';
 
 export function QuotesScreen() {
-  const { quote, loading, refresh, lastFetched } = useQuotes();
+  const { quote } = useQuotes();
 
-  if (loading && !quote) {
-    return <Loading message="Loading quote..." />;
+  if (!quote) {
+    return <div className="flex flex--center flex-1"><span className="description">Loading quote...</span></div>;
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Quote display - full screen centered */}
-      {quote ? (
-        <div className="flex-1 flex flex-col justify-center items-center px-8">
-          <div className="max-w-3xl text-center">
-            {/* Large decorative quote mark */}
-            <div className="text-[12rem] text-eink-light leading-none font-serif -mb-24 select-none">
-              &ldquo;
-            </div>
+    <div className="flex flex--col flex--center" style={{ height: '100%', textAlign: 'center', padding: '0 32px' }}>
+      {/* Large opening quote mark */}
+      <div style={{ fontSize: 180, fontWeight: 200, lineHeight: 0.6, color: '#e5e5e5', marginBottom: 16 }}>
+        "
+      </div>
 
-            {/* Quote text */}
-            <blockquote className="text-3xl md:text-4xl font-light text-eink-black leading-relaxed tracking-tight">
-              {quote.text}
-            </blockquote>
+      {/* Quote text */}
+      <div className="title" style={{ fontSize: 28, fontWeight: 300, lineHeight: 1.5, maxWidth: 640 }}>
+        {quote.text}
+      </div>
 
-            {/* Author with decorative line */}
-            <div className="mt-12 flex items-center justify-center gap-4">
-              <div className="w-12 h-px bg-eink-mid"></div>
-              <div className="text-lg font-medium text-eink-dark">
-                {quote.author}
-              </div>
-              <div className="w-12 h-px bg-eink-mid"></div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-eink-mid eink-body">No quote available</p>
-        </div>
-      )}
-
-      {/* Footer with date and refresh */}
-      <div className="flex items-center justify-between pt-4">
-        <div className="text-sm text-eink-mid">
-          {format(new Date(), 'EEEE, MMMM d, yyyy')}
-        </div>
-        <button
-          onClick={refresh}
-          className="p-2 hover:bg-eink-light rounded transition-colors text-eink-mid"
-          title="Get new quote"
-        >
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-        </button>
+      {/* Author */}
+      <div className="flex gap--medium" style={{ alignItems: 'center', marginTop: 40 }}>
+        <div className="divider" style={{ width: 32, margin: 0 }} />
+        <span className="label">{quote.author}</span>
+        <div className="divider" style={{ width: 32, margin: 0 }} />
       </div>
     </div>
   );
