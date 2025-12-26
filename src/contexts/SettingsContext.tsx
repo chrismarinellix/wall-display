@@ -13,7 +13,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const stored = localStorage.getItem('wall-display-settings');
     if (stored) {
       try {
-        return { ...defaultSettings, ...JSON.parse(stored) };
+        const parsed = JSON.parse(stored);
+        // Ensure new screens are added to screenOrder
+        const storedScreens = parsed.screenOrder || [];
+        const newScreens = defaultSettings.screenOrder.filter(s => !storedScreens.includes(s));
+        const screenOrder = [...storedScreens, ...newScreens];
+        return { ...defaultSettings, ...parsed, screenOrder };
       } catch {
         return defaultSettings;
       }
