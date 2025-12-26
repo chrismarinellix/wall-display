@@ -10,6 +10,7 @@ import { StocksScreen } from '../screens/StocksScreen';
 import { HackerNewsScreen } from '../screens/HackerNewsScreen';
 import { QuotesScreen } from '../screens/QuotesScreen';
 import { NewsScreen } from '../screens/NewsScreen';
+import { PomodoroScreen } from '../screens/PomodoroScreen';
 import { ScreenType } from '../../types/settings';
 import {
   LayoutDashboard,
@@ -18,6 +19,7 @@ import {
   Flame,
   Quote,
   Newspaper,
+  Timer,
 } from 'lucide-react';
 
 const screens: Record<ScreenType, React.ComponentType> = {
@@ -29,6 +31,7 @@ const screens: Record<ScreenType, React.ComponentType> = {
   hackernews: HackerNewsScreen,
   quotes: QuotesScreen,
   news: NewsScreen,
+  pomodoro: PomodoroScreen,
 };
 
 const screenInfo: Record<ScreenType, { title: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }> = {
@@ -40,6 +43,7 @@ const screenInfo: Record<ScreenType, { title: string; Icon: React.ComponentType<
   hackernews: { title: 'Hacker News', Icon: Flame },
   quotes: { title: 'Quote', Icon: Quote },
   news: { title: 'News', Icon: Newspaper },
+  pomodoro: { title: 'Pomodoro', Icon: Timer },
 };
 
 export function ScreenContainer() {

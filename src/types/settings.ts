@@ -6,7 +6,8 @@ export type ScreenType =
   | 'stocks'
   | 'hackernews'
   | 'quotes'
-  | 'news';
+  | 'news'
+  | 'pomodoro';
 
 export interface RssFeed {
   url: string;
@@ -35,7 +36,7 @@ export const defaultSettings: Settings = {
   longitude: -0.1278,
   temperatureUnit: 'celsius',
   timeFormat: '24h',
-  screenOrder: ['dashboard', 'weather', 'stocks', 'hackernews', 'quotes', 'news'],
+  screenOrder: ['dashboard', 'weather', 'stocks', 'hackernews', 'quotes', 'news', 'pomodoro'],
   // Default crypto and stocks
   stockSymbols: ['AAPL', 'GOOGL', 'MSFT'],
   cryptoSymbols: ['bitcoin', 'ethereum', 'solana'],

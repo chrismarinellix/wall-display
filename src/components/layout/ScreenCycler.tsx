@@ -11,6 +11,7 @@ const screenLabels: Record<ScreenType, string> = {
   hackernews: 'HN',
   quotes: 'Quote',
   news: 'News',
+  pomodoro: 'Timer',
 };
 
 export function ScreenCycler() {
