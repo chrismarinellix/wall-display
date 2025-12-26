@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { TrendingUp, TrendingDown, RefreshCw, Bitcoin } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 import { useStocks } from '../../hooks/useStocks';
 import { Loading } from '../ui/Loading';
 import { CryptoQuote, StockQuote } from '../../types/stocks';
@@ -7,67 +7,72 @@ import { CryptoQuote, StockQuote } from '../../types/stocks';
 function formatPrice(price: number): string {
   if (price >= 1000) {
     return price.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     });
   }
   return price.toLocaleString('en-US', {
     minimumFractionDigits: 2,
-    maximumFractionDigits: price < 1 ? 6 : 2,
+    maximumFractionDigits: price < 1 ? 4 : 2,
   });
 }
 
-function formatChange(change: number, percent: number): string {
-  const sign = change >= 0 ? '+' : '';
-  return `${sign}${percent.toFixed(2)}%`;
-}
-
-function CryptoItem({ coin, isFirst }: { coin: CryptoQuote; isFirst: boolean }) {
+function CryptoCard({ coin, isHero }: { coin: CryptoQuote; isHero?: boolean }) {
   const isPositive = coin.changePercent24h >= 0;
 
-  return (
-    <div className={`py-4 ${isFirst ? '' : 'border-t border-eink-light'}`}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 flex items-center justify-center bg-eink-light rounded-full">
-            <span className="text-xs font-medium">{coin.symbol.slice(0, 2)}</span>
-          </div>
-          <div>
-            <div className="font-medium text-eink-black">{coin.symbol}</div>
-            <div className="text-xs text-eink-mid">{coin.name}</div>
-          </div>
+  if (isHero) {
+    return (
+      <div className="text-center py-8">
+        <div className="eink-label mb-4">{coin.name}</div>
+        <div className="stat-number text-8xl text-eink-black mb-4">
+          ${formatPrice(coin.price)}
         </div>
-        <div className="text-right">
-          <div className="stat-number text-2xl text-eink-black">
-            ${formatPrice(coin.price)}
-          </div>
-          <div className={`stat-change flex items-center justify-end gap-1 ${isPositive ? 'positive' : 'negative'}`}>
-            {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-            <span>{formatChange(coin.change24h, coin.changePercent24h)}</span>
-          </div>
+        <div className={`inline-flex items-center gap-2 text-2xl ${isPositive ? 'text-eink-black' : 'text-eink-mid'}`}>
+          {isPositive ? <TrendingUp size={24} /> : <TrendingDown size={24} />}
+          <span>{isPositive ? '+' : ''}{coin.changePercent24h.toFixed(2)}%</span>
+          <span className="text-eink-mid text-lg ml-2">24h</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between py-5 border-b border-eink-light last:border-0">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 flex items-center justify-center bg-eink-light text-sm font-medium">
+          {coin.symbol}
+        </div>
+        <div>
+          <div className="font-medium text-eink-black text-lg">{coin.name}</div>
+          <div className="text-sm text-eink-mid">{coin.symbol}</div>
+        </div>
+      </div>
+      <div className="text-right">
+        <div className="stat-number text-2xl text-eink-black">
+          ${formatPrice(coin.price)}
+        </div>
+        <div className={`flex items-center justify-end gap-1 text-sm mt-1 ${isPositive ? 'text-eink-black' : 'text-eink-mid'}`}>
+          {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+          <span>{isPositive ? '+' : ''}{coin.changePercent24h.toFixed(2)}%</span>
         </div>
       </div>
     </div>
   );
 }
 
-function StockItem({ stock }: { stock: StockQuote }) {
+function StockCard({ stock }: { stock: StockQuote }) {
   const isPositive = stock.change >= 0;
 
   return (
-    <div className="py-3 border-t border-eink-light">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="font-medium text-eink-black">{stock.symbol}</div>
+    <div className="flex items-center justify-between py-4 border-b border-eink-light last:border-0">
+      <div className="font-medium text-eink-black text-lg">{stock.symbol}</div>
+      <div className="text-right">
+        <div className="stat-number text-xl text-eink-black">
+          ${formatPrice(stock.price)}
         </div>
-        <div className="text-right">
-          <div className="stat-number text-xl text-eink-black">
-            ${formatPrice(stock.price)}
-          </div>
-          <div className={`stat-change flex items-center justify-end gap-1 ${isPositive ? 'positive' : 'negative'}`}>
-            {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-            <span>{formatChange(stock.change, stock.changePercent)}</span>
-          </div>
+        <div className={`flex items-center justify-end gap-1 text-sm ${isPositive ? 'text-eink-black' : 'text-eink-mid'}`}>
+          {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+          <span>{isPositive ? '+' : ''}{stock.changePercent.toFixed(2)}%</span>
         </div>
       </div>
     </div>
@@ -75,85 +80,51 @@ function StockItem({ stock }: { stock: StockQuote }) {
 }
 
 export function StocksScreen() {
-  const { stocks, crypto, loading, error, refresh, lastFetched } = useStocks();
+  const { stocks, crypto, loading, error, lastFetched } = useStocks();
 
   if (loading && crypto.length === 0) {
     return <Loading message="Fetching market data..." />;
   }
 
-  // Show the first crypto as the hero
   const heroCoin = crypto[0];
   const otherCrypto = crypto.slice(1);
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Bitcoin className="text-eink-dark" size={20} />
-          <h1 className="eink-heading text-xl">Markets</h1>
-        </div>
-        <button
-          onClick={refresh}
-          className="p-2 hover:bg-eink-light rounded transition-colors"
-          title="Refresh"
-        >
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-        </button>
-      </div>
-
       {/* Error state */}
       {error && (
-        <div className="text-sm text-eink-dark bg-eink-light p-3 mb-4">
+        <div className="text-sm text-eink-dark bg-eink-light p-3 mb-6">
           {error}
         </div>
       )}
 
-      {/* Hero crypto display */}
-      {heroCoin && (
-        <div className="eink-card p-6 mb-6">
-          <div className="eink-label mb-2">{heroCoin.name}</div>
-          <div className="flex items-end justify-between">
-            <div>
-              <div className="stat-number text-6xl text-eink-black">
-                ${formatPrice(heroCoin.price)}
-              </div>
-              <div className={`stat-change flex items-center gap-2 mt-2 text-lg ${heroCoin.changePercent24h >= 0 ? 'positive' : 'negative'}`}>
-                {heroCoin.changePercent24h >= 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
-                <span>{formatChange(heroCoin.change24h, heroCoin.changePercent24h)}</span>
-                <span className="text-eink-mid text-sm">24h</span>
-              </div>
-            </div>
-            <div className="text-8xl font-light text-eink-light">
-              {heroCoin.symbol}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Hero crypto */}
+      {heroCoin && <CryptoCard coin={heroCoin} isHero />}
 
       {/* Other crypto */}
-      {otherCrypto.length > 0 && (
-        <div className="eink-card p-4 flex-1 overflow-auto">
-          <div className="eink-label mb-3">Other Crypto</div>
-          {otherCrypto.map((coin, index) => (
-            <CryptoItem key={coin.id} coin={coin} isFirst={index === 0} />
-          ))}
-        </div>
-      )}
+      <div className="flex-1 overflow-auto">
+        {otherCrypto.length > 0 && (
+          <div className="mb-6">
+            {otherCrypto.map((coin) => (
+              <CryptoCard key={coin.id} coin={coin} />
+            ))}
+          </div>
+        )}
 
-      {/* Stocks section */}
-      {stocks.length > 0 && (
-        <div className="eink-card p-4 mt-4">
-          <div className="eink-label mb-3">Stocks</div>
-          {stocks.map((stock) => (
-            <StockItem key={stock.symbol} stock={stock} />
-          ))}
-        </div>
-      )}
+        {/* Stocks */}
+        {stocks.length > 0 && (
+          <div className="pt-6 border-t border-eink-black">
+            <div className="eink-label mb-4">Stocks</div>
+            {stocks.map((stock) => (
+              <StockCard key={stock.symbol} stock={stock} />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Last updated */}
       {lastFetched && (
-        <div className="text-xs text-eink-mid eink-mono pt-4 text-center mt-auto">
+        <div className="text-xs text-eink-mid eink-mono pt-4 text-center">
           Updated {format(lastFetched, 'h:mm a')}
         </div>
       )}

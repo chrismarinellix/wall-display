@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { Quote as QuoteIcon, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { useQuotes } from '../../hooks/useQuotes';
 import { Loading } from '../ui/Loading';
 
@@ -12,38 +12,27 @@ export function QuotesScreen() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <QuoteIcon className="text-eink-dark" size={20} />
-          <h1 className="eink-heading text-xl">Daily Quote</h1>
-        </div>
-        <button
-          onClick={refresh}
-          className="p-2 hover:bg-eink-light rounded transition-colors"
-          title="Get new quote"
-        >
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-        </button>
-      </div>
-
-      {/* Quote display - centered, large text */}
+      {/* Quote display - full screen centered */}
       {quote ? (
-        <div className="flex-1 flex flex-col justify-center items-center px-4">
-          <div className="max-w-2xl text-center">
-            {/* Large opening quote mark */}
-            <div className="text-8xl text-eink-light leading-none mb-4 font-serif">
+        <div className="flex-1 flex flex-col justify-center items-center px-8">
+          <div className="max-w-3xl text-center">
+            {/* Large decorative quote mark */}
+            <div className="text-[12rem] text-eink-light leading-none font-serif -mb-24 select-none">
               &ldquo;
             </div>
 
             {/* Quote text */}
-            <blockquote className="trmnl-quote text-eink-black mb-8">
+            <blockquote className="text-3xl md:text-4xl font-light text-eink-black leading-relaxed tracking-tight">
               {quote.text}
             </blockquote>
 
-            {/* Author */}
-            <div className="trmnl-quote-author">
-              &mdash; {quote.author}
+            {/* Author with decorative line */}
+            <div className="mt-12 flex items-center justify-center gap-4">
+              <div className="w-12 h-px bg-eink-mid"></div>
+              <div className="text-lg font-medium text-eink-dark">
+                {quote.author}
+              </div>
+              <div className="w-12 h-px bg-eink-mid"></div>
             </div>
           </div>
         </div>
@@ -53,12 +42,19 @@ export function QuotesScreen() {
         </div>
       )}
 
-      {/* Last updated */}
-      {lastFetched && (
-        <div className="text-xs text-eink-mid eink-mono pt-4 text-center">
-          {format(lastFetched, 'EEEE, MMMM d')}
+      {/* Footer with date and refresh */}
+      <div className="flex items-center justify-between pt-4">
+        <div className="text-sm text-eink-mid">
+          {format(new Date(), 'EEEE, MMMM d, yyyy')}
         </div>
-      )}
+        <button
+          onClick={refresh}
+          className="p-2 hover:bg-eink-light rounded transition-colors text-eink-mid"
+          title="Get new quote"
+        >
+          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+        </button>
+      </div>
     </div>
   );
 }
