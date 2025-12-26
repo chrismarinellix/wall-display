@@ -35,9 +35,9 @@ export const defaultSettings: Settings = {
   longitude: -0.1278,
   temperatureUnit: 'celsius',
   timeFormat: '24h',
-  screenOrder: ['dashboard', 'weather', 'stocks', 'hackernews', 'quotes', 'news', 'emails', 'calendar'],
+  screenOrder: ['dashboard', 'weather', 'stocks', 'hackernews', 'quotes', 'news'],
   // Default crypto and stocks
-  stockSymbols: [],
+  stockSymbols: ['AAPL', 'GOOGL', 'MSFT'],
   cryptoSymbols: ['bitcoin', 'ethereum', 'solana'],
   rssFeeds: [
     { url: 'https://feeds.bbci.co.uk/news/technology/rss.xml', name: 'BBC Tech' },
