@@ -10,6 +10,10 @@ const SettingsContext = createContext<SettingsContextType | null>(null);
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(() => {
+    // Always use env vars or defaults for coordinates (Melbourne)
+    const latitude = Number(import.meta.env.VITE_DEFAULT_LATITUDE) || defaultSettings.latitude;
+    const longitude = Number(import.meta.env.VITE_DEFAULT_LONGITUDE) || defaultSettings.longitude;
+
     const stored = localStorage.getItem('wall-display-settings');
     if (stored) {
       try {
@@ -19,9 +23,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         const storedScreens = (parsed.screenOrder || []).filter((s: string) => validScreens.includes(s as any));
         const newScreens = validScreens.filter(s => !storedScreens.includes(s));
         const screenOrder = storedScreens.length > 0 ? [...storedScreens, ...newScreens] : validScreens;
-        return { ...defaultSettings, ...parsed, screenOrder };
+        // Override stored lat/lon with env vars to fix stale location data
+        return { ...defaultSettings, ...parsed, screenOrder, latitude, longitude };
       } catch {
-        return defaultSettings;
+        return { ...defaultSettings, latitude, longitude };
       }
     }
 
@@ -30,8 +35,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       ...defaultSettings,
       cycleInterval: Number(import.meta.env.VITE_SCREEN_CYCLE_INTERVAL) || defaultSettings.cycleInterval,
       refreshInterval: Number(import.meta.env.VITE_DATA_REFRESH_INTERVAL) || defaultSettings.refreshInterval,
-      latitude: Number(import.meta.env.VITE_DEFAULT_LATITUDE) || defaultSettings.latitude,
-      longitude: Number(import.meta.env.VITE_DEFAULT_LONGITUDE) || defaultSettings.longitude,
+      latitude,
+      longitude,
     };
   });
 
