@@ -136,3 +136,130 @@ export async function addMinutes(date: string, minutesToAdd: number): Promise<vo
     console.error('Failed to add minutes:', e);
   }
 }
+
+// ============ COUNTDOWN TIMERS ============
+
+export interface CountdownEvent {
+  id: string;
+  title: string;
+  target_date: string; // ISO string
+  color: string;
+  created_at?: string;
+}
+
+// Get all countdown events
+export async function getCountdowns(): Promise<CountdownEvent[]> {
+  if (!supabase) {
+    console.log('Supabase not configured, using localStorage');
+    const stored = localStorage.getItem('countdown-events');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('countdowns')
+      .select('*')
+      .order('target_date', { ascending: true });
+
+    if (error) throw error;
+
+    console.log(`Loaded ${data?.length || 0} countdowns from Supabase`);
+    return data || [];
+  } catch (e) {
+    console.error('Failed to fetch countdowns:', e);
+    // Fallback to localStorage
+    const stored = localStorage.getItem('countdown-events');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }
+}
+
+// Add a new countdown
+export async function addCountdown(event: CountdownEvent): Promise<void> {
+  if (!supabase) {
+    console.log('Supabase not configured, using localStorage');
+    const stored = localStorage.getItem('countdown-events');
+    const events = stored ? JSON.parse(stored) : [];
+    events.push(event);
+    localStorage.setItem('countdown-events', JSON.stringify(events));
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('countdowns')
+      .insert({
+        id: event.id,
+        title: event.title,
+        target_date: event.target_date,
+        color: event.color,
+      });
+
+    if (error) throw error;
+    console.log('Added countdown to Supabase:', event.title);
+  } catch (e) {
+    console.error('Failed to add countdown:', e);
+  }
+}
+
+// Remove a countdown
+export async function removeCountdown(id: string): Promise<void> {
+  if (!supabase) {
+    console.log('Supabase not configured, using localStorage');
+    const stored = localStorage.getItem('countdown-events');
+    if (stored) {
+      const events = JSON.parse(stored).filter((e: CountdownEvent) => e.id !== id);
+      localStorage.setItem('countdown-events', JSON.stringify(events));
+    }
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('countdowns')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    console.log('Removed countdown from Supabase:', id);
+  } catch (e) {
+    console.error('Failed to remove countdown:', e);
+  }
+}
+
+// Subscribe to countdown changes (realtime)
+export function subscribeToCountdowns(callback: (events: CountdownEvent[]) => void): (() => void) | null {
+  if (!supabase) {
+    return null;
+  }
+
+  const channel = supabase
+    .channel('countdowns-changes')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'countdowns' },
+      async () => {
+        // Refetch all countdowns when any change happens
+        const events = await getCountdowns();
+        callback(events);
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}

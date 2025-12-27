@@ -1,12 +1,28 @@
 import { useState, useEffect } from 'react';
 import { differenceInDays, differenceInHours, differenceInMinutes, differenceInSeconds, isPast } from 'date-fns';
-import { Plus, X, Calendar, Clock } from 'lucide-react';
+import { Plus, X, Calendar, Clock, RefreshCw } from 'lucide-react';
+import {
+  getCountdowns,
+  addCountdown,
+  removeCountdown,
+  subscribeToCountdowns,
+  CountdownEvent as SupabaseCountdownEvent,
+} from '../../services/supabase';
 
 interface CountdownEvent {
   id: string;
   title: string;
   targetDate: string; // ISO string
   color: string;
+}
+
+// Convert between local format and Supabase format
+function fromSupabase(e: SupabaseCountdownEvent): CountdownEvent {
+  return { id: e.id, title: e.title, targetDate: e.target_date, color: e.color };
+}
+
+function toSupabase(e: CountdownEvent): SupabaseCountdownEvent {
+  return { id: e.id, title: e.title, target_date: e.targetDate, color: e.color };
 }
 
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899'];
@@ -122,29 +138,40 @@ function CountdownTimer({ event, onRemove }: { event: CountdownEvent; onRemove: 
 }
 
 export function CountdownScreen() {
-  const [events, setEvents] = useState<CountdownEvent[]>(() => {
-    const stored = localStorage.getItem('countdown-events');
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  });
-
+  const [events, setEvents] = useState<CountdownEvent[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('12:00');
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
 
-  useEffect(() => {
-    localStorage.setItem('countdown-events', JSON.stringify(events));
-  }, [events]);
+  // Load events from Supabase on mount
+  const loadEvents = async () => {
+    setLoading(true);
+    const data = await getCountdowns();
+    setEvents(data.map(fromSupabase).sort((a, b) =>
+      new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime()
+    ));
+    setLoading(false);
+  };
 
-  const addEvent = () => {
+  useEffect(() => {
+    loadEvents();
+
+    // Subscribe to realtime changes
+    const unsubscribe = subscribeToCountdowns((data) => {
+      setEvents(data.map(fromSupabase).sort((a, b) =>
+        new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime()
+      ));
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  const handleAddEvent = async () => {
     if (!newTitle.trim() || !newDate) return;
 
     const targetDate = new Date(`${newDate}T${newTime}`);
@@ -155,17 +182,25 @@ export function CountdownScreen() {
       color: selectedColor,
     };
 
+    // Optimistically update UI
     setEvents(prev => [...prev, event].sort((a, b) =>
       new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime()
     ));
+
+    // Save to Supabase
+    await addCountdown(toSupabase(event));
+
     setNewTitle('');
     setNewDate('');
     setNewTime('12:00');
     setShowAddForm(false);
   };
 
-  const removeEvent = (id: string) => {
+  const handleRemoveEvent = async (id: string) => {
+    // Optimistically update UI
     setEvents(prev => prev.filter(e => e.id !== id));
+    // Remove from Supabase
+    await removeCountdown(id);
   };
 
   return (
@@ -177,19 +212,35 @@ export function CountdownScreen() {
           <span className="label">COUNTDOWNS</span>
           <span style={{ fontSize: 12, color: '#999' }}>{events.length} events</span>
         </div>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          style={{
-            background: 'none',
-            border: '1px solid #e5e5e5',
-            cursor: 'pointer',
-            padding: 6,
-            display: 'flex',
-            alignItems: 'center',
-          }}
-        >
-          <Plus size={14} />
-        </button>
+        <div className="flex gap--small">
+          <button
+            onClick={loadEvents}
+            style={{
+              background: 'none',
+              border: '1px solid #e5e5e5',
+              cursor: 'pointer',
+              padding: 6,
+              display: 'flex',
+              alignItems: 'center',
+            }}
+            title="Refresh"
+          >
+            <RefreshCw size={14} className={loading ? 'spin' : ''} />
+          </button>
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            style={{
+              background: 'none',
+              border: '1px solid #e5e5e5',
+              cursor: 'pointer',
+              padding: 6,
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <Plus size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Add Form */}
@@ -261,7 +312,7 @@ export function CountdownScreen() {
             ))}
           </div>
           <button
-            onClick={addEvent}
+            onClick={handleAddEvent}
             style={{
               width: '100%',
               padding: '8px 16px',
@@ -281,13 +332,15 @@ export function CountdownScreen() {
       {/* Events list */}
       {events.length === 0 ? (
         <div className="flex flex--center flex-1 flex--col" style={{ gap: 8 }}>
-          <span style={{ color: '#999', fontSize: 14 }}>No countdowns</span>
-          <span style={{ color: '#ccc', fontSize: 12 }}>Tap + to add an event</span>
+          <span style={{ color: '#999', fontSize: 14 }}>
+            {loading ? 'Loading...' : 'No countdowns'}
+          </span>
+          {!loading && <span style={{ color: '#ccc', fontSize: 12 }}>Tap + to add an event</span>}
         </div>
       ) : (
         <div style={{ flex: 1, overflow: 'auto' }}>
           {events.map(event => (
-            <CountdownTimer key={event.id} event={event} onRemove={() => removeEvent(event.id)} />
+            <CountdownTimer key={event.id} event={event} onRemove={() => handleRemoveEvent(event.id)} />
           ))}
         </div>
       )}
