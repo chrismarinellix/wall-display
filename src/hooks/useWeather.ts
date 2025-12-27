@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CurrentWeather, WeatherForecast } from '../types/weather';
 import { useSettings } from '../contexts/SettingsContext';
-import { fetchWeather, getCurrentLocation } from '../services/weatherService';
+import { fetchWeather } from '../services/weatherService';
 
 interface UseWeatherReturn {
   current: CurrentWeather | null;
@@ -18,32 +18,14 @@ export function useWeather(): UseWeatherReturn {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
-  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const { settings } = useSettings();
 
-  // Get location on mount
-  useEffect(() => {
-    const getLocation = async () => {
-      try {
-        const loc = await getCurrentLocation();
-        setLocation(loc);
-      } catch {
-        // Fall back to settings
-        setLocation({
-          latitude: settings.latitude,
-          longitude: settings.longitude,
-        });
-      }
-    };
-
-    getLocation();
-  }, [settings.latitude, settings.longitude]);
+  // Always use the configured Melbourne coordinates
+  const lat = settings.latitude;
+  const lon = settings.longitude;
 
   const fetchWeatherData = useCallback(async () => {
-    const lat = location?.latitude ?? settings.latitude;
-    const lon = location?.longitude ?? settings.longitude;
-
     setLoading(true);
     setError(null);
 
@@ -57,14 +39,12 @@ export function useWeather(): UseWeatherReturn {
     } finally {
       setLoading(false);
     }
-  }, [location, settings.latitude, settings.longitude]);
+  }, [lat, lon]);
 
-  // Initial fetch when location is available
+  // Initial fetch
   useEffect(() => {
-    if (location) {
-      fetchWeatherData();
-    }
-  }, [location, fetchWeatherData]);
+    fetchWeatherData();
+  }, [fetchWeatherData]);
 
   // Auto-refresh (weather updates less frequently)
   useEffect(() => {

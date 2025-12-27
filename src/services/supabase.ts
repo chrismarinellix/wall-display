@@ -1,0 +1,138 @@
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+export const supabase = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
+
+export interface PomodoroRecord {
+  id?: number;
+  date: string;
+  count: number;
+  minutes: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PomodoroHistory {
+  [date: string]: { count: number; minutes: number };
+}
+
+// Get all pomodoro history (with minutes if available)
+export async function getPomodoroHistory(): Promise<PomodoroHistory> {
+  if (!supabase) {
+    console.log('Supabase not configured, using localStorage');
+    return {};
+  }
+
+  try {
+    // Try with minutes column first
+    const { data, error } = await supabase
+      .from('pomodoro_history')
+      .select('date, count, minutes');
+
+    // If minutes column doesn't exist, query without it
+    if (error && error.code === '42703') {
+      console.log('Minutes column not found, querying without it');
+      const result = await supabase
+        .from('pomodoro_history')
+        .select('date, count');
+
+      if (result.error) throw result.error;
+
+      const history: PomodoroHistory = {};
+      result.data?.forEach((record: { date: string; count: number }) => {
+        history[record.date] = {
+          count: record.count || 0,
+          minutes: 0
+        };
+      });
+      console.log(`Loaded ${result.data?.length || 0} days of history from Supabase (no minutes column)`);
+      return history;
+    }
+
+    if (error) throw error;
+
+    const history: PomodoroHistory = {};
+    data?.forEach((record: { date: string; count: number; minutes?: number }) => {
+      history[record.date] = {
+        count: record.count || 0,
+        minutes: record.minutes || 0
+      };
+    });
+    console.log(`Loaded ${data?.length || 0} days of history from Supabase`);
+    return history;
+  } catch (e) {
+    console.error('Failed to fetch pomodoro history:', e);
+    return {};
+  }
+}
+
+// Increment pomodoro count for today
+export async function incrementPomodoro(date: string): Promise<void> {
+  if (!supabase) {
+    console.log('Supabase not configured');
+    return;
+  }
+
+  try {
+    // First get current values
+    const { data: existing } = await supabase
+      .from('pomodoro_history')
+      .select('count, minutes')
+      .eq('date', date)
+      .single();
+
+    if (existing) {
+      await supabase
+        .from('pomodoro_history')
+        .update({ count: (existing.count || 0) + 1 })
+        .eq('date', date);
+    } else {
+      await supabase
+        .from('pomodoro_history')
+        .insert({ date, count: 1, minutes: 0 });
+    }
+  } catch (e) {
+    console.error('Failed to increment pomodoro:', e);
+  }
+}
+
+// Add minutes to today's record (for partial sessions)
+// Note: This will silently fail if the minutes column doesn't exist
+export async function addMinutes(date: string, minutesToAdd: number): Promise<void> {
+  if (!supabase) {
+    console.log('Supabase not configured');
+    return;
+  }
+
+  try {
+    // First get current values
+    const { data: existing, error: selectError } = await supabase
+      .from('pomodoro_history')
+      .select('count, minutes')
+      .eq('date', date)
+      .single();
+
+    // If minutes column doesn't exist, just skip this operation
+    if (selectError && selectError.code === '42703') {
+      console.log('Minutes column not found, skipping addMinutes');
+      return;
+    }
+
+    if (existing) {
+      await supabase
+        .from('pomodoro_history')
+        .update({ minutes: (existing.minutes || 0) + minutesToAdd })
+        .eq('date', date);
+    } else {
+      await supabase
+        .from('pomodoro_history')
+        .insert({ date, count: 0, minutes: minutesToAdd });
+    }
+  } catch (e) {
+    console.error('Failed to add minutes:', e);
+  }
+}

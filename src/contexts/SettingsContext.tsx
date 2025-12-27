@@ -14,10 +14,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        // Ensure new screens are added to screenOrder
-        const storedScreens = parsed.screenOrder || [];
-        const newScreens = defaultSettings.screenOrder.filter(s => !storedScreens.includes(s));
-        const screenOrder = [...storedScreens, ...newScreens];
+        // Filter stored screens to only include valid ones, then add any new ones
+        const validScreens = defaultSettings.screenOrder;
+        const storedScreens = (parsed.screenOrder || []).filter((s: string) => validScreens.includes(s as any));
+        const newScreens = validScreens.filter(s => !storedScreens.includes(s));
+        const screenOrder = storedScreens.length > 0 ? [...storedScreens, ...newScreens] : validScreens;
         return { ...defaultSettings, ...parsed, screenOrder };
       } catch {
         return defaultSettings;

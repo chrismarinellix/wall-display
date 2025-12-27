@@ -1,12 +1,39 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Play, Pause, RotateCcw, Coffee, Brain } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Play, Pause, RotateCcw, Coffee, Brain, SkipForward, Volume2, VolumeX, Target } from 'lucide-react';
+import { supabase, getPomodoroHistory, incrementPomodoro, addMinutes, PomodoroHistory } from '../../services/supabase';
 
 type TimerMode = 'work' | 'shortBreak' | 'longBreak';
 
-const TIMES: Record<TimerMode, number> = {
-  work: 25 * 60,
-  shortBreak: 5 * 60,
-  longBreak: 15 * 60,
+interface TimerState {
+  mode: TimerMode;
+  startedAt: number | null; // timestamp when timer started
+  pausedAt: number | null;  // timestamp when paused (to calculate elapsed)
+  totalDuration: number;    // total duration in seconds
+  completedPomodoros: number;
+  lastSavedMinute: number;  // track last saved minute to avoid duplicates
+}
+
+interface TimerConfig {
+  work: number;
+  shortBreak: number;
+  longBreak: number;
+  sessionsUntilLongBreak: number;
+}
+
+const PRESETS: Record<string, TimerConfig> = {
+  test: { work: 0.083, shortBreak: 0.033, longBreak: 0.05, sessionsUntilLongBreak: 2 }, // 5s/2s/3s for testing
+  micro: { work: 5, shortBreak: 1, longBreak: 5, sessionsUntilLongBreak: 4 },
+  short: { work: 15, shortBreak: 3, longBreak: 10, sessionsUntilLongBreak: 4 },
+  standard: { work: 25, shortBreak: 5, longBreak: 15, sessionsUntilLongBreak: 4 },
+  extended: { work: 50, shortBreak: 10, longBreak: 30, sessionsUntilLongBreak: 2 },
+};
+
+const PRESET_LABELS: Record<string, string> = {
+  test: 'TEST',
+  micro: '5/1',
+  short: '15/3',
+  standard: '25/5',
+  extended: '50/10',
 };
 
 const MODE_LABELS: Record<TimerMode, string> = {
@@ -15,77 +42,610 @@ const MODE_LABELS: Record<TimerMode, string> = {
   longBreak: 'Long Break',
 };
 
-export function PomodoroScreen() {
-  const [mode, setMode] = useState<TimerMode>('work');
-  const [timeLeft, setTimeLeft] = useState(TIMES.work);
-  const [isRunning, setIsRunning] = useState(false);
-  const [completedPomodoros, setCompletedPomodoros] = useState(0);
+// Sound notification
+function playNotificationSound() {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const playTone = (freq: number, startTime: number, duration: number) => {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      oscillator.frequency.value = freq;
+      oscillator.type = 'sine';
+      gainNode.gain.setValueAtTime(0.3, startTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+      oscillator.start(startTime);
+      oscillator.stop(startTime + duration);
+    };
+    const now = audioContext.currentTime;
+    playTone(523.25, now, 0.2);
+    playTone(659.25, now + 0.15, 0.2);
+    playTone(783.99, now + 0.3, 0.3);
+  } catch (e) {
+    console.log('Could not play sound:', e);
+  }
+}
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function showNotification(title: string, body: string) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body, icon: '/icon.svg' });
+  }
+}
+
+// LocalStorage functions
+function getLocalHistory(): PomodoroHistory {
+  try {
+    const stored = localStorage.getItem('pomodoro-history');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      // Convert old format to new format
+      const history: PomodoroHistory = {};
+      Object.entries(parsed).forEach(([date, value]) => {
+        if (typeof value === 'number') {
+          history[date] = { count: value, minutes: 0 };
+        } else {
+          history[date] = value as { count: number; minutes: number };
+        }
+      });
+      return history;
+    }
+  } catch {}
+  return {};
+}
+
+function saveLocalHistory(history: PomodoroHistory) {
+  localStorage.setItem('pomodoro-history', JSON.stringify(history));
+}
+
+function getTodayKey(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+function getLast60Days(): string[] {
+  const days: string[] = [];
+  for (let i = 59; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    days.push(date.toISOString().split('T')[0]);
+  }
+  return days;
+}
+
+function getTimerState(): TimerState | null {
+  try {
+    const stored = localStorage.getItem('pomodoro-timer-state');
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveTimerState(state: TimerState | null) {
+  if (state) {
+    localStorage.setItem('pomodoro-timer-state', JSON.stringify(state));
+  } else {
+    localStorage.removeItem('pomodoro-timer-state');
+  }
+}
+
+function getSettings() {
+  try {
+    const stored = localStorage.getItem('pomodoro-settings');
+    if (stored) return JSON.parse(stored);
+  } catch {}
+  return {
+    preset: 'standard',
+    soundEnabled: true,
+    dailyGoal: 8,
+  };
+}
+
+function saveSettings(settings: any) {
+  localStorage.setItem('pomodoro-settings', JSON.stringify(settings));
+}
+
+const STACK_HEIGHT = 5; // 5 boxes per day
+
+function HeatmapGrid({ history }: { history: PomodoroHistory }) {
+  const days = getLast60Days();
+  const counts = days.map(d => history[d]?.count || 0);
+  const totalPomodoros = counts.reduce((a, b) => a + b, 0);
+
+  // Get box color based on how many are filled
+  const getBoxColor = (dayCount: number, boxIndex: number) => {
+    // boxIndex 0 is top (5th pomodoro), 4 is bottom (1st pomodoro)
+    const pomodoroNumber = STACK_HEIGHT - boxIndex; // 5, 4, 3, 2, 1
+
+    if (dayCount >= pomodoroNumber) {
+      // This box is filled - darker gray for more pomodoros
+      // First pomodoro is lightest (#ccc), 5th is darkest (#333)
+      const darkness = Math.round(204 - (pomodoroNumber - 1) * 40); // 204, 164, 124, 84, 44
+      return `rgb(${darkness}, ${darkness}, ${darkness})`;
+    }
+    return '#e5e5e5'; // Empty box
   };
 
-  const switchMode = useCallback((newMode: TimerMode) => {
-    setMode(newMode);
-    setTimeLeft(TIMES[newMode]);
-    setIsRunning(false);
+  return (
+    <div style={{ marginTop: 'auto', paddingTop: 24, width: '100%' }}>
+      <div className="flex flex--between" style={{ marginBottom: 12, alignItems: 'center' }}>
+        <div className="label label--gray">Last 60 Days</div>
+        <div style={{ fontSize: 11, color: '#666' }}>
+          {totalPomodoros} completed
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 2, width: '100%' }}>
+        {days.map((day) => {
+          const count = history[day]?.count || 0;
+
+          return (
+            <div
+              key={day}
+              title={`${day}: ${count} pomodoro${count !== 1 ? 's' : ''}`}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+              }}
+            >
+              {/* Stack of 5 boxes, top to bottom */}
+              {Array.from({ length: STACK_HEIGHT }).map((_, boxIndex) => (
+                <div
+                  key={boxIndex}
+                  style={{
+                    height: 8,
+                    background: getBoxColor(count, boxIndex),
+                    transition: 'background 0.3s ease',
+                  }}
+                />
+              ))}
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex flex--between" style={{ marginTop: 8 }}>
+        <span style={{ fontSize: 10, color: '#999' }}>60 days ago</span>
+        <span style={{ fontSize: 10, color: '#999' }}>Today</span>
+      </div>
+    </div>
+  );
+}
+
+export function PomodoroScreen() {
+  const settings = getSettings();
+  const [preset, setPreset] = useState<string>(settings.preset);
+  const [soundEnabled, setSoundEnabled] = useState(settings.soundEnabled);
+  const [dailyGoal] = useState<number>(settings.dailyGoal);
+  const [history, setHistory] = useState<PomodoroHistory>({});
+
+  const config = PRESETS[preset];
+  const times = {
+    work: config.work * 60,
+    shortBreak: config.shortBreak * 60,
+    longBreak: config.longBreak * 60,
+  };
+
+  // Timer state
+  const [timerState, setTimerState] = useState<TimerState>(() => {
+    const saved = getTimerState();
+    if (saved && saved.startedAt) {
+      // Check if timer should have completed while away
+      const elapsed = (Date.now() - saved.startedAt) / 1000;
+      if (elapsed >= saved.totalDuration) {
+        // Timer completed while away - will handle in useEffect
+        return saved;
+      }
+      return saved;
+    }
+    return {
+      mode: 'work',
+      startedAt: null,
+      pausedAt: null,
+      totalDuration: times.work,
+      completedPomodoros: 0,
+      lastSavedMinute: 0,
+    };
+  });
+
+  const [timeLeft, setTimeLeft] = useState(() => {
+    if (timerState.startedAt && !timerState.pausedAt) {
+      const elapsed = (Date.now() - timerState.startedAt) / 1000;
+      return Math.max(0, timerState.totalDuration - elapsed);
+    } else if (timerState.pausedAt && timerState.startedAt) {
+      const elapsed = (timerState.pausedAt - timerState.startedAt) / 1000;
+      return Math.max(0, timerState.totalDuration - elapsed);
+    }
+    return timerState.totalDuration;
+  });
+
+  const isRunning = timerState.startedAt !== null && timerState.pausedAt === null;
+  const lastSaveRef = useRef<number>(0);
+
+  // Request notification permission
+  useEffect(() => {
+    requestNotificationPermission();
   }, []);
 
-  const reset = () => {
-    setTimeLeft(TIMES[mode]);
-    setIsRunning(false);
-  };
+  // Load history from Supabase (refreshes on mount, visibility change, and periodically)
+  useEffect(() => {
+    async function loadHistory() {
+      if (supabase) {
+        console.log('Loading pomodoro history from Supabase...');
+        const cloudHistory = await getPomodoroHistory();
+        console.log('Loaded history:', cloudHistory);
+        setHistory(cloudHistory);
+        saveLocalHistory(cloudHistory);
+      } else {
+        console.log('Supabase not configured, using localStorage');
+        setHistory(getLocalHistory());
+      }
+    }
 
+    // Load immediately
+    loadHistory();
+
+    // Refresh when page becomes visible (user switches back to tab/screen)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadHistory();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Also refresh every 30 seconds to pick up changes from other devices
+    const refreshInterval = setInterval(loadHistory, 30000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(refreshInterval);
+    };
+  }, []);
+
+  // Save settings
+  useEffect(() => {
+    saveSettings({ preset, soundEnabled, dailyGoal });
+  }, [preset, soundEnabled, dailyGoal]);
+
+  // Save timer state whenever it changes
+  useEffect(() => {
+    saveTimerState(timerState);
+  }, [timerState]);
+
+  // Save partial minutes periodically and on unmount
+  const savePartialMinutes = useCallback(async () => {
+    if (!timerState.startedAt || timerState.mode !== 'work') return;
+
+    const now = timerState.pausedAt || Date.now();
+    const elapsedSeconds = (now - timerState.startedAt) / 1000;
+    const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+    const minutesToSave = elapsedMinutes - timerState.lastSavedMinute;
+
+    console.log(`[Pomodoro] Checking partial minutes: elapsed=${elapsedMinutes}min, lastSaved=${timerState.lastSavedMinute}min, toSave=${minutesToSave}min`);
+
+    if (minutesToSave > 0) {
+      const todayKey = getTodayKey();
+      console.log(`[Pomodoro] Saving ${minutesToSave} partial minutes for ${todayKey}`);
+
+      // Update local history
+      const newHistory = { ...history };
+      if (!newHistory[todayKey]) {
+        newHistory[todayKey] = { count: 0, minutes: 0 };
+      }
+      newHistory[todayKey].minutes += minutesToSave;
+      setHistory(newHistory);
+      saveLocalHistory(newHistory);
+
+      // Sync to Supabase
+      if (supabase) {
+        console.log(`[Pomodoro] Syncing ${minutesToSave} minutes to Supabase...`);
+        await addMinutes(todayKey, minutesToSave);
+        console.log(`[Pomodoro] Supabase sync complete`);
+      } else {
+        console.log(`[Pomodoro] Supabase not configured, saved to localStorage only`);
+      }
+
+      setTimerState(prev => ({ ...prev, lastSavedMinute: elapsedMinutes }));
+    }
+  }, [timerState, history]);
+
+  // Save on unmount or visibility change
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && isRunning) {
+        savePartialMinutes();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (isRunning) {
+        savePartialMinutes();
+      }
+    };
+  }, [isRunning, savePartialMinutes]);
+
+  // Timer tick
   useEffect(() => {
     if (!isRunning) return;
 
     const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          setIsRunning(false);
-          // Auto-switch modes
-          if (mode === 'work') {
-            const newCount = completedPomodoros + 1;
-            setCompletedPomodoros(newCount);
-            // Long break every 4 pomodoros
-            if (newCount % 4 === 0) {
-              setMode('longBreak');
-              return TIMES.longBreak;
-            } else {
-              setMode('shortBreak');
-              return TIMES.shortBreak;
-            }
-          } else {
-            setMode('work');
-            return TIMES.work;
+      const elapsed = (Date.now() - timerState.startedAt!) / 1000;
+      const remaining = Math.max(0, timerState.totalDuration - elapsed);
+      setTimeLeft(remaining);
+
+      // Save partial minutes every minute
+      const elapsedMinutes = Math.floor(elapsed / 60);
+      if (elapsedMinutes > lastSaveRef.current && timerState.mode === 'work') {
+        lastSaveRef.current = elapsedMinutes;
+        savePartialMinutes();
+      }
+
+      // Timer complete
+      if (remaining <= 0) {
+        if (soundEnabled) playNotificationSound();
+
+        if (timerState.mode === 'work') {
+          const newCount = timerState.completedPomodoros + 1;
+          const isLongBreak = newCount % config.sessionsUntilLongBreak === 0;
+          const nextMode = isLongBreak ? 'longBreak' : 'shortBreak';
+          const nextDuration = isLongBreak ? times.longBreak : times.shortBreak;
+
+          // Record completed pomodoro
+          const todayKey = getTodayKey();
+          console.log(`[Pomodoro] Session complete! Recording for ${todayKey}`);
+          const newHistory = { ...history };
+          if (!newHistory[todayKey]) {
+            newHistory[todayKey] = { count: 0, minutes: 0 };
           }
+          newHistory[todayKey].count += 1;
+          console.log(`[Pomodoro] New count for ${todayKey}: ${newHistory[todayKey].count}`);
+          setHistory(newHistory);
+          saveLocalHistory(newHistory);
+          if (supabase) {
+            console.log(`[Pomodoro] Incrementing count in Supabase...`);
+            incrementPomodoro(todayKey).then(() => {
+              console.log(`[Pomodoro] Supabase increment complete`);
+            });
+          } else {
+            console.log(`[Pomodoro] Supabase not configured, saved to localStorage only`);
+          }
+
+          showNotification('Focus Complete!', `Time for a ${isLongBreak ? 'long' : 'short'} break.`);
+
+          setTimerState({
+            mode: nextMode,
+            startedAt: null,
+            pausedAt: null,
+            totalDuration: nextDuration,
+            completedPomodoros: newCount,
+            lastSavedMinute: 0,
+          });
+          setTimeLeft(nextDuration);
+        } else {
+          showNotification('Break Over!', 'Time to focus.');
+          setTimerState({
+            mode: 'work',
+            startedAt: null,
+            pausedAt: null,
+            totalDuration: times.work,
+            completedPomodoros: timerState.completedPomodoros,
+            lastSavedMinute: 0,
+          });
+          setTimeLeft(times.work);
         }
-        return prev - 1;
-      });
-    }, 1000);
+        lastSaveRef.current = 0;
+      }
+    }, 100);
 
     return () => clearInterval(interval);
-  }, [isRunning, mode, completedPomodoros]);
+  }, [isRunning, timerState, config, times, soundEnabled, history, savePartialMinutes]);
 
-  const progress = ((TIMES[mode] - timeLeft) / TIMES[mode]) * 100;
+  // Check if timer completed while away
+  useEffect(() => {
+    if (timerState.startedAt && !timerState.pausedAt) {
+      const elapsed = (Date.now() - timerState.startedAt) / 1000;
+      if (elapsed >= timerState.totalDuration) {
+        // Timer completed while away
+        if (timerState.mode === 'work') {
+          const newCount = timerState.completedPomodoros + 1;
+          const todayKey = getTodayKey();
+          const newHistory = { ...history };
+          if (!newHistory[todayKey]) {
+            newHistory[todayKey] = { count: 0, minutes: 0 };
+          }
+          newHistory[todayKey].count += 1;
+          newHistory[todayKey].minutes += config.work; // Full session
+          setHistory(newHistory);
+          saveLocalHistory(newHistory);
+          if (supabase) {
+            incrementPomodoro(todayKey);
+            addMinutes(todayKey, config.work);
+          }
+
+          const isLongBreak = newCount % config.sessionsUntilLongBreak === 0;
+          setTimerState({
+            mode: isLongBreak ? 'longBreak' : 'shortBreak',
+            startedAt: null,
+            pausedAt: null,
+            totalDuration: isLongBreak ? times.longBreak : times.shortBreak,
+            completedPomodoros: newCount,
+            lastSavedMinute: 0,
+          });
+        } else {
+          setTimerState({
+            mode: 'work',
+            startedAt: null,
+            pausedAt: null,
+            totalDuration: times.work,
+            completedPomodoros: timerState.completedPomodoros,
+            lastSavedMinute: 0,
+          });
+        }
+      }
+    }
+  }, []); // Only on mount
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const toggleTimer = () => {
+    if (isRunning) {
+      // Pause
+      savePartialMinutes();
+      setTimerState(prev => ({ ...prev, pausedAt: Date.now() }));
+    } else if (timerState.pausedAt) {
+      // Resume from pause
+      const pausedDuration = Date.now() - timerState.pausedAt;
+      setTimerState(prev => ({
+        ...prev,
+        startedAt: prev.startedAt! + pausedDuration,
+        pausedAt: null,
+      }));
+    } else {
+      // Start fresh
+      setTimerState(prev => ({
+        ...prev,
+        startedAt: Date.now(),
+        pausedAt: null,
+        lastSavedMinute: 0,
+      }));
+      lastSaveRef.current = 0;
+    }
+  };
+
+  const reset = () => {
+    savePartialMinutes();
+    setTimerState(prev => ({
+      ...prev,
+      startedAt: null,
+      pausedAt: null,
+      lastSavedMinute: 0,
+    }));
+    setTimeLeft(timerState.totalDuration);
+    lastSaveRef.current = 0;
+  };
+
+  const switchMode = (newMode: TimerMode) => {
+    if (isRunning) savePartialMinutes();
+    const newDuration = times[newMode];
+    setTimerState({
+      mode: newMode,
+      startedAt: null,
+      pausedAt: null,
+      totalDuration: newDuration,
+      completedPomodoros: timerState.completedPomodoros,
+      lastSavedMinute: 0,
+    });
+    setTimeLeft(newDuration);
+    lastSaveRef.current = 0;
+  };
+
+  const changePreset = (newPreset: string) => {
+    if (isRunning) savePartialMinutes();
+    setPreset(newPreset);
+    const newConfig = PRESETS[newPreset];
+    const newDuration = newConfig.work * 60;
+    setTimerState({
+      mode: 'work',
+      startedAt: null,
+      pausedAt: null,
+      totalDuration: newDuration,
+      completedPomodoros: 0,
+      lastSavedMinute: 0,
+    });
+    setTimeLeft(newDuration);
+    lastSaveRef.current = 0;
+  };
+
+  const skipBreak = () => {
+    if (timerState.mode === 'work') return;
+    switchMode('work');
+  };
+
+  const progress = ((timerState.totalDuration - timeLeft) / timerState.totalDuration) * 100;
+  const todayData = history[getTodayKey()] || { count: 0, minutes: 0 };
+  const todayCount = todayData.count;
+  const todayMinutes = todayData.minutes;
+  const sessionsUntilLongBreak = config.sessionsUntilLongBreak - (timerState.completedPomodoros % config.sessionsUntilLongBreak);
+  const goalProgress = Math.min(100, (todayCount / dailyGoal) * 100);
 
   return (
-    <div className="flex flex--col" style={{ height: '100%' }}>
+    <div className="flex flex--col" style={{ height: '100%', position: 'relative' }}>
+      {/* Full-width progress bar at top */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: -24,
+        right: -24,
+        height: 4,
+        background: '#e5e5e5',
+        overflow: 'hidden',
+      }}>
+        <div style={{
+          width: `${progress}%`,
+          height: '100%',
+          background: timerState.mode === 'work' ? '#000' : '#666',
+          transition: 'width 0.1s linear',
+        }} />
+      </div>
+
+      {/* Header */}
+      <div className="flex flex--between" style={{ marginBottom: 16, alignItems: 'center', marginTop: 12 }}>
+        <div className="flex gap--small">
+          {Object.keys(PRESETS).map((p) => (
+            <button
+              key={p}
+              onClick={() => changePreset(p)}
+              className={`label ${preset === p ? '' : 'label--gray'}`}
+              style={{
+                background: 'none',
+                border: preset === p ? '1px solid #000' : '1px solid #e5e5e5',
+                cursor: 'pointer',
+                padding: '4px 8px',
+              }}
+            >
+              {PRESET_LABELS[p]}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap--small" style={{ alignItems: 'center' }}>
+          <button
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}
+            title={soundEnabled ? 'Sound on' : 'Sound off'}
+          >
+            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} color="#999" />}
+          </button>
+          <span className="label label--gray">Session</span>
+          <span className="label">{timerState.completedPomodoros + 1}</span>
+        </div>
+      </div>
+
       {/* Mode tabs */}
-      <div className="flex gap--large" style={{ justifyContent: 'center', marginBottom: 32 }}>
+      <div className="flex gap--large" style={{ justifyContent: 'center', marginBottom: 24 }}>
         {(['work', 'shortBreak', 'longBreak'] as TimerMode[]).map((m) => (
           <button
             key={m}
             onClick={() => switchMode(m)}
-            className={`label ${mode === m ? '' : 'label--gray'}`}
+            className={`label ${timerState.mode === m ? '' : 'label--gray'}`}
             style={{
               background: 'none',
               border: 'none',
               cursor: 'pointer',
               padding: '8px 0',
-              borderBottom: mode === m ? '2px solid #000' : '2px solid transparent'
+              borderBottom: timerState.mode === m ? '2px solid #000' : '2px solid transparent'
             }}
           >
             {MODE_LABELS[m]}
@@ -94,92 +654,97 @@ export function PomodoroScreen() {
       </div>
 
       {/* Timer display */}
-      <div className="flex flex--col flex--center flex-1">
-        <div style={{ marginBottom: 24 }}>
-          {mode === 'work' ? (
-            <Brain size={48} strokeWidth={1.5} />
-          ) : (
-            <Coffee size={48} strokeWidth={1.5} />
-          )}
+      <div className="flex flex--col flex--center" style={{ flex: 1 }}>
+        <div style={{ marginBottom: 20 }}>
+          {timerState.mode === 'work' ? <Brain size={40} strokeWidth={1.5} /> : <Coffee size={40} strokeWidth={1.5} />}
         </div>
 
         <div className="value value--xxxlarge" style={{ fontVariantNumeric: 'tabular-nums' }}>
           {formatTime(timeLeft)}
         </div>
 
-        <div className="description" style={{ marginTop: 16, fontSize: 16 }}>
-          {MODE_LABELS[mode]}
-        </div>
-
-        {/* Progress bar */}
-        <div style={{
-          width: 200,
-          height: 4,
-          background: '#e5e5e5',
-          marginTop: 32,
-          overflow: 'hidden'
-        }}>
-          <div style={{
-            width: `${progress}%`,
-            height: '100%',
-            background: '#000',
-            transition: 'width 1s linear'
-          }} />
+        <div className="description" style={{ marginTop: 12, fontSize: 14 }}>
+          {MODE_LABELS[timerState.mode]}
+          {timerState.mode === 'work' && sessionsUntilLongBreak < config.sessionsUntilLongBreak && (
+            <span style={{ marginLeft: 8, color: '#999' }}>
+              ({sessionsUntilLongBreak} until long break)
+            </span>
+          )}
         </div>
 
         {/* Controls */}
-        <div className="flex gap--large" style={{ marginTop: 40 }}>
+        <div className="flex gap--large" style={{ marginTop: 32 }}>
           <button
-            onClick={() => setIsRunning(!isRunning)}
+            onClick={toggleTimer}
             style={{
-              width: 64,
-              height: 64,
+              width: 56, height: 56,
               border: '2px solid #000',
               background: isRunning ? '#000' : '#fff',
               color: isRunning ? '#fff' : '#000',
               cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}
           >
-            {isRunning ? <Pause size={28} /> : <Play size={28} style={{ marginLeft: 4 }} />}
+            {isRunning ? <Pause size={24} /> : <Play size={24} style={{ marginLeft: 3 }} />}
           </button>
           <button
             onClick={reset}
             style={{
-              width: 64,
-              height: 64,
+              width: 56, height: 56,
               border: '2px solid #e5e5e5',
               background: '#fff',
               cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}
           >
-            <RotateCcw size={24} />
+            <RotateCcw size={20} />
           </button>
+          {timerState.mode !== 'work' && (
+            <button
+              onClick={skipBreak}
+              style={{
+                width: 56, height: 56,
+                border: '2px solid #e5e5e5',
+                background: '#fff',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}
+              title="Skip break"
+            >
+              <SkipForward size={20} />
+            </button>
+          )}
+        </div>
+
+        {/* Daily goal */}
+        <div style={{ marginTop: 24, width: 180 }}>
+          <div className="flex flex--between" style={{ marginBottom: 6 }}>
+            <div className="flex gap--small" style={{ alignItems: 'center' }}>
+              <Target size={12} />
+              <span className="label label--gray">Goal</span>
+            </div>
+            <span className="label">{todayCount}/{dailyGoal}</span>
+          </div>
+          <div style={{ width: '100%', height: 4, background: '#e5e5e5', overflow: 'hidden' }}>
+            <div style={{
+              width: `${goalProgress}%`,
+              height: '100%',
+              background: todayCount >= dailyGoal ? '#000' : '#999',
+              transition: 'width 0.3s ease'
+            }} />
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="flex gap--medium" style={{ marginTop: 16, alignItems: 'center' }}>
+          <div className="flex gap--small" style={{ alignItems: 'center' }}>
+            <span className="label label--gray">Focus time</span>
+            <span className="label">{Math.floor(todayMinutes / 60)}h {todayMinutes % 60}m</span>
+          </div>
         </div>
       </div>
 
-      {/* Completed pomodoros */}
-      <div className="flex flex--center gap--small" style={{ paddingBottom: 16 }}>
-        <span className="label label--gray">Completed</span>
-        <div className="flex gap--xsmall">
-          {[...Array(4)].map((_, i) => (
-            <div
-              key={i}
-              style={{
-                width: 12,
-                height: 12,
-                background: i < (completedPomodoros % 4) || (completedPomodoros > 0 && completedPomodoros % 4 === 0 && i < 4) ? '#000' : '#e5e5e5'
-              }}
-            />
-          ))}
-        </div>
-        <span className="label">{completedPomodoros}</span>
-      </div>
+      <HeatmapGrid history={history} />
     </div>
   );
 }

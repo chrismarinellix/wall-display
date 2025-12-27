@@ -2,52 +2,51 @@ import { useRef, TouchEvent } from 'react';
 import { format } from 'date-fns';
 import { useScreen } from '../../contexts/ScreenContext';
 import { useSettings } from '../../contexts/SettingsContext';
-import { DashboardScreen } from '../screens/DashboardScreen';
-import { EmailScreen } from '../screens/EmailScreen';
-import { CalendarScreen } from '../screens/CalendarScreen';
 import { WeatherScreen } from '../screens/WeatherScreen';
 import { StocksScreen } from '../screens/StocksScreen';
-import { HackerNewsScreen } from '../screens/HackerNewsScreen';
 import { QuotesScreen } from '../screens/QuotesScreen';
-import { NewsScreen } from '../screens/NewsScreen';
 import { PomodoroScreen } from '../screens/PomodoroScreen';
 import { JapaneseScreen } from '../screens/JapaneseScreen';
+import { CalendarScreen } from '../screens/CalendarScreen';
+import { LocationScreen } from '../screens/LocationScreen';
+import { CountdownScreen } from '../screens/CountdownScreen';
+import { HomeAssistantScreen } from '../screens/HomeAssistantScreen';
 import { ScreenType } from '../../types/settings';
 import {
-  LayoutDashboard,
   Cloud,
   TrendingUp,
-  Flame,
   Quote,
-  Newspaper,
   Timer,
   Languages,
+  Calendar,
+  MapPin,
+  Clock,
+  Home,
+  ChevronRight,
 } from 'lucide-react';
 
 const screens: Record<ScreenType, React.ComponentType> = {
-  dashboard: DashboardScreen,
-  emails: EmailScreen,
-  calendar: CalendarScreen,
   weather: WeatherScreen,
   stocks: StocksScreen,
-  hackernews: HackerNewsScreen,
   quotes: QuotesScreen,
-  news: NewsScreen,
   pomodoro: PomodoroScreen,
   japanese: JapaneseScreen,
+  calendar: CalendarScreen,
+  location: LocationScreen,
+  countdown: CountdownScreen,
+  homeassistant: HomeAssistantScreen,
 };
 
 const screenInfo: Record<ScreenType, { title: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }> = {
-  dashboard: { title: 'Dashboard', Icon: LayoutDashboard },
-  emails: { title: 'Mail', Icon: LayoutDashboard },
-  calendar: { title: 'Calendar', Icon: LayoutDashboard },
   weather: { title: 'Weather', Icon: Cloud },
   stocks: { title: 'Markets', Icon: TrendingUp },
-  hackernews: { title: 'Hacker News', Icon: Flame },
   quotes: { title: 'Quote', Icon: Quote },
-  news: { title: 'News', Icon: Newspaper },
   pomodoro: { title: 'Pomodoro', Icon: Timer },
-  japanese: { title: 'Kanji', Icon: Languages },
+  japanese: { title: 'Proverb', Icon: Languages },
+  calendar: { title: 'Calendar', Icon: Calendar },
+  location: { title: 'Location', Icon: MapPin },
+  countdown: { title: 'Countdown', Icon: Clock },
+  homeassistant: { title: 'Home', Icon: Home },
 };
 
 export function ScreenContainer() {
@@ -84,6 +83,27 @@ export function ScreenContainer() {
           <ScreenComponent />
         </div>
       </div>
+
+      {/* Subtle next arrow in bottom right */}
+      <button
+        onClick={nextScreen}
+        style={{
+          position: 'absolute',
+          bottom: 20,
+          right: 20,
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          opacity: 0.15,
+          padding: 8,
+          transition: 'opacity 0.2s',
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.4')}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.15')}
+        aria-label="Next screen"
+      >
+        <ChevronRight size={32} strokeWidth={1.5} />
+      </button>
 
       <div className="title_bar">
         <Icon size={16} strokeWidth={2} />

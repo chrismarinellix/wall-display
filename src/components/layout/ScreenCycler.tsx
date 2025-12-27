@@ -3,16 +3,13 @@ import { useSettings } from '../../contexts/SettingsContext';
 import { ScreenType } from '../../types/settings';
 
 const screenLabels: Record<ScreenType, string> = {
-  dashboard: 'Overview',
-  emails: 'Mail',
-  calendar: 'Calendar',
   weather: 'Weather',
   stocks: 'Markets',
-  hackernews: 'HN',
   quotes: 'Quote',
-  news: 'News',
   pomodoro: 'Timer',
   japanese: 'Proverb',
+  calendar: 'Calendar',
+  location: 'Location',
 };
 
 export function ScreenCycler() {

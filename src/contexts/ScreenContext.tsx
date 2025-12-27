@@ -13,6 +13,18 @@ interface ScreenContextType {
   setIsPaused: (paused: boolean) => void;
 }
 
+// Per-screen display duration multipliers (relative to base cycle interval)
+// Weather is quick info, stocks/quotes need more reading time
+const SCREEN_DURATION_MULTIPLIERS: Record<ScreenType, number> = {
+  weather: 0.5,    // 15s if base is 30s - just a quick glance
+  stocks: 1.5,     // 45s - more info to absorb
+  quotes: 1.2,     // 36s - time to read and reflect
+  pomodoro: 1,     // doesn't auto-cycle anyway
+  japanese: 1.3,   // 39s - time to read and understand
+  calendar: 1.5,   // 45s - time to read events
+  location: 0.8,   // 24s - quick glance at location
+};
+
 const ScreenContext = createContext<ScreenContextType | null>(null);
 
 export function ScreenProvider({ children }: { children: ReactNode }) {
@@ -36,13 +48,17 @@ export function ScreenProvider({ children }: { children: ReactNode }) {
     if (index !== -1) setCurrentIndex(index);
   }, [screens]);
 
-  // Auto-cycle screens (but not when on pomodoro)
+  // Auto-cycle screens with per-screen timing (but not when on pomodoro)
   useEffect(() => {
     if (isPaused || settings.cycleInterval === 0) return;
     if (currentScreen === 'pomodoro') return; // Don't cycle away from pomodoro
 
-    const timer = setInterval(nextScreen, settings.cycleInterval);
-    return () => clearInterval(timer);
+    // Get the multiplier for the current screen
+    const multiplier = SCREEN_DURATION_MULTIPLIERS[currentScreen] || 1;
+    const screenDuration = Math.round(settings.cycleInterval * multiplier);
+
+    const timer = setTimeout(nextScreen, screenDuration);
+    return () => clearTimeout(timer);
   }, [isPaused, settings.cycleInterval, nextScreen, currentScreen]);
 
   // Pause on user interaction, resume after 60s

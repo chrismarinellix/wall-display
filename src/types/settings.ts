@@ -1,14 +1,13 @@
 export type ScreenType =
-  | 'dashboard'
-  | 'emails'
-  | 'calendar'
   | 'weather'
   | 'stocks'
-  | 'hackernews'
   | 'quotes'
-  | 'news'
   | 'pomodoro'
-  | 'japanese';
+  | 'japanese'
+  | 'calendar'
+  | 'countdown'
+  | 'homeassistant'
+  | 'location';
 
 export interface RssFeed {
   url: string;
@@ -33,11 +32,11 @@ export interface Settings {
 export const defaultSettings: Settings = {
   cycleInterval: 30000,
   refreshInterval: 300000,
-  latitude: 51.5074,
-  longitude: -0.1278,
+  latitude: -37.8136,  // Melbourne
+  longitude: 144.9631, // Melbourne
   temperatureUnit: 'celsius',
   timeFormat: '24h',
-  screenOrder: ['weather', 'quotes', 'japanese', 'pomodoro'],
+  screenOrder: ['weather', 'stocks', 'calendar', 'countdown', 'homeassistant', 'quotes', 'japanese', 'pomodoro', 'location'],
   // Default crypto and stocks
   stockSymbols: ['AAPL', 'GOOGL', 'MSFT'],
   cryptoSymbols: ['bitcoin', 'ethereum', 'solana'],

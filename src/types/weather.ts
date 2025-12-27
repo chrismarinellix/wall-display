@@ -1,9 +1,28 @@
+export interface AirQuality {
+  aqi: number; // European AQI (1-5 scale, but can go higher)
+  pm25: number;
+  pm10: number;
+  label: string;
+  color: string;
+}
+
 export interface CurrentWeather {
   temperature: number;
   humidity: number;
   weatherCode: number;
   windSpeed: number;
   unit: string;
+  airQuality?: AirQuality;
+}
+
+// AQI levels based on European Air Quality Index
+export function getAqiInfo(aqi: number): { label: string; color: string } {
+  if (aqi <= 20) return { label: 'Good', color: '#4ade80' };
+  if (aqi <= 40) return { label: 'Fair', color: '#a3e635' };
+  if (aqi <= 60) return { label: 'Moderate', color: '#facc15' };
+  if (aqi <= 80) return { label: 'Poor', color: '#fb923c' };
+  if (aqi <= 100) return { label: 'Very Poor', color: '#ef4444' };
+  return { label: 'Hazardous', color: '#991b1b' };
 }
 
 export interface WeatherForecast {

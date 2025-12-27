@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Sun, Cloud, CloudRain, CloudSnow } from 'lucide-react';
+import { Sun, Cloud, CloudRain, CloudSnow, Wind } from 'lucide-react';
 import { useWeather } from '../../hooks/useWeather';
 
 function WeatherIcon({ code, size = 32 }: { code: number; size?: number }) {
@@ -30,30 +30,61 @@ export function WeatherScreen() {
     <div className="flex flex--col" style={{ height: '100%' }}>
       {/* Main content - centered */}
       <div className="flex flex--center flex-1">
-        <div className="flex gap--xxlarge" style={{ alignItems: 'center' }}>
-          {/* Time */}
-          <div className="value" style={{ fontSize: 140, fontWeight: 200 }}>
-            {format(time, 'h:mm')}
+        <div className="flex flex--col" style={{ alignItems: 'center' }}>
+          {/* Weather Icon */}
+          <div style={{ marginBottom: 16 }}>
+            <WeatherIcon code={current.weatherCode} size={48} />
           </div>
 
-          {/* Divider */}
-          <div style={{ width: 2, height: 120, background: '#e5e5e5' }} />
+          {/* Temperature - BIG */}
+          <div className="value" style={{ fontSize: 180, fontWeight: 100, lineHeight: 1 }}>
+            {current.temperature}°
+          </div>
 
-          {/* Temperature */}
-          <div className="flex flex--col" style={{ alignItems: 'center' }}>
-            <div className="flex gap--medium" style={{ alignItems: 'center' }}>
-              <WeatherIcon code={current.weatherCode} size={48} />
-              <div className="value" style={{ fontSize: 140, fontWeight: 200 }}>
-                {current.temperature}°
-              </div>
+          {/* Hi/Lo */}
+          {today && (
+            <div className="flex gap--medium" style={{ marginTop: 12, marginBottom: 16 }}>
+              <span className="label">H: {today.tempMax}°</span>
+              <span className="label label--gray">L: {today.tempMin}°</span>
             </div>
-            {/* Hi/Lo */}
-            {today && (
-              <div className="flex gap--medium" style={{ marginTop: 8 }}>
-                <span className="label">H: {today.tempMax}°</span>
-                <span className="label label--gray">L: {today.tempMin}°</span>
-              </div>
-            )}
+          )}
+
+          {/* Air Quality */}
+          {current.airQuality && (
+            <div
+              className="flex"
+              style={{
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 16,
+                padding: '6px 12px',
+                borderRadius: 20,
+                backgroundColor: `${current.airQuality.color}20`,
+              }}
+            >
+              <Wind size={14} style={{ color: current.airQuality.color }} />
+              <span style={{ fontSize: 12, fontWeight: 500, color: current.airQuality.color }}>
+                AQI {current.airQuality.aqi}
+              </span>
+              <span style={{ fontSize: 11, color: '#666' }}>
+                {current.airQuality.label}
+              </span>
+            </div>
+          )}
+
+          {/* Day and Date */}
+          <div style={{ fontSize: 18, fontWeight: 400, color: '#333', marginTop: 8 }}>
+            {format(time, 'EEEE, MMMM d')}
+          </div>
+
+          {/* Time - smaller */}
+          <div style={{ fontSize: 28, fontWeight: 300, color: '#666', marginTop: 8 }}>
+            {format(time, 'h:mm a')}
+          </div>
+
+          {/* City name */}
+          <div style={{ fontSize: 12, color: '#999', marginTop: 12, letterSpacing: '0.15em' }}>
+            MELBOURNE
           </div>
         </div>
       </div>
