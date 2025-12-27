@@ -102,8 +102,8 @@ async function fetchCalendarEvents(): Promise<CalendarEvent[]> {
 
   try {
     console.log('[Calendar] Fetching iCal feed...');
-    // Use a CORS proxy to fetch the iCal feed
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(icalUrl)}`;
+    // Use corsproxy.io - faster and more reliable
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(icalUrl)}`;
     const response = await fetch(proxyUrl);
 
     if (!response.ok) {
