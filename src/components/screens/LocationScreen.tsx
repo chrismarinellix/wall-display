@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
 
 // Major Australian cities
-const CITIES = {
+interface City {
+  name: string;
+  lat: number;
+  lon: number;
+  isHome?: boolean;
+}
+
+const CITIES: Record<string, City> = {
   melbourne: { name: 'Melbourne', lat: -37.8136, lon: 144.9631, isHome: true },
   sydney: { name: 'Sydney', lat: -33.8688, lon: 151.2093 },
   brisbane: { name: 'Brisbane', lat: -27.4705, lon: 153.0260 },

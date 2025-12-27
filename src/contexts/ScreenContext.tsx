@@ -23,6 +23,8 @@ const SCREEN_DURATION_MULTIPLIERS: Record<ScreenType, number> = {
   japanese: 1.3,   // 39s - time to read and understand
   calendar: 1.5,   // 45s - time to read events
   location: 0.8,   // 24s - quick glance at location
+  countdown: 1.2,  // 36s - time to see countdowns
+  homeassistant: 1, // 30s - quick status check
 };
 
 const ScreenContext = createContext<ScreenContextType | null>(null);

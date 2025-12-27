@@ -10,6 +10,8 @@ const screenLabels: Record<ScreenType, string> = {
   japanese: 'Proverb',
   calendar: 'Calendar',
   location: 'Location',
+  countdown: 'Countdown',
+  homeassistant: 'Home',
 };
 
 export function ScreenCycler() {
