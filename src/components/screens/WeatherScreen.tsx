@@ -1,7 +1,7 @@
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Sun, Cloud, CloudRain, CloudSnow, Wind, Droplets } from 'lucide-react';
+import { Sun, Cloud, CloudRain, CloudSnow } from 'lucide-react';
 import { useWeather } from '../../hooks/useWeather';
-import { weatherCodeToDescription } from '../../types/weather';
 
 function WeatherIcon({ code, size = 32 }: { code: number; size?: number }) {
   const props = { size, strokeWidth: 1.5 };
@@ -13,48 +13,63 @@ function WeatherIcon({ code, size = 32 }: { code: number; size?: number }) {
 
 export function WeatherScreen() {
   const { current, forecast } = useWeather();
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   if (!current) {
     return <div className="flex flex--center flex-1"><span className="description">Loading weather...</span></div>;
   }
 
+  const today = forecast[0];
+
   return (
     <div className="flex flex--col" style={{ height: '100%' }}>
-      {/* Hero weather - centered */}
-      <div className="flex flex--col flex--center flex-1 text-center">
-        <WeatherIcon code={current.weatherCode} size={64} />
-
-        <div className="value value--xxxlarge" style={{ marginTop: 16 }}>
-          {current.temperature}°
-        </div>
-
-        <div className="description" style={{ fontSize: 18, marginTop: 12 }}>
-          {weatherCodeToDescription[current.weatherCode] || 'Unknown'}
-        </div>
-
-        <div className="flex gap--large" style={{ marginTop: 24 }}>
-          <div className="flex gap--small" style={{ alignItems: 'center' }}>
-            <Droplets size={18} strokeWidth={1.5} />
-            <span className="label">{current.humidity}%</span>
+      {/* Main content - centered */}
+      <div className="flex flex--center flex-1">
+        <div className="flex gap--xxlarge" style={{ alignItems: 'center' }}>
+          {/* Time */}
+          <div className="value" style={{ fontSize: 140, fontWeight: 200 }}>
+            {format(time, 'h:mm')}
           </div>
-          <div className="flex gap--small" style={{ alignItems: 'center' }}>
-            <Wind size={18} strokeWidth={1.5} />
-            <span className="label">{current.windSpeed} km/h</span>
+
+          {/* Divider */}
+          <div style={{ width: 2, height: 120, background: '#e5e5e5' }} />
+
+          {/* Temperature */}
+          <div className="flex flex--col" style={{ alignItems: 'center' }}>
+            <div className="flex gap--medium" style={{ alignItems: 'center' }}>
+              <WeatherIcon code={current.weatherCode} size={48} />
+              <div className="value" style={{ fontSize: 140, fontWeight: 200 }}>
+                {current.temperature}°
+              </div>
+            </div>
+            {/* Hi/Lo */}
+            {today && (
+              <div className="flex gap--medium" style={{ marginTop: 8 }}>
+                <span className="label">H: {today.tempMax}°</span>
+                <span className="label label--gray">L: {today.tempMin}°</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Forecast bar */}
+      {/* Forecast bar - small at bottom */}
       {forecast.length > 0 && (
-        <div className="forecast-bar">
-          {forecast.slice(0, 7).map((day, i) => (
-            <div key={i} className="forecast-day">
-              <div className="label label--gray" style={{ marginBottom: 8 }}>
-                {i === 0 ? 'Today' : format(day.date, 'EEE')}
+        <div className="flex" style={{ borderTop: '1px solid #e5e5e5', paddingTop: 16 }}>
+          {forecast.slice(1, 8).map((day, i) => (
+            <div key={i} style={{ flex: 1, textAlign: 'center' }}>
+              <div className="label label--gray" style={{ marginBottom: 6, fontSize: 9 }}>
+                {format(day.date, 'EEE')}
               </div>
-              <WeatherIcon code={day.weatherCode} size={20} />
-              <div className="value value--xsmall" style={{ marginTop: 8 }}>{day.tempMax}°</div>
-              <div className="description" style={{ fontSize: 11 }}>{day.tempMin}°</div>
+              <WeatherIcon code={day.weatherCode} size={16} />
+              <div className="label" style={{ marginTop: 4, fontSize: 11 }}>
+                {day.tempMax}°
+              </div>
             </div>
           ))}
         </div>

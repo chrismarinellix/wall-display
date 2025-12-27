@@ -36,13 +36,14 @@ export function ScreenProvider({ children }: { children: ReactNode }) {
     if (index !== -1) setCurrentIndex(index);
   }, [screens]);
 
-  // Auto-cycle screens
+  // Auto-cycle screens (but not when on pomodoro)
   useEffect(() => {
     if (isPaused || settings.cycleInterval === 0) return;
+    if (currentScreen === 'pomodoro') return; // Don't cycle away from pomodoro
 
     const timer = setInterval(nextScreen, settings.cycleInterval);
     return () => clearInterval(timer);
-  }, [isPaused, settings.cycleInterval, nextScreen]);
+  }, [isPaused, settings.cycleInterval, nextScreen, currentScreen]);
 
   // Pause on user interaction, resume after 60s
   useEffect(() => {
