@@ -576,7 +576,10 @@ export function HomeAssistantScreen() {
       const lights = data.filter((e: LightEntity) => e.entity_id.startsWith('light.'));
       const sensors = data.filter((e: SensorEntity) => e.entity_id.startsWith('sensor.'));
       const switches = data.filter((e: SwitchEntity) => e.entity_id.startsWith('switch.'));
-      const climates = data.filter((e: ClimateEntity) => e.entity_id.startsWith('climate.'));
+      const climates = data.filter((e: ClimateEntity) =>
+        e.entity_id.startsWith('climate.') &&
+        e.entity_id.toLowerCase().includes('hallway')
+      );
 
       setThermostats(climates);
 
@@ -627,12 +630,19 @@ export function HomeAssistantScreen() {
 
   const callService = async (domain: string, service: string, entityId: string, data?: object) => {
     if (!haUrl || !haToken) return;
-    await fetch(`${haUrl}/api/services/${domain}/${service}`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${haToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entity_id: entityId, ...data }),
-    });
-    setTimeout(fetchEntities, 300);
+    try {
+      const response = await fetch(`${haUrl}/api/services/${domain}/${service}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${haToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entity_id: entityId, ...data }),
+      });
+      if (!response.ok) {
+        console.error(`Service call failed: ${response.status}`);
+      }
+      setTimeout(fetchEntities, 500);
+    } catch (e) {
+      console.error('Service call error:', e);
+    }
   };
 
   const toggleFan = (entityId: string) => callService('fan', 'toggle', entityId);
