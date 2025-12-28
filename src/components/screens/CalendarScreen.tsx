@@ -465,24 +465,35 @@ export function CalendarScreen() {
               }}
               onDragOver={(e) => {
                 e.preventDefault();
-                e.currentTarget.style.background = '#e8f4ff';
+                if (!isCurrentDay) {
+                  e.currentTarget.style.background = '#e8f4ff';
+                }
               }}
               onDragLeave={(e) => {
-                e.currentTarget.style.background = isCurrentDay ? '#f5f5f5' : '#fff';
+                if (!isCurrentDay) {
+                  e.currentTarget.style.background = '#fff';
+                }
               }}
               onDrop={(e) => {
                 e.preventDefault();
-                e.currentTarget.style.background = isCurrentDay ? '#f5f5f5' : '#fff';
+                if (!isCurrentDay) {
+                  e.currentTarget.style.background = '#fff';
+                }
                 handleDrop(day);
               }}
               style={{
-                background: isCurrentDay ? '#f5f5f5' : '#fff',
+                background: isCurrentDay
+                  ? 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)'
+                  : '#fff',
                 padding: 4,
                 minHeight: 60,
                 opacity: isCurrentMonth ? 1 : 0.4,
                 cursor: 'pointer',
                 position: 'relative',
-                transition: 'background 0.15s ease',
+                transition: 'all 0.2s ease',
+                boxShadow: isCurrentDay
+                  ? 'inset 0 0 0 2px #000, 0 2px 8px rgba(0,0,0,0.15)'
+                  : 'none',
               }}
             >
               {/* Day number */}
@@ -490,15 +501,43 @@ export function CalendarScreen() {
                 style={{
                   fontSize: 12,
                   fontWeight: isCurrentDay ? 700 : 400,
-                  color: isCurrentDay ? '#000' : '#333',
+                  color: isCurrentDay ? '#fff' : '#333',
                   marginBottom: 2,
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                 }}
               >
-                <span>{format(day, 'd')}</span>
-                <Plus size={10} style={{ opacity: 0.3 }} />
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: isCurrentDay ? 22 : 'auto',
+                    height: isCurrentDay ? 22 : 'auto',
+                    background: isCurrentDay ? '#fff' : 'transparent',
+                    color: isCurrentDay ? '#000' : '#333',
+                    borderRadius: isCurrentDay ? '50%' : 0,
+                    fontSize: isCurrentDay ? 11 : 12,
+                    fontWeight: isCurrentDay ? 800 : 400,
+                  }}
+                >
+                  {format(day, 'd')}
+                </span>
+                {isCurrentDay && (
+                  <span
+                    style={{
+                      fontSize: 8,
+                      fontWeight: 600,
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      opacity: 0.8,
+                    }}
+                  >
+                    TODAY
+                  </span>
+                )}
+                {!isCurrentDay && <Plus size={10} style={{ opacity: 0.3 }} />}
               </div>
 
               {/* Events */}
@@ -519,8 +558,10 @@ export function CalendarScreen() {
                       fontSize: 9,
                       padding: '2px 4px',
                       marginBottom: 2,
-                      background: event.isCustom ? '#333' : '#000',
-                      color: '#fff',
+                      background: isCurrentDay
+                        ? (event.isCustom ? 'rgba(255,255,255,0.85)' : '#fff')
+                        : (event.isCustom ? '#333' : '#000'),
+                      color: isCurrentDay ? '#000' : '#fff',
                       borderRadius: 2,
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -562,7 +603,7 @@ export function CalendarScreen() {
                 );
               })}
               {dayEvents.length > 2 && (
-                <div style={{ fontSize: 8, color: '#666' }}>
+                <div style={{ fontSize: 8, color: isCurrentDay ? 'rgba(255,255,255,0.7)' : '#666' }}>
                   +{dayEvents.length - 2} more
                 </div>
               )}
