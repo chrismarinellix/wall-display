@@ -7,7 +7,8 @@ export type ScreenType =
   | 'calendar'
   | 'countdown'
   | 'homeassistant'
-  | 'moments';
+  | 'moments'
+  | 'summary';
 
 export interface RssFeed {
   url: string;
@@ -36,7 +37,7 @@ export const defaultSettings: Settings = {
   longitude: 144.9631, // Melbourne
   temperatureUnit: 'celsius',
   timeFormat: '24h',
-  screenOrder: ['weather', 'stocks', 'calendar', 'countdown', 'moments', 'homeassistant', 'quotes', 'japanese', 'pomodoro'],
+  screenOrder: ['summary', 'weather', 'stocks', 'calendar', 'countdown', 'moments', 'homeassistant', 'quotes', 'japanese', 'pomodoro'],
   // Default crypto and stocks
   stockSymbols: ['AAPL', 'GOOGL', 'MSFT'],
   cryptoSymbols: ['bitcoin', 'ethereum', 'solana'],

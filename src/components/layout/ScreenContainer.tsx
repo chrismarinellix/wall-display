@@ -11,6 +11,7 @@ import { CalendarScreen } from '../screens/CalendarScreen';
 import { CountdownScreen } from '../screens/CountdownScreen';
 import { HomeAssistantScreen } from '../screens/HomeAssistantScreen';
 import { MomentsScreen } from '../screens/MomentsScreen';
+import { SummaryScreen } from '../screens/SummaryScreen';
 import { ScreenType } from '../../types/settings';
 import {
   Cloud,
@@ -23,6 +24,7 @@ import {
   Home,
   Pause,
   Image,
+  LayoutGrid,
 } from 'lucide-react';
 
 const screens: Record<ScreenType, React.ComponentType> = {
@@ -35,6 +37,7 @@ const screens: Record<ScreenType, React.ComponentType> = {
   countdown: CountdownScreen,
   homeassistant: HomeAssistantScreen,
   moments: MomentsScreen,
+  summary: SummaryScreen,
 };
 
 const screenInfo: Record<ScreenType, { title: string; shortTitle: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }> = {
@@ -47,6 +50,7 @@ const screenInfo: Record<ScreenType, { title: string; shortTitle: string; Icon: 
   countdown: { title: 'Countdown', shortTitle: 'Timer', Icon: Clock },
   homeassistant: { title: 'Home', shortTitle: 'Home', Icon: Home },
   moments: { title: 'Moments', shortTitle: 'History', Icon: Image },
+  summary: { title: 'Summary', shortTitle: 'Brief', Icon: LayoutGrid },
 };
 
 export function ScreenContainer() {

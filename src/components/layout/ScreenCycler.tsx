@@ -12,6 +12,7 @@ const screenLabels: Record<ScreenType, string> = {
   countdown: 'Countdown',
   homeassistant: 'Home',
   moments: 'History',
+  summary: 'Brief',
 };
 
 export function ScreenCycler() {
