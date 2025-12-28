@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Fan, Lightbulb, AlertCircle } from 'lucide-react';
+import { Fan, Lightbulb, AlertCircle, Thermometer, Wind, Leaf } from 'lucide-react';
 
 interface FanEntity {
   entity_id: string;
@@ -20,9 +20,29 @@ interface LightEntity {
   };
 }
 
-interface FanWithLight {
+interface SensorEntity {
+  entity_id: string;
+  state: string;
+  attributes: {
+    friendly_name?: string;
+    unit_of_measurement?: string;
+  };
+}
+
+interface SwitchEntity {
+  entity_id: string;
+  state: string;
+  attributes: {
+    friendly_name?: string;
+  };
+}
+
+interface FanWithExtras {
   fan: FanEntity;
   light: LightEntity | null;
+  temperature: SensorEntity | null;
+  whoosh: SwitchEntity | null;
+  ecoMode: SwitchEntity | null;
   name: string;
 }
 
@@ -32,48 +52,79 @@ function FanCard({
   onSetSpeed,
   onToggleLight,
   onSetBrightness,
+  onToggleWhoosh,
+  onToggleEco,
 }: {
-  data: FanWithLight;
+  data: FanWithExtras;
   onToggleFan: () => void;
   onSetSpeed: (pct: number) => void;
   onToggleLight: () => void;
   onSetBrightness: (b: number) => void;
+  onToggleWhoosh: () => void;
+  onToggleEco: () => void;
 }) {
-  const { fan, light, name } = data;
+  const { fan, light, temperature, whoosh, ecoMode, name } = data;
   const fanIsOn = fan.state === 'on';
   const lightIsOn = light?.state === 'on';
   const fanSpeed = fan.attributes.percentage || 0;
   const currentSpeed = Math.round(fanSpeed / 14.29);
   const brightness = light?.attributes.brightness || 0;
   const brightnessPercent = Math.round((brightness / 255) * 100);
+  const temp = temperature?.state ? parseFloat(temperature.state) : null;
+  const whooshOn = whoosh?.state === 'on';
+  const ecoOn = ecoMode?.state === 'on';
 
   return (
     <div style={{
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      gap: 16,
-      padding: '24px 16px',
+      gap: 12,
+      padding: '20px 16px',
       flex: 1,
-      minWidth: 160,
+      minWidth: 180,
+      maxWidth: 240,
     }}>
-      {/* Title */}
+      {/* Title with Temperature */}
       <div style={{
-        fontSize: 9,
-        fontWeight: 600,
-        letterSpacing: '0.25em',
-        textTransform: 'uppercase',
-        color: '#555',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        width: '100%',
+        justifyContent: 'center',
       }}>
-        {name}
+        <span style={{
+          fontSize: 9,
+          fontWeight: 600,
+          letterSpacing: '0.25em',
+          textTransform: 'uppercase',
+          color: '#555',
+        }}>
+          {name}
+        </span>
+        {temp !== null && (
+          <span style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 3,
+            fontSize: 11,
+            color: '#666',
+            background: '#1a1a1a',
+            padding: '2px 6px',
+            borderRadius: 4,
+          }}>
+            <Thermometer size={10} />
+            {temp.toFixed(1)}°
+          </span>
+        )}
       </div>
 
       {/* Fan Icon */}
       <div
         onClick={onToggleFan}
         style={{
-          width: 80,
-          height: 80,
+          width: 72,
+          height: 72,
           borderRadius: '50%',
           background: fanIsOn
             ? 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)'
@@ -90,7 +141,7 @@ function FanCard({
         }}
       >
         <Fan
-          size={32}
+          size={28}
           color={fanIsOn ? '#fff' : '#333'}
           strokeWidth={1.5}
           style={{
@@ -101,7 +152,7 @@ function FanCard({
 
       {/* Speed Label */}
       <div style={{
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: 200,
         color: fanIsOn ? '#fff' : '#333',
         letterSpacing: '0.05em',
@@ -113,18 +164,18 @@ function FanCard({
       <div style={{
         display: 'flex',
         alignItems: 'flex-end',
-        gap: 5,
-        height: 40,
+        gap: 4,
+        height: 36,
       }}>
         {[1, 2, 3, 4, 5, 6, 7].map((speed) => {
           const isActive = fanIsOn && currentSpeed >= speed;
-          const height = 10 + speed * 4;
+          const height = 8 + speed * 4;
           return (
             <button
               key={speed}
               onClick={() => onSetSpeed(speed * 14.29)}
               style={{
-                width: 8,
+                width: 7,
                 height,
                 borderRadius: 3,
                 border: 'none',
@@ -140,20 +191,74 @@ function FanCard({
         })}
       </div>
 
+      {/* Feature toggles */}
+      <div style={{
+        display: 'flex',
+        gap: 8,
+        marginTop: 4,
+      }}>
+        {whoosh && (
+          <button
+            onClick={onToggleWhoosh}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '4px 8px',
+              background: whooshOn ? '#2a2a2a' : '#111',
+              border: whooshOn ? '1px solid #444' : '1px solid #222',
+              borderRadius: 6,
+              cursor: 'pointer',
+              color: whooshOn ? '#fff' : '#444',
+              fontSize: 9,
+              fontWeight: 500,
+              letterSpacing: '0.05em',
+            }}
+            title="Whoosh mode - natural breeze effect"
+          >
+            <Wind size={12} />
+            WHOOSH
+          </button>
+        )}
+        {ecoMode && (
+          <button
+            onClick={onToggleEco}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '4px 8px',
+              background: ecoOn ? '#1a2a1a' : '#111',
+              border: ecoOn ? '1px solid #2a4a2a' : '1px solid #222',
+              borderRadius: 6,
+              cursor: 'pointer',
+              color: ecoOn ? '#4a4' : '#444',
+              fontSize: 9,
+              fontWeight: 500,
+              letterSpacing: '0.05em',
+            }}
+            title="Eco mode - energy saving"
+          >
+            <Leaf size={12} />
+            ECO
+          </button>
+        )}
+      </div>
+
       {/* Light Control */}
       {light && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 12,
+          gap: 10,
           width: '100%',
           marginTop: 8,
         }}>
           <div
             onClick={onToggleLight}
             style={{
-              width: 36,
-              height: 36,
+              width: 32,
+              height: 32,
               borderRadius: '50%',
               background: lightIsOn ? '#2a2a1a' : '#111',
               border: lightIsOn ? '1px solid #444422' : '1px solid #222',
@@ -165,13 +270,13 @@ function FanCard({
             }}
           >
             <Lightbulb
-              size={16}
+              size={14}
               color={lightIsOn ? '#aa9944' : '#333'}
               fill={lightIsOn ? '#aa9944' : 'none'}
               strokeWidth={1.5}
             />
           </div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -206,7 +311,7 @@ function FanCard({
 }
 
 export function HomeAssistantScreen() {
-  const [fansWithLights, setFansWithLights] = useState<FanWithLight[]>([]);
+  const [fansWithExtras, setFansWithExtras] = useState<FanWithExtras[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -232,29 +337,49 @@ export function HomeAssistantScreen() {
 
       const data = await response.json();
 
-      // Find all fans
-      const fans = data.filter((e: FanEntity) => e.entity_id.startsWith('fan.')) as FanEntity[];
-      const lights = data.filter((e: LightEntity) => e.entity_id.startsWith('light.')) as LightEntity[];
+      // Find all entities by type
+      const fans = data.filter((e: FanEntity) => e.entity_id.startsWith('fan.'));
+      const lights = data.filter((e: LightEntity) => e.entity_id.startsWith('light.'));
+      const sensors = data.filter((e: SensorEntity) => e.entity_id.startsWith('sensor.'));
+      const switches = data.filter((e: SwitchEntity) => e.entity_id.startsWith('switch.'));
 
-      // Match each fan with its light
-      const matched: FanWithLight[] = fans.map((fan) => {
+      // Match each fan with its extras
+      const matched: FanWithExtras[] = fans.map((fan: FanEntity) => {
         const fanName = fan.attributes.friendly_name || fan.entity_id.split('.')[1];
-        const baseName = fanName.toLowerCase().replace(' fan', '').replace('_fan', '').trim();
+        const baseName = fanName.toLowerCase().replace(' fan', '').replace('_fan', '').replace('fan.', '').trim();
+        const baseId = fan.entity_id.split('.')[1];
 
-        // Find matching light
-        const matchingLight = lights.find((light) => {
-          const lightName = (light.attributes.friendly_name || light.entity_id).toLowerCase();
-          return lightName.includes(baseName) || lightName.includes(baseName.replace(' ', '_'));
-        });
+        // Find matching entities
+        const matchingLight = lights.find((l: LightEntity) =>
+          l.entity_id.toLowerCase().includes(baseId)
+        );
+
+        const matchingTemp = sensors.find((s: SensorEntity) =>
+          s.entity_id.toLowerCase().includes(baseId) &&
+          s.entity_id.includes('temperature')
+        );
+
+        const matchingWhoosh = switches.find((s: SwitchEntity) =>
+          s.entity_id.toLowerCase().includes(baseId) &&
+          s.entity_id.includes('whoosh')
+        );
+
+        const matchingEco = switches.find((s: SwitchEntity) =>
+          s.entity_id.toLowerCase().includes(baseId) &&
+          s.entity_id.includes('eco')
+        );
 
         return {
           fan,
           light: matchingLight || null,
-          name: fanName.replace(' Fan', '').replace(' fan', '').replace('_fan', '').replace('_', ' '),
+          temperature: matchingTemp || null,
+          whoosh: matchingWhoosh || null,
+          ecoMode: matchingEco || null,
+          name: baseName.charAt(0).toUpperCase() + baseName.slice(1),
         };
       });
 
-      setFansWithLights(matched);
+      setFansWithExtras(matched);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to connect');
@@ -263,58 +388,41 @@ export function HomeAssistantScreen() {
     }
   }, [haUrl, haToken]);
 
-  const toggleFan = async (entityId: string) => {
+  const callService = async (domain: string, service: string, entityId: string, data?: object) => {
     if (!haUrl || !haToken) return;
-    await fetch(`${haUrl}/api/services/fan/toggle`, {
+    await fetch(`${haUrl}/api/services/${domain}/${service}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${haToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entity_id: entityId }),
+      body: JSON.stringify({ entity_id: entityId, ...data }),
     });
     setTimeout(fetchEntities, 300);
   };
+
+  const toggleFan = (entityId: string) => callService('fan', 'toggle', entityId);
 
   const setFanSpeed = async (entityId: string, percentage: number) => {
-    if (!haUrl || !haToken) return;
-    const fan = fansWithLights.find(f => f.fan.entity_id === entityId)?.fan;
+    const fan = fansWithExtras.find(f => f.fan.entity_id === entityId)?.fan;
     if (fan?.state === 'off') {
-      await fetch(`${haUrl}/api/services/fan/turn_on`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${haToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entity_id: entityId }),
-      });
+      await callService('fan', 'turn_on', entityId);
     }
-    await fetch(`${haUrl}/api/services/fan/set_percentage`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${haToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entity_id: entityId, percentage }),
-    });
-    setTimeout(fetchEntities, 300);
+    await callService('fan', 'set_percentage', entityId, { percentage });
   };
 
-  const toggleLight = async (entityId: string) => {
-    if (!haUrl || !haToken) return;
-    await fetch(`${haUrl}/api/services/light/toggle`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${haToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entity_id: entityId }),
-    });
-    setTimeout(fetchEntities, 300);
+  const toggleLight = (entityId: string) => callService('light', 'toggle', entityId);
+
+  const setLightBrightness = (entityId: string, brightness: number) => {
+    if (brightness === 0) {
+      callService('light', 'turn_off', entityId);
+    } else {
+      callService('light', 'turn_on', entityId, { brightness });
+    }
   };
 
-  const setLightBrightness = async (entityId: string, brightness: number) => {
-    if (!haUrl || !haToken) return;
-    const service = brightness === 0 ? 'turn_off' : 'turn_on';
-    await fetch(`${haUrl}/api/services/light/${service}`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${haToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entity_id: entityId, ...(brightness > 0 && { brightness }) }),
-    });
-    setTimeout(fetchEntities, 300);
-  };
+  const toggleSwitch = (entityId: string) => callService('switch', 'toggle', entityId);
 
   useEffect(() => {
     fetchEntities();
-    const interval = setInterval(fetchEntities, 15000);
+    const interval = setInterval(fetchEntities, 10000);
     return () => clearInterval(interval);
   }, [fetchEntities]);
 
@@ -335,7 +443,7 @@ export function HomeAssistantScreen() {
     );
   }
 
-  if (error || fansWithLights.length === 0) {
+  if (error || fansWithExtras.length === 0) {
     return (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#000', gap: 12 }}>
         <AlertCircle size={24} color="#444" />
@@ -361,10 +469,10 @@ export function HomeAssistantScreen() {
         flexWrap: 'wrap',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 16,
-        gap: 8,
+        padding: 12,
+        gap: 16,
       }}>
-        {fansWithLights.map((data) => (
+        {fansWithExtras.map((data) => (
           <FanCard
             key={data.fan.entity_id}
             data={data}
@@ -372,6 +480,8 @@ export function HomeAssistantScreen() {
             onSetSpeed={(pct) => setFanSpeed(data.fan.entity_id, pct)}
             onToggleLight={() => data.light && toggleLight(data.light.entity_id)}
             onSetBrightness={(b) => data.light && setLightBrightness(data.light.entity_id, b)}
+            onToggleWhoosh={() => data.whoosh && toggleSwitch(data.whoosh.entity_id)}
+            onToggleEco={() => data.ecoMode && toggleSwitch(data.ecoMode.entity_id)}
           />
         ))}
       </div>
