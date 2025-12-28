@@ -504,28 +504,6 @@ export function SummaryScreen() {
         </div>
       </div>
 
-      {/* Footer */}
-      <div
-        style={{
-          padding: '12px 40px',
-          borderTop: '1px solid #ddd',
-          background: '#f5f4f1',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
-        <span
-          style={{
-            fontSize: 9,
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-            color: '#999',
-          }}
-        >
-          Updated every 30 minutes
-        </span>
-      </div>
     </div>
   );
 }
