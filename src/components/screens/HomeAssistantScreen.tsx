@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Home, Thermometer, Lightbulb, Lock, DoorOpen, Droplets, Zap, AlertCircle } from 'lucide-react';
+import { RefreshCw, Home, Thermometer, Lightbulb, Lock, DoorOpen, Droplets, Zap, AlertCircle, Fan } from 'lucide-react';
 
 interface HAEntity {
   entity_id: string;
@@ -24,6 +24,7 @@ function getEntityIcon(entity: HAEntity) {
   const deviceClass = entity.attributes.device_class;
 
   if (domain === 'light') return <Lightbulb size={20} />;
+  if (domain === 'fan') return <Fan size={20} />;
   if (domain === 'lock') return <Lock size={20} />;
   if (domain === 'door' || deviceClass === 'door') return <DoorOpen size={20} />;
   if (domain === 'sensor') {
@@ -112,7 +113,7 @@ export function HomeAssistantScreen() {
       const data: HAEntity[] = await response.json();
 
       // Filter to useful entities
-      const domains = ['light', 'switch', 'sensor', 'climate', 'lock', 'binary_sensor'];
+      const domains = ['light', 'switch', 'fan', 'sensor', 'climate', 'lock', 'binary_sensor'];
       const deviceClasses = ['temperature', 'humidity', 'power', 'energy', 'door', 'window', 'motion'];
 
       const filtered = data.filter(entity => {
@@ -127,9 +128,9 @@ export function HomeAssistantScreen() {
         return true;
       });
 
-      // Sort: lights first, then switches, then sensors
+      // Sort: lights first, then switches, fans, then sensors
       const sorted = filtered.sort((a, b) => {
-        const order = ['light', 'switch', 'climate', 'lock', 'sensor', 'binary_sensor'];
+        const order = ['light', 'switch', 'fan', 'climate', 'lock', 'sensor', 'binary_sensor'];
         const aOrder = order.indexOf(a.entity_id.split('.')[0]);
         const bOrder = order.indexOf(b.entity_id.split('.')[0]);
         return aOrder - bOrder;
