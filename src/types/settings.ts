@@ -37,7 +37,7 @@ export const defaultSettings: Settings = {
   longitude: 144.9631, // Melbourne
   temperatureUnit: 'celsius',
   timeFormat: '24h',
-  screenOrder: ['summary', 'weather', 'stocks', 'calendar', 'countdown', 'moments', 'quotes', 'japanese', 'pomodoro'],
+  screenOrder: ['summary', 'weather', 'stocks', 'calendar', 'countdown', 'homeassistant', 'moments', 'quotes', 'japanese', 'pomodoro'],
   // Default crypto and stocks
   stockSymbols: ['AAPL', 'GOOGL', 'MSFT'],
   cryptoSymbols: ['bitcoin', 'ethereum', 'solana'],

@@ -28,6 +28,33 @@ function toSupabase(e: CountdownEvent): SupabaseCountdownEvent {
 
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899'];
 
+// Common event templates with family members
+const COMMON_EVENTS = [
+  { label: 'Pick up Ella', value: 'Pick up Ella' },
+  { label: 'Pick up Olivier', value: 'Pick up Olivier' },
+  { label: 'Drop off Ella', value: 'Drop off Ella' },
+  { label: 'Drop off Olivier', value: 'Drop off Olivier' },
+  { label: 'Ella\'s activity', value: 'Ella\'s activity' },
+  { label: 'Olivier\'s activity', value: 'Olivier\'s activity' },
+  { label: 'Call with Chris', value: 'Call with Chris' },
+  { label: 'Meeting with Carline', value: 'Meeting with Carline' },
+  { label: 'Family dinner', value: 'Family dinner' },
+  { label: 'School pickup', value: 'School pickup' },
+  { label: 'Doctor appointment', value: 'Doctor appointment' },
+  { label: 'Birthday party', value: 'Birthday party' },
+];
+
+// Quick time presets
+const TIME_PRESETS = [
+  { label: 'Morning', value: '08:00' },
+  { label: 'Mid-morning', value: '10:00' },
+  { label: 'Noon', value: '12:00' },
+  { label: 'Afternoon', value: '15:00' },
+  { label: 'School end', value: '15:30' },
+  { label: 'Evening', value: '18:00' },
+  { label: 'Night', value: '20:00' },
+];
+
 function getTimeRemaining(targetDate: string) {
   const target = new Date(targetDate);
   const now = new Date();
@@ -506,9 +533,37 @@ export function CountdownScreen() {
             boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
           }}
         >
+          {/* Common Events Dropdown */}
+          <div style={{ marginBottom: 12 }}>
+            <select
+              value=""
+              onChange={e => {
+                if (e.target.value) setNewTitle(e.target.value);
+              }}
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                border: '1px solid #ddd',
+                borderRadius: 6,
+                fontSize: 14,
+                backgroundColor: '#f9f9f9',
+                color: '#666',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="">Quick select event...</option>
+              {COMMON_EVENTS.map(event => (
+                <option key={event.value} value={event.value}>
+                  {event.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Custom event name */}
           <input
             type="text"
-            placeholder="Event name"
+            placeholder="Or type custom event name"
             value={newTitle}
             onChange={e => setNewTitle(e.target.value)}
             style={{
@@ -521,22 +576,52 @@ export function CountdownScreen() {
               boxSizing: 'border-box',
             }}
           />
-          <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-              <Calendar size={14} color="#999" />
-              <input
-                type="date"
-                value={newDate}
-                onChange={e => setNewDate(e.target.value)}
-                style={{
-                  flex: 1,
-                  padding: '12px 14px',
-                  border: '1px solid #ddd',
-                  borderRadius: 6,
-                  fontSize: 14,
-                }}
-              />
+
+          {/* Date picker */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <Calendar size={14} color="#999" />
+            <input
+              type="date"
+              value={newDate}
+              onChange={e => setNewDate(e.target.value)}
+              style={{
+                flex: 1,
+                padding: '12px 14px',
+                border: '1px solid #ddd',
+                borderRadius: 6,
+                fontSize: 14,
+              }}
+            />
+          </div>
+
+          {/* Time presets */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: '#999', marginBottom: 8, letterSpacing: '0.05em' }}>TIME OF DAY</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {TIME_PRESETS.map(preset => (
+                <button
+                  key={preset.value}
+                  onClick={() => setNewTime(preset.value)}
+                  style={{
+                    padding: '8px 12px',
+                    fontSize: 12,
+                    border: newTime === preset.value ? '1px solid #333' : '1px solid #ddd',
+                    borderRadius: 4,
+                    backgroundColor: newTime === preset.value ? '#333' : '#fff',
+                    color: newTime === preset.value ? '#fff' : '#666',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {preset.label}
+                </button>
+              ))}
             </div>
+          </div>
+
+          {/* Custom time input */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            <Clock size={14} color="#999" />
             <input
               type="time"
               value={newTime}
@@ -546,10 +631,13 @@ export function CountdownScreen() {
                 border: '1px solid #ddd',
                 borderRadius: 6,
                 fontSize: 14,
-                width: 120,
+                flex: 1,
               }}
             />
+            <span style={{ fontSize: 12, color: '#999' }}>or pick exact time</span>
           </div>
+
+          {/* Color picker */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
             <span style={{ fontSize: 12, color: '#999' }}>Color:</span>
             {COLORS.map(color => (
@@ -569,6 +657,8 @@ export function CountdownScreen() {
               />
             ))}
           </div>
+
+          {/* Add button */}
           <button
             onClick={handleAddEvent}
             disabled={!newTitle.trim() || !newDate}
