@@ -1,10 +1,303 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Fan, Power } from 'lucide-react';
 import { useWeather } from '../../hooks/useWeather';
 import { useCalendar } from '../../hooks/useCalendar';
 import { useStocks } from '../../hooks/useStocks';
 import { useNews } from '../../hooks/useNews';
 import { generateDailySummary } from '../../services/aiService';
 import { weatherCodeToDescription } from '../../types/weather';
+
+// Fan entity interface
+interface FanEntity {
+  entity_id: string;
+  state: string;
+  attributes: {
+    friendly_name?: string;
+    percentage?: number;
+    preset_mode?: string;
+    preset_modes?: string[];
+    percentage_step?: number;
+  };
+}
+
+// Fan Control Component
+function FanControl({ fan, onToggle, onSetSpeed }: {
+  fan: FanEntity;
+  onToggle: () => void;
+  onSetSpeed: (percentage: number) => void;
+}) {
+  const isOn = fan.state === 'on';
+  const percentage = fan.attributes.percentage || 0;
+  const speedStep = fan.attributes.percentage_step || 14.29; // ~7 speeds
+  const currentSpeed = Math.round(percentage / speedStep);
+  const maxSpeed = Math.round(100 / speedStep);
+
+  const speeds = Array.from({ length: maxSpeed }, (_, i) => i + 1);
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 20,
+        padding: '16px 24px',
+        background: isOn ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' : '#fafafa',
+        borderRadius: 12,
+        border: isOn ? '1px solid #86efac' : '1px solid #e5e5e5',
+        transition: 'all 0.3s ease',
+        flex: 1,
+      }}
+    >
+      {/* Fan Icon with animation */}
+      <div
+        onClick={onToggle}
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: '50%',
+          background: isOn ? '#22c55e' : '#e5e5e5',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
+          boxShadow: isOn ? '0 4px 12px rgba(34, 197, 94, 0.3)' : 'none',
+        }}
+      >
+        <Fan
+          size={24}
+          color={isOn ? '#fff' : '#999'}
+          style={{
+            animation: isOn ? `spin ${2 - (percentage / 100) * 1.5}s linear infinite` : 'none',
+          }}
+        />
+      </div>
+
+      {/* Fan Info */}
+      <div style={{ flex: 1 }}>
+        <div style={{
+          fontSize: 14,
+          fontWeight: 600,
+          color: '#333',
+          marginBottom: 4,
+        }}>
+          {fan.attributes.friendly_name || fan.entity_id.split('.')[1]}
+        </div>
+        <div style={{
+          fontSize: 11,
+          color: '#999',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+        }}>
+          {isOn ? `Speed ${currentSpeed}/${maxSpeed}` : 'Off'}
+        </div>
+      </div>
+
+      {/* Speed Control */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4,
+      }}>
+        {speeds.map((speed) => {
+          const speedPercent = speed * speedStep;
+          const isActive = isOn && currentSpeed >= speed;
+          return (
+            <button
+              key={speed}
+              onClick={() => onSetSpeed(speedPercent)}
+              style={{
+                width: 8,
+                height: 12 + speed * 4,
+                borderRadius: 2,
+                border: 'none',
+                background: isActive ? '#22c55e' : '#ddd',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                opacity: isOn ? 1 : 0.5,
+              }}
+              title={`Speed ${speed}`}
+            />
+          );
+        })}
+      </div>
+
+      {/* Power Button */}
+      <button
+        onClick={onToggle}
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: '50%',
+          border: 'none',
+          background: isOn ? '#ef4444' : '#22c55e',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          marginLeft: 8,
+        }}
+        title={isOn ? 'Turn Off' : 'Turn On'}
+      >
+        <Power size={16} color="#fff" />
+      </button>
+    </div>
+  );
+}
+
+// Fan Controls Bar Component
+function FanControlsBar() {
+  const [fans, setFans] = useState<FanEntity[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const haUrl = import.meta.env.VITE_HOME_ASSISTANT_URL;
+  const haToken = import.meta.env.VITE_HOME_ASSISTANT_TOKEN;
+
+  const fetchFans = useCallback(async () => {
+    if (!haUrl || !haToken) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${haUrl}/api/states`, {
+        headers: {
+          Authorization: `Bearer ${haToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) return;
+
+      const data: FanEntity[] = await response.json();
+      const fanEntities = data.filter(e => e.entity_id.startsWith('fan.'));
+      setFans(fanEntities);
+    } catch (e) {
+      console.error('Failed to fetch fans:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [haUrl, haToken]);
+
+  const toggleFan = async (entityId: string) => {
+    if (!haUrl || !haToken) return;
+
+    try {
+      await fetch(`${haUrl}/api/services/fan/toggle`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${haToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ entity_id: entityId }),
+      });
+      setTimeout(fetchFans, 300);
+    } catch (e) {
+      console.error('Failed to toggle fan:', e);
+    }
+  };
+
+  const setFanSpeed = async (entityId: string, percentage: number) => {
+    if (!haUrl || !haToken) return;
+
+    try {
+      // If fan is off, turn it on first
+      const fan = fans.find(f => f.entity_id === entityId);
+      if (fan?.state === 'off') {
+        await fetch(`${haUrl}/api/services/fan/turn_on`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${haToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ entity_id: entityId }),
+        });
+      }
+
+      // Set speed
+      await fetch(`${haUrl}/api/services/fan/set_percentage`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${haToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ entity_id: entityId, percentage }),
+      });
+      setTimeout(fetchFans, 300);
+    } catch (e) {
+      console.error('Failed to set fan speed:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchFans();
+    const interval = setInterval(fetchFans, 15000);
+    return () => clearInterval(interval);
+  }, [fetchFans]);
+
+  if (!haUrl || !haToken || fans.length === 0) {
+    return null;
+  }
+
+  if (loading) {
+    return null;
+  }
+
+  return (
+    <div
+      style={{
+        padding: '16px 48px',
+        background: '#fff',
+        borderTop: '1px solid #eee',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 24,
+      }}
+    >
+      {/* Label */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          minWidth: 80,
+        }}
+      >
+        <Fan size={16} color="#666" />
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            color: '#999',
+          }}
+        >
+          Climate
+        </span>
+      </div>
+
+      {/* Fan Controls */}
+      <div
+        style={{
+          display: 'flex',
+          flex: 1,
+          gap: 16,
+        }}
+      >
+        {fans.map(fan => (
+          <FanControl
+            key={fan.entity_id}
+            fan={fan}
+            onToggle={() => toggleFan(fan.entity_id)}
+            onSetSpeed={(pct) => setFanSpeed(fan.entity_id, pct)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface Summary {
   greeting: string;
@@ -290,6 +583,9 @@ export function SummaryScreen() {
           position="bottom-right"
         />
       </div>
+
+      {/* Fan Controls */}
+      <FanControlsBar />
 
       {/* Footer Advice */}
       <div
