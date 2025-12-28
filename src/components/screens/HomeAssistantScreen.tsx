@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Fan, Lightbulb, AlertCircle, Thermometer, Wind, Leaf } from 'lucide-react';
+import { Fan, Lightbulb, AlertCircle, Thermometer, Wind, Leaf, Flame, Snowflake, Power } from 'lucide-react';
 
 interface FanEntity {
   entity_id: string;
@@ -37,6 +37,23 @@ interface SwitchEntity {
   };
 }
 
+interface ClimateEntity {
+  entity_id: string;
+  state: string; // 'off', 'heat', 'cool', 'heat_cool', 'auto'
+  attributes: {
+    friendly_name?: string;
+    current_temperature?: number;
+    current_humidity?: number;
+    temperature?: number; // target temp for heat/cool
+    target_temp_high?: number;
+    target_temp_low?: number;
+    hvac_modes?: string[];
+    hvac_action?: string; // 'idle', 'heating', 'cooling', 'off'
+    min_temp?: number;
+    max_temp?: number;
+  };
+}
+
 interface FanWithExtras {
   fan: FanEntity;
   light: LightEntity | null;
@@ -44,6 +61,223 @@ interface FanWithExtras {
   whoosh: SwitchEntity | null;
   ecoMode: SwitchEntity | null;
   name: string;
+}
+
+function ThermostatCard({
+  climate,
+  onSetTemp,
+  onSetMode,
+}: {
+  climate: ClimateEntity;
+  onSetTemp: (temp: number) => void;
+  onSetMode: (mode: string) => void;
+}) {
+  const currentTemp = climate.attributes.current_temperature || 0;
+  const targetTemp = climate.attributes.temperature || climate.attributes.target_temp_low || 0;
+  const humidity = climate.attributes.current_humidity;
+  const hvacAction = climate.attributes.hvac_action || 'idle';
+  const mode = climate.state;
+  const name = climate.attributes.friendly_name?.replace(' Thermostat', '') || 'Thermostat';
+
+  const isHeating = hvacAction === 'heating';
+  const isCooling = hvacAction === 'cooling';
+  const isOff = mode === 'off';
+
+  const getActionColor = () => {
+    if (isHeating) return '#ff6b35';
+    if (isCooling) return '#35a7ff';
+    return '#444';
+  };
+
+  const getActionIcon = () => {
+    if (isHeating) return <Flame size={28} color="#ff6b35" />;
+    if (isCooling) return <Snowflake size={28} color="#35a7ff" />;
+    if (isOff) return <Power size={28} color="#444" />;
+    return <Thermometer size={28} color="#666" />;
+  };
+
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 12,
+      padding: '20px 16px',
+      flex: 1,
+      minWidth: 180,
+      maxWidth: 240,
+    }}>
+      {/* Title with Humidity */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        width: '100%',
+        justifyContent: 'center',
+      }}>
+        <span style={{
+          fontSize: 9,
+          fontWeight: 600,
+          letterSpacing: '0.25em',
+          textTransform: 'uppercase',
+          color: '#555',
+        }}>
+          {name}
+        </span>
+        {humidity !== undefined && (
+          <span style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 3,
+            fontSize: 11,
+            color: '#666',
+            background: '#1a1a1a',
+            padding: '2px 6px',
+            borderRadius: 4,
+          }}>
+            {humidity}%
+          </span>
+        )}
+      </div>
+
+      {/* Thermostat Circle */}
+      <div
+        style={{
+          width: 72,
+          height: 72,
+          borderRadius: '50%',
+          background: isOff
+            ? '#111'
+            : `linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)`,
+          border: `2px solid ${getActionColor()}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: (isHeating || isCooling)
+            ? `0 0 30px ${getActionColor()}33`
+            : 'none',
+          transition: 'all 0.4s ease',
+        }}
+      >
+        {getActionIcon()}
+      </div>
+
+      {/* Current Temperature */}
+      <div style={{
+        fontSize: 32,
+        fontWeight: 200,
+        color: '#fff',
+        letterSpacing: '-0.02em',
+      }}>
+        {currentTemp.toFixed(0)}°
+      </div>
+
+      {/* Target Temperature Controls */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 16,
+      }}>
+        <button
+          onClick={() => onSetTemp(targetTemp - 1)}
+          disabled={isOff}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: '50%',
+            border: '1px solid #333',
+            background: '#1a1a1a',
+            color: isOff ? '#333' : '#fff',
+            fontSize: 18,
+            cursor: isOff ? 'default' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          −
+        </button>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}>
+          <span style={{ fontSize: 10, color: '#666', letterSpacing: '0.1em' }}>TARGET</span>
+          <span style={{ fontSize: 20, color: isOff ? '#444' : '#fff', fontWeight: 300 }}>
+            {targetTemp.toFixed(0)}°
+          </span>
+        </div>
+        <button
+          onClick={() => onSetTemp(targetTemp + 1)}
+          disabled={isOff}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: '50%',
+            border: '1px solid #333',
+            background: '#1a1a1a',
+            color: isOff ? '#333' : '#fff',
+            fontSize: 18,
+            cursor: isOff ? 'default' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          +
+        </button>
+      </div>
+
+      {/* Mode Buttons */}
+      <div style={{
+        display: 'flex',
+        gap: 6,
+        marginTop: 4,
+      }}>
+        {['off', 'heat', 'cool'].map((m) => (
+          <button
+            key={m}
+            onClick={() => onSetMode(m)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '4px 10px',
+              background: mode === m ? (m === 'heat' ? '#2a1a1a' : m === 'cool' ? '#1a1a2a' : '#1a1a1a') : '#111',
+              border: mode === m
+                ? `1px solid ${m === 'heat' ? '#ff6b35' : m === 'cool' ? '#35a7ff' : '#444'}`
+                : '1px solid #222',
+              borderRadius: 6,
+              cursor: 'pointer',
+              color: mode === m
+                ? (m === 'heat' ? '#ff6b35' : m === 'cool' ? '#35a7ff' : '#888')
+                : '#444',
+              fontSize: 9,
+              fontWeight: 500,
+              letterSpacing: '0.05em',
+              textTransform: 'uppercase',
+            }}
+          >
+            {m === 'heat' && <Flame size={10} />}
+            {m === 'cool' && <Snowflake size={10} />}
+            {m === 'off' && <Power size={10} />}
+            {m}
+          </button>
+        ))}
+      </div>
+
+      {/* Status */}
+      <div style={{
+        fontSize: 9,
+        color: getActionColor(),
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
+        marginTop: 4,
+      }}>
+        {hvacAction === 'idle' ? (isOff ? 'OFF' : 'IDLE') : hvacAction.toUpperCase()}
+      </div>
+    </div>
+  );
 }
 
 function FanCard({
@@ -311,6 +545,7 @@ function FanCard({
 
 export function HomeAssistantScreen() {
   const [fansWithExtras, setFansWithExtras] = useState<FanWithExtras[]>([]);
+  const [thermostats, setThermostats] = useState<ClimateEntity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -341,6 +576,9 @@ export function HomeAssistantScreen() {
       const lights = data.filter((e: LightEntity) => e.entity_id.startsWith('light.'));
       const sensors = data.filter((e: SensorEntity) => e.entity_id.startsWith('sensor.'));
       const switches = data.filter((e: SwitchEntity) => e.entity_id.startsWith('switch.'));
+      const climates = data.filter((e: ClimateEntity) => e.entity_id.startsWith('climate.'));
+
+      setThermostats(climates);
 
       // Match each fan with its extras
       const matched: FanWithExtras[] = fans.map((fan: FanEntity) => {
@@ -419,6 +657,14 @@ export function HomeAssistantScreen() {
 
   const toggleSwitch = (entityId: string) => callService('switch', 'toggle', entityId);
 
+  const setThermostatTemp = (entityId: string, temperature: number) => {
+    callService('climate', 'set_temperature', entityId, { temperature });
+  };
+
+  const setThermostatMode = (entityId: string, hvac_mode: string) => {
+    callService('climate', 'set_hvac_mode', entityId, { hvac_mode });
+  };
+
   useEffect(() => {
     fetchEntities();
     const interval = setInterval(fetchEntities, 10000);
@@ -442,11 +688,11 @@ export function HomeAssistantScreen() {
     );
   }
 
-  if (error || fansWithExtras.length === 0) {
+  if (error || (fansWithExtras.length === 0 && thermostats.length === 0)) {
     return (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#000', gap: 12 }}>
         <AlertCircle size={24} color="#444" />
-        <span style={{ fontSize: 12, color: '#444' }}>{error || 'No fans found'}</span>
+        <span style={{ fontSize: 12, color: '#444' }}>{error || 'No devices found'}</span>
       </div>
     );
   }
@@ -461,7 +707,7 @@ export function HomeAssistantScreen() {
     }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
-      {/* Fans Grid */}
+      {/* Devices Grid */}
       <div style={{
         flex: 1,
         display: 'flex',
@@ -471,6 +717,16 @@ export function HomeAssistantScreen() {
         padding: 12,
         gap: 16,
       }}>
+        {/* Thermostats */}
+        {thermostats.map((climate) => (
+          <ThermostatCard
+            key={climate.entity_id}
+            climate={climate}
+            onSetTemp={(temp) => setThermostatTemp(climate.entity_id, temp)}
+            onSetMode={(mode) => setThermostatMode(climate.entity_id, mode)}
+          />
+        ))}
+        {/* Fans */}
         {fansWithExtras.map((data) => (
           <FanCard
             key={data.fan.entity_id}
