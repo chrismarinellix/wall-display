@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { differenceInDays, differenceInHours, differenceInMinutes, differenceInSeconds, isPast, format, startOfDay, differenceInMilliseconds } from 'date-fns';
-import { Plus, X, Calendar, Clock, RefreshCw, Pencil, Check } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { differenceInDays, differenceInHours, differenceInMinutes, differenceInSeconds, isPast, format, getMonth } from 'date-fns';
+import { Plus, X, Calendar, Clock, RefreshCw, Pencil, Check, Sparkles } from 'lucide-react';
 import {
   getCountdowns,
   addCountdown,
@@ -13,11 +13,10 @@ import {
 interface CountdownEvent {
   id: string;
   title: string;
-  targetDate: string; // ISO string
+  targetDate: string;
   color: string;
 }
 
-// Convert between local format and Supabase format
 function fromSupabase(e: SupabaseCountdownEvent): CountdownEvent {
   return { id: e.id, title: e.title, targetDate: e.target_date, color: e.color };
 }
@@ -28,32 +27,96 @@ function toSupabase(e: CountdownEvent): SupabaseCountdownEvent {
 
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899'];
 
-// Common event templates with family members
-const COMMON_EVENTS = [
-  { label: 'Pick up Ella', value: 'Pick up Ella' },
-  { label: 'Pick up Olivier', value: 'Pick up Olivier' },
-  { label: 'Drop off Ella', value: 'Drop off Ella' },
-  { label: 'Drop off Olivier', value: 'Drop off Olivier' },
-  { label: 'Ella\'s activity', value: 'Ella\'s activity' },
-  { label: 'Olivier\'s activity', value: 'Olivier\'s activity' },
-  { label: 'Call with Chris', value: 'Call with Chris' },
-  { label: 'Meeting with Carline', value: 'Meeting with Carline' },
-  { label: 'Family dinner', value: 'Family dinner' },
-  { label: 'School pickup', value: 'School pickup' },
-  { label: 'Doctor appointment', value: 'Doctor appointment' },
-  { label: 'Birthday party', value: 'Birthday party' },
-];
+// Zodiac signs by month
+const ZODIAC_SIGNS: { [key: number]: { symbol: string; name: string; dates: string } } = {
+  0: { symbol: '♑', name: 'Capricorn', dates: 'Dec 22 - Jan 19' },
+  1: { symbol: '♒', name: 'Aquarius', dates: 'Jan 20 - Feb 18' },
+  2: { symbol: '♓', name: 'Pisces', dates: 'Feb 19 - Mar 20' },
+  3: { symbol: '♈', name: 'Aries', dates: 'Mar 21 - Apr 19' },
+  4: { symbol: '♉', name: 'Taurus', dates: 'Apr 20 - May 20' },
+  5: { symbol: '♊', name: 'Gemini', dates: 'May 21 - Jun 20' },
+  6: { symbol: '♋', name: 'Cancer', dates: 'Jun 21 - Jul 22' },
+  7: { symbol: '♌', name: 'Leo', dates: 'Jul 23 - Aug 22' },
+  8: { symbol: '♍', name: 'Virgo', dates: 'Aug 23 - Sep 22' },
+  9: { symbol: '♎', name: 'Libra', dates: 'Sep 23 - Oct 22' },
+  10: { symbol: '♏', name: 'Scorpio', dates: 'Oct 23 - Nov 21' },
+  11: { symbol: '♐', name: 'Sagittarius', dates: 'Nov 22 - Dec 21' },
+};
 
-// Quick time presets
-const TIME_PRESETS = [
-  { label: 'Morning', value: '08:00' },
-  { label: 'Mid-morning', value: '10:00' },
-  { label: 'Noon', value: '12:00' },
-  { label: 'Afternoon', value: '15:00' },
-  { label: 'School end', value: '15:30' },
-  { label: 'Evening', value: '18:00' },
-  { label: 'Night', value: '20:00' },
-];
+// Detect event type from title
+function getEventType(title: string): 'birthday' | 'holiday' | 'travel' | 'event' {
+  const lower = title.toLowerCase();
+  if (lower.includes('birthday') || lower.includes('bday')) return 'birthday';
+  if (lower.includes('christmas') || lower.includes('holiday') || lower.includes('easter')) return 'holiday';
+  if (lower.includes('trip') || lower.includes('flight') || lower.includes('vacation') || lower.includes('travel')) return 'travel';
+  return 'event';
+}
+
+// Get zodiac for a date
+function getZodiac(date: Date): { symbol: string; name: string } {
+  const month = getMonth(date);
+  const day = date.getDate();
+
+  // Adjust for zodiac date ranges
+  if ((month === 0 && day <= 19) || (month === 11 && day >= 22)) return ZODIAC_SIGNS[0]; // Capricorn
+  if ((month === 0 && day >= 20) || (month === 1 && day <= 18)) return ZODIAC_SIGNS[1]; // Aquarius
+  if ((month === 1 && day >= 19) || (month === 2 && day <= 20)) return ZODIAC_SIGNS[2]; // Pisces
+  if ((month === 2 && day >= 21) || (month === 3 && day <= 19)) return ZODIAC_SIGNS[3]; // Aries
+  if ((month === 3 && day >= 20) || (month === 4 && day <= 20)) return ZODIAC_SIGNS[4]; // Taurus
+  if ((month === 4 && day >= 21) || (month === 5 && day <= 20)) return ZODIAC_SIGNS[5]; // Gemini
+  if ((month === 5 && day >= 21) || (month === 6 && day <= 22)) return ZODIAC_SIGNS[6]; // Cancer
+  if ((month === 6 && day >= 23) || (month === 7 && day <= 22)) return ZODIAC_SIGNS[7]; // Leo
+  if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return ZODIAC_SIGNS[8]; // Virgo
+  if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return ZODIAC_SIGNS[9]; // Libra
+  if ((month === 9 && day >= 23) || (month === 10 && day <= 21)) return ZODIAC_SIGNS[10]; // Scorpio
+  return ZODIAC_SIGNS[11]; // Sagittarius
+}
+
+// Generate AI insight for countdown
+async function generateCountdownInsight(
+  event: CountdownEvent,
+  daysLeft: number,
+  apiKey: string
+): Promise<string> {
+  if (!apiKey) return '';
+
+  const eventType = getEventType(event.title);
+  const targetDate = new Date(event.targetDate);
+  const zodiac = eventType === 'birthday' ? getZodiac(targetDate) : null;
+
+  const prompt = `Generate a single short, fun sentence (max 15 words) about this upcoming event:
+Event: ${event.title}
+Days until: ${daysLeft}
+Date: ${format(targetDate, 'MMMM d')}
+Type: ${eventType}
+${zodiac ? `Zodiac: ${zodiac.name}` : ''}
+
+Be creative and relevant to the event type. For birthdays, maybe reference the zodiac or age milestone.
+For holidays, reference traditions. For travel, build excitement.
+Respond with just the sentence, no quotes or extra text.`;
+
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.9,
+        max_tokens: 50,
+      }),
+    });
+
+    if (!response.ok) return '';
+    const result = await response.json();
+    return result.choices[0]?.message?.content?.trim() || '';
+  } catch {
+    return '';
+  }
+}
 
 function getTimeRemaining(targetDate: string) {
   const target = new Date(targetDate);
@@ -71,318 +134,338 @@ function getTimeRemaining(targetDate: string) {
   return { days, hours, minutes, seconds, isPast: false };
 }
 
-// Calculate progress from start of today to target date
-function getProgressPercent(targetDate: string): number {
-  const target = new Date(targetDate);
-  const now = new Date();
-  const todayStart = startOfDay(now);
-
-  if (isPast(target)) return 100;
-
-  const totalMs = differenceInMilliseconds(target, todayStart);
-  const elapsedMs = differenceInMilliseconds(now, todayStart);
-
-  if (totalMs <= 0) return 100;
-
-  const percent = (elapsedMs / totalMs) * 100;
-  return Math.min(100, Math.max(0, percent));
-}
-
-interface CountdownCardProps {
+// Hero Countdown Card - big dramatic display
+function HeroCountdown({
+  event,
+  onRemove,
+  onEdit,
+  insight,
+}: {
   event: CountdownEvent;
   onRemove: () => void;
-  onUpdate: (updates: Partial<Pick<CountdownEvent, 'title' | 'targetDate' | 'color'>>) => void;
-}
-
-function CountdownCard({ event, onRemove, onUpdate }: CountdownCardProps) {
+  onEdit: () => void;
+  insight: string;
+}) {
   const [timeLeft, setTimeLeft] = useState(getTimeRemaining(event.targetDate));
-  const [progress, setProgress] = useState(getProgressPercent(event.targetDate));
-  const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState(event.title);
-  const [editDate, setEditDate] = useState(format(new Date(event.targetDate), 'yyyy-MM-dd'));
-  const [editTime, setEditTime] = useState(format(new Date(event.targetDate), 'HH:mm'));
-  const [editColor, setEditColor] = useState(event.color);
-  const [isHovered, setIsHovered] = useState(false);
+  const targetDate = new Date(event.targetDate);
+  const eventType = getEventType(event.title);
+  const zodiac = eventType === 'birthday' ? getZodiac(targetDate) : null;
 
   useEffect(() => {
     const interval = setInterval(() => {
       setTimeLeft(getTimeRemaining(event.targetDate));
-      setProgress(getProgressPercent(event.targetDate));
     }, 1000);
     return () => clearInterval(interval);
   }, [event.targetDate]);
 
-  // Reset edit form when event changes
-  useEffect(() => {
-    setEditTitle(event.title);
-    setEditDate(format(new Date(event.targetDate), 'yyyy-MM-dd'));
-    setEditTime(format(new Date(event.targetDate), 'HH:mm'));
-    setEditColor(event.color);
-  }, [event]);
-
-  const handleSave = () => {
-    const newTargetDate = new Date(`${editDate}T${editTime}`);
-    onUpdate({
-      title: editTitle.trim(),
-      targetDate: newTargetDate.toISOString(),
-      color: editColor,
-    });
-    setIsEditing(false);
-  };
-
-  const handleCancel = () => {
-    setEditTitle(event.title);
-    setEditDate(format(new Date(event.targetDate), 'yyyy-MM-dd'));
-    setEditTime(format(new Date(event.targetDate), 'HH:mm'));
-    setEditColor(event.color);
-    setIsEditing(false);
-  };
-
-  // Don't render past events
-  if (timeLeft.isPast) {
-    return null;
-  }
+  if (timeLeft.isPast) return null;
 
   return (
     <div
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       style={{
-        backgroundColor: '#fff',
-        borderRadius: 8,
-        marginBottom: 16,
+        background: `linear-gradient(135deg, ${event.color}15 0%, ${event.color}05 100%)`,
+        borderRadius: 16,
+        padding: '32px 40px',
+        marginBottom: 24,
+        position: 'relative',
         overflow: 'hidden',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-        border: '1px solid #eee',
-        transition: 'box-shadow 0.2s ease',
+        border: `1px solid ${event.color}30`,
       }}
     >
-      {/* Color accent bar */}
-      <div style={{ height: 4, backgroundColor: event.color }} />
+      {/* Decorative circles */}
+      <div
+        style={{
+          position: 'absolute',
+          top: -50,
+          right: -50,
+          width: 200,
+          height: 200,
+          borderRadius: '50%',
+          border: `1px solid ${event.color}20`,
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          top: -20,
+          right: -20,
+          width: 140,
+          height: 140,
+          borderRadius: '50%',
+          border: `1px solid ${event.color}15`,
+        }}
+      />
 
-      {/* Card content */}
-      <div style={{ padding: 20 }}>
-        {/* Header row */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: '50%',
-                backgroundColor: event.color,
-              }}
-            />
-            <span style={{ fontSize: 16, fontWeight: 500, color: '#333' }}>{event.title}</span>
-          </div>
-          <div style={{ display: 'flex', gap: 4, opacity: isHovered ? 1 : 0, transition: 'opacity 0.2s ease' }}>
-            <button
-              onClick={() => setIsEditing(!isEditing)}
-              style={{
-                background: 'none',
-                border: '1px solid #e5e5e5',
-                borderRadius: 4,
-                cursor: 'pointer',
-                padding: 6,
-                display: 'flex',
-                alignItems: 'center',
-                color: '#666',
-              }}
-              title="Edit"
-            >
-              <Pencil size={12} />
-            </button>
-            <button
-              onClick={onRemove}
-              style={{
-                background: 'none',
-                border: '1px solid #e5e5e5',
-                borderRadius: 4,
-                cursor: 'pointer',
-                padding: 6,
-                display: 'flex',
-                alignItems: 'center',
-                color: '#666',
-              }}
-              title="Remove"
-            >
-              <X size={12} />
-            </button>
-          </div>
-        </div>
+      {/* Edit/Remove buttons */}
+      <div style={{ position: 'absolute', top: 16, right: 16, display: 'flex', gap: 8 }}>
+        <button
+          onClick={onEdit}
+          style={{
+            background: 'rgba(255,255,255,0.8)',
+            border: 'none',
+            borderRadius: 6,
+            padding: 8,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          <Pencil size={14} color="#666" />
+        </button>
+        <button
+          onClick={onRemove}
+          style={{
+            background: 'rgba(255,255,255,0.8)',
+            border: 'none',
+            borderRadius: 6,
+            padding: 8,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          <X size={14} color="#666" />
+        </button>
+      </div>
 
-        {/* Time display */}
-        <div style={{ display: 'flex', gap: 24, marginBottom: 16 }}>
-          {timeLeft.days > 0 && (
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 36, fontWeight: 300, color: event.color, lineHeight: 1 }}>
-                {timeLeft.days}
-              </div>
-              <div style={{ fontSize: 10, color: '#999', letterSpacing: '0.15em', marginTop: 4, textTransform: 'uppercase' }}>
-                days
-              </div>
-            </div>
-          )}
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 36, fontWeight: 300, color: event.color, lineHeight: 1 }}>
-              {String(timeLeft.hours).padStart(2, '0')}
-            </div>
-            <div style={{ fontSize: 10, color: '#999', letterSpacing: '0.15em', marginTop: 4, textTransform: 'uppercase' }}>
-              hrs
-            </div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 36, fontWeight: 300, color: timeLeft.days > 0 ? '#999' : event.color, lineHeight: 1 }}>
-              {String(timeLeft.minutes).padStart(2, '0')}
-            </div>
-            <div style={{ fontSize: 10, color: '#999', letterSpacing: '0.15em', marginTop: 4, textTransform: 'uppercase' }}>
-              min
-            </div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 36, fontWeight: 300, color: '#ccc', lineHeight: 1 }}>
-              {String(timeLeft.seconds).padStart(2, '0')}
-            </div>
-            <div style={{ fontSize: 10, color: '#ccc', letterSpacing: '0.15em', marginTop: 4, textTransform: 'uppercase' }}>
-              sec
-            </div>
-          </div>
-        </div>
-
-        {/* Progress bar */}
-        <div style={{ marginBottom: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, color: '#999' }}>
-              {format(new Date(event.targetDate), 'MMM d, yyyy \'at\' h:mm a')}
-            </span>
-            <span style={{ fontSize: 11, color: '#999', fontWeight: 500 }}>
-              {progress.toFixed(1)}% of day elapsed
-            </span>
-          </div>
-          <div style={{ height: 4, backgroundColor: '#f0f0f0', borderRadius: 2, overflow: 'hidden' }}>
-            <div
-              style={{
-                height: '100%',
-                width: `${progress}%`,
-                backgroundColor: event.color,
-                borderRadius: 2,
-                transition: 'width 1s linear',
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Edit form */}
-        {isEditing && (
-          <div
+      {/* Title with Zodiac */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+        {zodiac && (
+          <span
             style={{
-              marginTop: 16,
-              padding: 16,
-              backgroundColor: '#f9f9f9',
-              borderRadius: 6,
-              border: '1px solid #eee',
+              fontSize: 32,
+              opacity: 0.8,
             }}
+            title={zodiac.name}
           >
-            <input
-              type="text"
-              placeholder="Event name"
-              value={editTitle}
-              onChange={e => setEditTitle(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid #ddd',
-                borderRadius: 6,
-                marginBottom: 10,
-                fontSize: 14,
-                boxSizing: 'border-box',
-              }}
-            />
-            <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                <Calendar size={14} color="#999" />
-                <input
-                  type="date"
-                  value={editDate}
-                  onChange={e => setEditDate(e.target.value)}
-                  style={{
-                    flex: 1,
-                    padding: '10px 12px',
-                    border: '1px solid #ddd',
-                    borderRadius: 6,
-                    fontSize: 14,
-                  }}
-                />
-              </div>
-              <input
-                type="time"
-                value={editTime}
-                onChange={e => setEditTime(e.target.value)}
-                style={{
-                  padding: '10px 12px',
-                  border: '1px solid #ddd',
-                  borderRadius: 6,
-                  fontSize: 14,
-                  width: 120,
-                }}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-              {COLORS.map(color => (
-                <button
-                  key={color}
-                  onClick={() => setEditColor(color)}
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: '50%',
-                    backgroundColor: color,
-                    border: editColor === color ? '3px solid #333' : '3px solid transparent',
-                    cursor: 'pointer',
-                    transition: 'transform 0.1s ease',
-                    transform: editColor === color ? 'scale(1.1)' : 'scale(1)',
-                  }}
-                />
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={handleSave}
-                style={{
-                  flex: 1,
-                  padding: '10px 16px',
-                  backgroundColor: '#333',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                }}
-              >
-                <Check size={14} />
-                Save
-              </button>
-              <button
-                onClick={handleCancel}
-                style={{
-                  padding: '10px 16px',
-                  backgroundColor: '#fff',
-                  color: '#666',
-                  border: '1px solid #ddd',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  fontSize: 14,
-                }}
-              >
-                Cancel
-              </button>
-            </div>
+            {zodiac.symbol}
+          </span>
+        )}
+        <span
+          style={{
+            fontSize: 14,
+            fontWeight: 600,
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            color: event.color,
+          }}
+        >
+          {event.title}
+        </span>
+      </div>
+
+      {/* Giant Days Number */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'center',
+          padding: '24px 0',
+        }}
+      >
+        <span
+          style={{
+            fontSize: 140,
+            fontWeight: 200,
+            lineHeight: 1,
+            color: event.color,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {timeLeft.days}
+        </span>
+        <span
+          style={{
+            fontSize: 24,
+            fontWeight: 400,
+            color: '#666',
+            marginLeft: 12,
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+          }}
+        >
+          days
+        </span>
+      </div>
+
+      {/* Hours:Minutes:Seconds */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          gap: 24,
+          marginBottom: 24,
+        }}
+      >
+        <TimeUnit value={timeLeft.hours} label="hours" color={event.color} />
+        <span style={{ fontSize: 24, color: '#ccc', fontWeight: 200 }}>:</span>
+        <TimeUnit value={timeLeft.minutes} label="min" color="#999" />
+        <span style={{ fontSize: 24, color: '#ccc', fontWeight: 200 }}>:</span>
+        <TimeUnit value={timeLeft.seconds} label="sec" color="#ccc" />
+      </div>
+
+      {/* Target Date */}
+      <div
+        style={{
+          textAlign: 'center',
+          fontSize: 13,
+          color: '#666',
+          marginBottom: insight ? 16 : 0,
+        }}
+      >
+        {format(targetDate, 'EEEE, MMMM d, yyyy')}
+      </div>
+
+      {/* AI Insight */}
+      {insight && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            padding: '12px 20px',
+            background: 'rgba(255,255,255,0.6)',
+            borderRadius: 8,
+            marginTop: 8,
+          }}
+        >
+          <Sparkles size={14} color={event.color} />
+          <span style={{ fontSize: 13, color: '#555', fontStyle: 'italic' }}>
+            {insight}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TimeUnit({ value, label, color }: { value: number; label: string; color: string }) {
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ fontSize: 28, fontWeight: 300, color, fontVariantNumeric: 'tabular-nums' }}>
+        {String(value).padStart(2, '0')}
+      </div>
+      <div style={{ fontSize: 9, color: '#999', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+        {label}
+      </div>
+    </div>
+  );
+}
+
+// Compact Countdown Card for secondary countdowns
+function CompactCountdown({
+  event,
+  onRemove,
+  onEdit,
+  insight,
+}: {
+  event: CountdownEvent;
+  onRemove: () => void;
+  onEdit: () => void;
+  insight: string;
+}) {
+  const [timeLeft, setTimeLeft] = useState(getTimeRemaining(event.targetDate));
+  const targetDate = new Date(event.targetDate);
+  const eventType = getEventType(event.title);
+  const zodiac = eventType === 'birthday' ? getZodiac(targetDate) : null;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeLeft(getTimeRemaining(event.targetDate));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [event.targetDate]);
+
+  if (timeLeft.isPast) return null;
+
+  return (
+    <div
+      style={{
+        background: '#fff',
+        borderRadius: 12,
+        padding: 20,
+        border: '1px solid #eee',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 20,
+        marginBottom: 12,
+      }}
+    >
+      {/* Days circle */}
+      <div
+        style={{
+          width: 72,
+          height: 72,
+          borderRadius: '50%',
+          background: `linear-gradient(135deg, ${event.color}20 0%, ${event.color}10 100%)`,
+          border: `2px solid ${event.color}40`,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        <span style={{ fontSize: 28, fontWeight: 300, color: event.color, lineHeight: 1 }}>
+          {timeLeft.days}
+        </span>
+        <span style={{ fontSize: 8, color: '#999', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          days
+        </span>
+      </div>
+
+      {/* Event details */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          {zodiac && (
+            <span style={{ fontSize: 18 }} title={zodiac.name}>
+              {zodiac.symbol}
+            </span>
+          )}
+          <span style={{ fontSize: 15, fontWeight: 500, color: '#333' }}>
+            {event.title}
+          </span>
+        </div>
+        <div style={{ fontSize: 12, color: '#888', marginBottom: insight ? 8 : 0 }}>
+          {format(targetDate, 'MMM d, yyyy')}
+          <span style={{ margin: '0 8px', opacity: 0.5 }}>|</span>
+          {String(timeLeft.hours).padStart(2, '0')}:{String(timeLeft.minutes).padStart(2, '0')}:{String(timeLeft.seconds).padStart(2, '0')}
+        </div>
+        {insight && (
+          <div style={{ fontSize: 11, color: '#666', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Sparkles size={10} color={event.color} />
+            {insight}
           </div>
         )}
+      </div>
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button
+          onClick={onEdit}
+          style={{
+            background: '#f5f5f5',
+            border: 'none',
+            borderRadius: 6,
+            padding: 8,
+            cursor: 'pointer',
+          }}
+        >
+          <Pencil size={12} color="#666" />
+        </button>
+        <button
+          onClick={onRemove}
+          style={{
+            background: '#f5f5f5',
+            border: 'none',
+            borderRadius: 6,
+            padding: 8,
+            cursor: 'pointer',
+          }}
+        >
+          <X size={12} color="#666" />
+        </button>
       </div>
     </div>
   );
@@ -392,38 +475,67 @@ export function CountdownScreen() {
   const [events, setEvents] = useState<CountdownEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CountdownEvent | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('12:00');
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
+  const [insights, setInsights] = useState<{ [id: string]: string }>({});
 
-  // Load events from Supabase on mount
+  const groqApiKey = import.meta.env.VITE_GROQ_API_KEY || '';
+
   const loadEvents = async () => {
     setLoading(true);
     const data = await getCountdowns();
-    setEvents(data.map(fromSupabase).sort((a, b) =>
-      new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime()
-    ));
+    setEvents(
+      data.map(fromSupabase).sort((a, b) =>
+        new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime()
+      )
+    );
     setLoading(false);
   };
 
+  // Generate insights for all events
+  const loadInsights = useCallback(async () => {
+    if (!groqApiKey) return;
+
+    const activeEvents = events.filter(e => !isPast(new Date(e.targetDate)));
+    const newInsights: { [id: string]: string } = {};
+
+    // Only load insights for first 3 events to save API calls
+    for (const event of activeEvents.slice(0, 3)) {
+      if (!insights[event.id]) {
+        const timeLeft = getTimeRemaining(event.targetDate);
+        const insight = await generateCountdownInsight(event, timeLeft.days, groqApiKey);
+        if (insight) newInsights[event.id] = insight;
+      }
+    }
+
+    if (Object.keys(newInsights).length > 0) {
+      setInsights(prev => ({ ...prev, ...newInsights }));
+    }
+  }, [events, groqApiKey, insights]);
+
   useEffect(() => {
     loadEvents();
-
-    // Subscribe to realtime changes
     const unsubscribe = subscribeToCountdowns((data) => {
-      setEvents(data.map(fromSupabase).sort((a, b) =>
-        new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime()
-      ));
+      setEvents(
+        data.map(fromSupabase).sort((a, b) =>
+          new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime()
+        )
+      );
     });
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
+    return () => { if (unsubscribe) unsubscribe(); };
   }, []);
 
-  // Filter out past events
+  // Load insights when events change
+  useEffect(() => {
+    const timer = setTimeout(loadInsights, 1000);
+    return () => clearTimeout(timer);
+  }, [loadInsights]);
+
   const activeEvents = events.filter(e => !isPast(new Date(e.targetDate)));
+  const [heroEvent, ...otherEvents] = activeEvents;
 
   const handleAddEvent = async () => {
     if (!newTitle.trim() || !newDate) return;
@@ -436,53 +548,77 @@ export function CountdownScreen() {
       color: selectedColor,
     };
 
-    // Optimistically update UI
     setEvents(prev => [...prev, event].sort((a, b) =>
       new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime()
     ));
-
-    // Save to Supabase
     await addCountdown(toSupabase(event));
 
     setNewTitle('');
     setNewDate('');
     setNewTime('12:00');
     setShowAddForm(false);
+    setEditingEvent(null);
   };
 
-  const handleRemoveEvent = async (id: string) => {
-    // Optimistically update UI
-    setEvents(prev => prev.filter(e => e.id !== id));
-    // Remove from Supabase
-    await removeCountdown(id);
-  };
+  const handleUpdateEvent = async () => {
+    if (!editingEvent || !newTitle.trim() || !newDate) return;
 
-  const handleUpdateEvent = async (id: string, updates: Partial<Pick<CountdownEvent, 'title' | 'targetDate' | 'color'>>) => {
-    // Optimistically update UI
+    const targetDate = new Date(`${newDate}T${newTime}`);
+    const updates = {
+      title: newTitle.trim(),
+      targetDate: targetDate.toISOString(),
+      color: selectedColor,
+    };
+
     setEvents(prev => prev.map(e =>
-      e.id === id ? { ...e, ...updates } : e
+      e.id === editingEvent.id ? { ...e, ...updates } : e
     ).sort((a, b) =>
       new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime()
     ));
 
-    // Convert targetDate to target_date for Supabase
-    const supabaseUpdates: Record<string, string | undefined> = {};
-    if (updates.title) supabaseUpdates.title = updates.title;
-    if (updates.targetDate) supabaseUpdates.target_date = updates.targetDate;
-    if (updates.color) supabaseUpdates.color = updates.color;
+    await updateCountdown(editingEvent.id, {
+      title: updates.title,
+      target_date: updates.targetDate,
+      color: updates.color,
+    });
 
-    await updateCountdown(id, supabaseUpdates);
+    setNewTitle('');
+    setNewDate('');
+    setNewTime('12:00');
+    setShowAddForm(false);
+    setEditingEvent(null);
+  };
+
+  const handleRemoveEvent = async (id: string) => {
+    setEvents(prev => prev.filter(e => e.id !== id));
+    await removeCountdown(id);
+  };
+
+  const openEditForm = (event: CountdownEvent) => {
+    setEditingEvent(event);
+    setNewTitle(event.title);
+    setNewDate(format(new Date(event.targetDate), 'yyyy-MM-dd'));
+    setNewTime(format(new Date(event.targetDate), 'HH:mm'));
+    setSelectedColor(event.color);
+    setShowAddForm(true);
+  };
+
+  const closeForm = () => {
+    setShowAddForm(false);
+    setEditingEvent(null);
+    setNewTitle('');
+    setNewDate('');
+    setNewTime('12:00');
   };
 
   return (
     <div className="flex flex--col" style={{ height: '100%' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Clock size={20} color="#333" />
-          <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.1em', color: '#333' }}>COUNTDOWNS</span>
-          <span style={{ fontSize: 12, color: '#999' }}>
-            {activeEvents.length} {activeEvents.length === 1 ? 'event' : 'events'}
+          <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.1em', color: '#333' }}>
+            COUNTDOWNS
           </span>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -492,194 +628,170 @@ export function CountdownScreen() {
               background: '#fff',
               border: '1px solid #e5e5e5',
               borderRadius: 6,
-              cursor: 'pointer',
               padding: 8,
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              color: '#666',
             }}
-            title="Refresh"
           >
-            <RefreshCw size={14} className={loading ? 'spin' : ''} />
+            <RefreshCw size={14} color="#666" className={loading ? 'spin' : ''} />
           </button>
           <button
-            onClick={() => setShowAddForm(!showAddForm)}
+            onClick={() => { setShowAddForm(true); setEditingEvent(null); }}
             style={{
-              background: showAddForm ? '#333' : '#fff',
-              border: '1px solid #e5e5e5',
+              background: '#333',
+              border: 'none',
               borderRadius: 6,
-              cursor: 'pointer',
               padding: 8,
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              color: showAddForm ? '#fff' : '#666',
             }}
-            title="Add countdown"
           >
-            <Plus size={14} />
+            <Plus size={14} color="#fff" />
           </button>
         </div>
       </div>
 
-      {/* Add Form */}
+      {/* Add/Edit Form Modal */}
       {showAddForm && (
         <div
           style={{
-            padding: 20,
-            backgroundColor: '#fff',
-            marginBottom: 20,
-            borderRadius: 8,
-            border: '1px solid #eee',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
           }}
+          onClick={closeForm}
         >
-          {/* Common Events Dropdown */}
-          <div style={{ marginBottom: 12 }}>
-            <select
-              value=""
-              onChange={e => {
-                if (e.target.value) setNewTitle(e.target.value);
-              }}
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: 12,
+              padding: 24,
+              width: 360,
+              maxWidth: '90%',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 20px', fontSize: 18, fontWeight: 600 }}>
+              {editingEvent ? 'Edit Countdown' : 'New Countdown'}
+            </h3>
+
+            <input
+              type="text"
+              placeholder="Event name (e.g., Ella's Birthday)"
+              value={newTitle}
+              onChange={e => setNewTitle(e.target.value)}
               style={{
                 width: '100%',
                 padding: '12px 14px',
                 border: '1px solid #ddd',
-                borderRadius: 6,
+                borderRadius: 8,
+                marginBottom: 12,
                 fontSize: 14,
-                backgroundColor: '#f9f9f9',
-                color: '#666',
-                cursor: 'pointer',
-              }}
-            >
-              <option value="">Quick select event...</option>
-              {COMMON_EVENTS.map(event => (
-                <option key={event.value} value={event.value}>
-                  {event.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Custom event name */}
-          <input
-            type="text"
-            placeholder="Or type custom event name"
-            value={newTitle}
-            onChange={e => setNewTitle(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px 14px',
-              border: '1px solid #ddd',
-              borderRadius: 6,
-              marginBottom: 12,
-              fontSize: 14,
-              boxSizing: 'border-box',
-            }}
-          />
-
-          {/* Date picker */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <Calendar size={14} color="#999" />
-            <input
-              type="date"
-              value={newDate}
-              onChange={e => setNewDate(e.target.value)}
-              style={{
-                flex: 1,
-                padding: '12px 14px',
-                border: '1px solid #ddd',
-                borderRadius: 6,
-                fontSize: 14,
+                boxSizing: 'border-box',
               }}
             />
-          </div>
 
-          {/* Time presets */}
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 11, color: '#999', marginBottom: 8, letterSpacing: '0.05em' }}>TIME OF DAY</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {TIME_PRESETS.map(preset => (
-                <button
-                  key={preset.value}
-                  onClick={() => setNewTime(preset.value)}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                <Calendar size={16} color="#999" />
+                <input
+                  type="date"
+                  value={newDate}
+                  onChange={e => setNewDate(e.target.value)}
                   style={{
-                    padding: '8px 12px',
-                    fontSize: 12,
-                    border: newTime === preset.value ? '1px solid #333' : '1px solid #ddd',
-                    borderRadius: 4,
-                    backgroundColor: newTime === preset.value ? '#333' : '#fff',
-                    color: newTime === preset.value ? '#fff' : '#666',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
+                    flex: 1,
+                    padding: '12px 14px',
+                    border: '1px solid #ddd',
+                    borderRadius: 8,
+                    fontSize: 14,
                   }}
-                >
-                  {preset.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Custom time input */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-            <Clock size={14} color="#999" />
-            <input
-              type="time"
-              value={newTime}
-              onChange={e => setNewTime(e.target.value)}
-              style={{
-                padding: '12px 14px',
-                border: '1px solid #ddd',
-                borderRadius: 6,
-                fontSize: 14,
-                flex: 1,
-              }}
-            />
-            <span style={{ fontSize: 12, color: '#999' }}>or pick exact time</span>
-          </div>
-
-          {/* Color picker */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-            <span style={{ fontSize: 12, color: '#999' }}>Color:</span>
-            {COLORS.map(color => (
-              <button
-                key={color}
-                onClick={() => setSelectedColor(color)}
+                />
+              </div>
+              <input
+                type="time"
+                value={newTime}
+                onChange={e => setNewTime(e.target.value)}
                 style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: '50%',
-                  backgroundColor: color,
-                  border: selectedColor === color ? '3px solid #333' : '3px solid transparent',
-                  cursor: 'pointer',
-                  transition: 'transform 0.1s ease',
-                  transform: selectedColor === color ? 'scale(1.1)' : 'scale(1)',
+                  padding: '12px 14px',
+                  border: '1px solid #ddd',
+                  borderRadius: 8,
+                  fontSize: 14,
+                  width: 110,
                 }}
               />
-            ))}
-          </div>
+            </div>
 
-          {/* Add button */}
-          <button
-            onClick={handleAddEvent}
-            disabled={!newTitle.trim() || !newDate}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              backgroundColor: !newTitle.trim() || !newDate ? '#ccc' : '#333',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 6,
-              cursor: !newTitle.trim() || !newDate ? 'not-allowed' : 'pointer',
-              fontSize: 14,
-              fontWeight: 500,
-            }}
-          >
-            Add Countdown
-          </button>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+              {COLORS.map(color => (
+                <button
+                  key={color}
+                  onClick={() => setSelectedColor(color)}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    backgroundColor: color,
+                    border: selectedColor === color ? '3px solid #333' : '3px solid transparent',
+                    cursor: 'pointer',
+                    transform: selectedColor === color ? 'scale(1.1)' : 'scale(1)',
+                    transition: 'transform 0.15s ease',
+                  }}
+                />
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={closeForm}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  border: '1px solid #ddd',
+                  borderRadius: 8,
+                  background: '#fff',
+                  cursor: 'pointer',
+                  fontSize: 14,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={editingEvent ? handleUpdateEvent : handleAddEvent}
+                disabled={!newTitle.trim() || !newDate}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  border: 'none',
+                  borderRadius: 8,
+                  background: !newTitle.trim() || !newDate ? '#ccc' : '#333',
+                  color: '#fff',
+                  cursor: !newTitle.trim() || !newDate ? 'not-allowed' : 'pointer',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}
+              >
+                <Check size={16} />
+                {editingEvent ? 'Save' : 'Add'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Events list */}
+      {/* Content */}
       {activeEvents.length === 0 ? (
         <div
           style={{
@@ -688,29 +800,71 @@ export function CountdownScreen() {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 8,
+            gap: 12,
           }}
         >
-          <Clock size={32} color="#ddd" />
-          <span style={{ color: '#999', fontSize: 14 }}>
-            {loading ? 'Loading...' : 'No upcoming events'}
+          <Clock size={48} color="#ddd" />
+          <span style={{ color: '#999', fontSize: 15 }}>
+            {loading ? 'Loading...' : 'No upcoming countdowns'}
           </span>
-          {!loading && (
-            <span style={{ color: '#ccc', fontSize: 12 }}>
-              Click + to add a countdown
-            </span>
-          )}
+          <button
+            onClick={() => setShowAddForm(true)}
+            style={{
+              marginTop: 8,
+              padding: '10px 20px',
+              background: '#333',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontSize: 13,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <Plus size={14} />
+            Add Countdown
+          </button>
         </div>
       ) : (
         <div style={{ flex: 1, overflow: 'auto' }}>
-          {activeEvents.map(event => (
-            <CountdownCard
-              key={event.id}
-              event={event}
-              onRemove={() => handleRemoveEvent(event.id)}
-              onUpdate={(updates) => handleUpdateEvent(event.id, updates)}
+          {/* Hero countdown */}
+          {heroEvent && (
+            <HeroCountdown
+              event={heroEvent}
+              onRemove={() => handleRemoveEvent(heroEvent.id)}
+              onEdit={() => openEditForm(heroEvent)}
+              insight={insights[heroEvent.id] || ''}
             />
-          ))}
+          )}
+
+          {/* Other countdowns */}
+          {otherEvents.length > 0 && (
+            <div>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: '0.15em',
+                  color: '#999',
+                  marginBottom: 12,
+                  textTransform: 'uppercase',
+                }}
+              >
+                Coming Up
+              </div>
+              {otherEvents.map(event => (
+                <CompactCountdown
+                  key={event.id}
+                  event={event}
+                  onRemove={() => handleRemoveEvent(event.id)}
+                  onEdit={() => openEditForm(event)}
+                  insight={insights[event.id] || ''}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
