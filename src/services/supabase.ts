@@ -402,3 +402,234 @@ export function subscribeToCalendarEvents(callback: (events: CalendarEventRecord
     supabase.removeChannel(channel);
   };
 }
+
+// ============ DAILY HABITS ============
+
+export interface DailyHabit {
+  id: string;
+  name: string;
+  icon: string;
+  completed: boolean;
+  completedAt?: string; // ISO timestamp
+}
+
+export interface DailyHabitsRecord {
+  date: string;
+  habits: DailyHabit[];
+}
+
+const DEFAULT_HABITS: Omit<DailyHabit, 'completed' | 'completedAt'>[] = [
+  { id: 'gym', name: 'Gym / Workout', icon: 'dumbbell' },
+  { id: 'ride', name: 'Bike Ride', icon: 'bike' },
+  { id: 'protein', name: 'High Protein Meal', icon: 'beef' },
+  { id: 'veggies', name: 'Eat Vegetables', icon: 'salad' },
+  { id: 'water', name: 'Drink 2L Water', icon: 'droplet' },
+  { id: 'sleep', name: '7+ Hours Sleep', icon: 'moon' },
+];
+
+// Get today's date as YYYY-MM-DD
+function getTodayString(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+// Get default habits (fresh for a new day)
+function getDefaultHabits(): DailyHabit[] {
+  return DEFAULT_HABITS.map(h => ({
+    ...h,
+    completed: false,
+    completedAt: undefined,
+  }));
+}
+
+// Get habits for today (async - from Supabase)
+export async function getDailyHabits(): Promise<DailyHabit[]> {
+  const today = getTodayString();
+
+  if (!supabase) {
+    // Fallback to localStorage
+    const stored = localStorage.getItem(`habits-${today}`);
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return getDefaultHabits();
+      }
+    }
+    return getDefaultHabits();
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('daily_habits')
+      .select('habits')
+      .eq('date', today)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // No row found - return defaults
+        return getDefaultHabits();
+      }
+      throw error;
+    }
+
+    return data?.habits || getDefaultHabits();
+  } catch (e) {
+    console.error('Failed to fetch daily habits:', e);
+    // Fallback to localStorage
+    const stored = localStorage.getItem(`habits-${today}`);
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return getDefaultHabits();
+      }
+    }
+    return getDefaultHabits();
+  }
+}
+
+// Toggle a habit (async - saves to Supabase)
+export async function toggleHabit(habitId: string, currentHabits: DailyHabit[]): Promise<DailyHabit[]> {
+  const today = getTodayString();
+  const now = new Date().toISOString();
+
+  const updated = currentHabits.map(h => {
+    if (h.id === habitId) {
+      return {
+        ...h,
+        completed: !h.completed,
+        completedAt: !h.completed ? now : undefined,
+      };
+    }
+    return h;
+  });
+
+  if (!supabase) {
+    // Fallback to localStorage
+    localStorage.setItem(`habits-${today}`, JSON.stringify(updated));
+    return updated;
+  }
+
+  try {
+    // Upsert the habits for today
+    const { error } = await supabase
+      .from('daily_habits')
+      .upsert({
+        date: today,
+        habits: updated,
+      }, {
+        onConflict: 'date',
+      });
+
+    if (error) throw error;
+
+    // Also save to localStorage as backup
+    localStorage.setItem(`habits-${today}`, JSON.stringify(updated));
+  } catch (e) {
+    console.error('Failed to save habit toggle:', e);
+    // Still save to localStorage
+    localStorage.setItem(`habits-${today}`, JSON.stringify(updated));
+  }
+
+  return updated;
+}
+
+// Subscribe to habit changes (realtime)
+export function subscribeToHabits(callback: (habits: DailyHabit[]) => void): (() => void) | null {
+  if (!supabase) {
+    return null;
+  }
+
+  const today = getTodayString();
+
+  const channel = supabase
+    .channel('daily-habits-changes')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'daily_habits', filter: `date=eq.${today}` },
+      async () => {
+        const habits = await getDailyHabits();
+        callback(habits);
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
+// Get habit completion stats for the week (async)
+export async function getWeeklyHabitStats(): Promise<{ date: string; completed: number; total: number }[]> {
+  const stats = [];
+  const today = new Date();
+
+  if (!supabase) {
+    // Fallback to localStorage
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+
+      const stored = localStorage.getItem(`habits-${dateStr}`);
+      if (stored) {
+        try {
+          const habits = JSON.parse(stored) as DailyHabit[];
+          stats.push({
+            date: dateStr,
+            completed: habits.filter(h => h.completed).length,
+            total: habits.length,
+          });
+        } catch {
+          stats.push({ date: dateStr, completed: 0, total: DEFAULT_HABITS.length });
+        }
+      } else {
+        stats.push({ date: dateStr, completed: 0, total: DEFAULT_HABITS.length });
+      }
+    }
+    return stats;
+  }
+
+  try {
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 6);
+
+    const { data, error } = await supabase
+      .from('daily_habits')
+      .select('date, habits')
+      .gte('date', weekAgo.toISOString().split('T')[0])
+      .lte('date', today.toISOString().split('T')[0]);
+
+    if (error) throw error;
+
+    // Build map from data
+    const habitsByDate: { [date: string]: DailyHabit[] } = {};
+    data?.forEach((row: { date: string; habits: DailyHabit[] }) => {
+      habitsByDate[row.date] = row.habits;
+    });
+
+    // Generate stats for each day
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+
+      const habits = habitsByDate[dateStr];
+      if (habits) {
+        stats.push({
+          date: dateStr,
+          completed: habits.filter(h => h.completed).length,
+          total: habits.length,
+        });
+      } else {
+        stats.push({ date: dateStr, completed: 0, total: DEFAULT_HABITS.length });
+      }
+    }
+
+    return stats;
+  } catch (e) {
+    console.error('Failed to fetch weekly habit stats:', e);
+    return [];
+  }
+}

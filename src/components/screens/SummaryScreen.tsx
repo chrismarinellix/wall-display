@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Dumbbell, Bike, Beef, Salad, Droplet, Moon, Check } from 'lucide-react';
 import { useWeather } from '../../hooks/useWeather';
 import { useCalendar } from '../../hooks/useCalendar';
 import { useStocks } from '../../hooks/useStocks';
 import { useNews } from '../../hooks/useNews';
 import { generateDailySummary } from '../../services/aiService';
 import { weatherCodeToDescription } from '../../types/weather';
+import { getDailyHabits, toggleHabit, subscribeToHabits, DailyHabit } from '../../services/supabase';
 
 interface Summary {
   greeting: string;
@@ -20,6 +22,40 @@ export function SummaryScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [habits, setHabits] = useState<DailyHabit[]>([]);
+
+  // Load habits from Supabase on mount
+  useEffect(() => {
+    getDailyHabits().then(setHabits);
+  }, []);
+
+  // Subscribe to realtime habit changes
+  useEffect(() => {
+    const unsubscribe = subscribeToHabits((updatedHabits) => {
+      setHabits(updatedHabits);
+    });
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  const handleHabitToggle = async (habitId: string) => {
+    const updated = await toggleHabit(habitId, habits);
+    setHabits(updated);
+  };
+
+  const getHabitIcon = (icon: string) => {
+    const iconProps = { size: 14, strokeWidth: 1.5 };
+    switch (icon) {
+      case 'dumbbell': return <Dumbbell {...iconProps} />;
+      case 'bike': return <Bike {...iconProps} />;
+      case 'beef': return <Beef {...iconProps} />;
+      case 'salad': return <Salad {...iconProps} />;
+      case 'droplet': return <Droplet {...iconProps} />;
+      case 'moon': return <Moon {...iconProps} />;
+      default: return <Check {...iconProps} />;
+    }
+  };
 
   const { current: weather, forecast } = useWeather();
   const { events } = useCalendar();
@@ -346,11 +382,14 @@ export function SummaryScreen() {
           </div>
         </div>
 
-        {/* Right Column - Headlines */}
+        {/* Right Column - Headlines & Habits */}
         <div
           style={{
             borderLeft: '1px solid #ddd',
             padding: '20px 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 20,
           }}
         >
           <NewspaperSection title="Headlines">
@@ -358,6 +397,81 @@ export function SummaryScreen() {
               {summary?.newsSummary || 'News loading...'}
             </p>
           </NewspaperSection>
+
+          <div style={{ borderTop: '1px solid #ddd', paddingTop: 20 }}>
+            <NewspaperSection title="Daily Habits">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {habits.map((habit) => (
+                  <div
+                    key={habit.id}
+                    onClick={() => handleHabitToggle(habit.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '8px 10px',
+                      background: habit.completed ? '#f0f5f0' : '#fafafa',
+                      border: habit.completed ? '1px solid #c4d4c4' : '1px solid #eee',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    {/* Checkbox */}
+                    <div
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: 3,
+                        border: habit.completed ? '2px solid #5a8a5a' : '2px solid #ccc',
+                        background: habit.completed ? '#5a8a5a' : '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {habit.completed && <Check size={12} color="#fff" strokeWidth={3} />}
+                    </div>
+
+                    {/* Icon */}
+                    <span style={{ color: habit.completed ? '#5a8a5a' : '#666', flexShrink: 0 }}>
+                      {getHabitIcon(habit.icon)}
+                    </span>
+
+                    {/* Label */}
+                    <span
+                      style={{
+                        flex: 1,
+                        fontSize: 12,
+                        color: habit.completed ? '#888' : '#333',
+                        textDecoration: habit.completed ? 'line-through' : 'none',
+                        fontFamily: 'Georgia, serif',
+                      }}
+                    >
+                      {habit.name}
+                    </span>
+
+                    {/* Time completed */}
+                    {habit.completed && habit.completedAt && (
+                      <span
+                        style={{
+                          fontSize: 9,
+                          color: '#999',
+                          letterSpacing: '0.05em',
+                        }}
+                      >
+                        {new Date(habit.completedAt).toLocaleTimeString('en-US', {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </NewspaperSection>
+          </div>
         </div>
       </div>
 

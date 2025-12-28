@@ -658,9 +658,33 @@ export function CalendarScreen() {
                 }}
               />
             </div>
-            <div style={{ marginBottom: 12, fontSize: 14, color: '#666' }}>
-              {format(selectedDate, 'EEEE, MMMM d, yyyy')}
-            </div>
+            {/* Date display/picker */}
+            {editingEvent ? (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, color: '#999', marginBottom: 8, letterSpacing: '0.05em' }}>DATE</div>
+                <input
+                  type="date"
+                  value={format(selectedDate, 'yyyy-MM-dd')}
+                  onChange={(e) => {
+                    const newDate = new Date(e.target.value + 'T12:00:00');
+                    setSelectedDate(newDate);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    fontSize: 14,
+                    border: '1px solid #ddd',
+                    borderRadius: 4,
+                    boxSizing: 'border-box',
+                    cursor: 'pointer',
+                  }}
+                />
+              </div>
+            ) : (
+              <div style={{ marginBottom: 12, fontSize: 14, color: '#666' }}>
+                {format(selectedDate, 'EEEE, MMMM d, yyyy')}
+              </div>
+            )}
 
             {/* Common Events Dropdown */}
             {!editingEvent && (
