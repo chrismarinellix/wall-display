@@ -1,19 +1,43 @@
 import { useState, useEffect, useMemo } from 'react';
 import { quotes } from '../../data/quotes';
 
-// Abstract imagery keywords for inspirational quotes
-const imageKeywords = [
-  'mountain,landscape,minimal',
-  'ocean,horizon,calm',
-  'sunrise,sky,hope',
-  'forest,nature,peaceful',
-  'stars,night,universe',
-  'clouds,sky,serene',
-  'desert,minimal,vast',
-  'lake,reflection,still',
-  'path,journey,road',
-  'light,abstract,glow',
-];
+// Extract keywords from quote text for image search
+function extractKeywords(text: string): string {
+  // Common inspirational themes mapped to image-friendly keywords
+  const themeKeywords: Record<string, string> = {
+    'dream': 'sky,clouds',
+    'success': 'mountain,summit',
+    'love': 'heart,sunset',
+    'life': 'nature,path',
+    'time': 'clock,hourglass',
+    'change': 'butterfly,transformation',
+    'hope': 'sunrise,light',
+    'courage': 'lion,strength',
+    'wisdom': 'books,library',
+    'happiness': 'joy,sunshine',
+    'peace': 'calm,water',
+    'future': 'horizon,road',
+    'mind': 'brain,thinking',
+    'heart': 'love,warmth',
+    'journey': 'path,adventure',
+    'nature': 'forest,trees',
+    'strength': 'rock,mountain',
+    'beauty': 'flower,garden',
+    'freedom': 'bird,sky',
+    'faith': 'light,hope',
+  };
+
+  const lowerText = text.toLowerCase();
+
+  for (const [keyword, imageTerms] of Object.entries(themeKeywords)) {
+    if (lowerText.includes(keyword)) {
+      return imageTerms;
+    }
+  }
+
+  // Default abstract/inspirational keywords
+  return 'nature,minimal,calm';
+}
 
 function getRandomQuote() {
   const index = Math.floor(Math.random() * quotes.length);
@@ -22,17 +46,20 @@ function getRandomQuote() {
 
 export function QuotesScreen() {
   const [quoteData, setQuoteData] = useState(getRandomQuote);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
-  // Get a consistent but varied image based on quote index
+  // Get image based on quote content using Loremflickr
   const imageUrl = useMemo(() => {
-    const keyword = imageKeywords[quoteData.index % imageKeywords.length];
-    // Use Unsplash Source (free, no API key needed)
-    return `https://source.unsplash.com/800x400/?${keyword}&sig=${quoteData.index}`;
-  }, [quoteData.index]);
+    const keywords = extractKeywords(quoteData.quote.text);
+    // Loremflickr allows keyword-based image search
+    // Add index to get different images for same keywords
+    return `https://loremflickr.com/800/400/${keywords}?lock=${quoteData.index}`;
+  }, [quoteData.index, quoteData.quote.text]);
 
   // Get a new random quote each time the component mounts (screen shown)
   useEffect(() => {
     setQuoteData(getRandomQuote());
+    setImageLoaded(false);
   }, []);
 
   return (
@@ -61,12 +88,14 @@ export function QuotesScreen() {
         <img
           src={imageUrl}
           alt=""
+          onLoad={() => setImageLoaded(true)}
           style={{
             width: '100%',
             height: '100%',
             objectFit: 'cover',
             filter: 'grayscale(100%) contrast(1.1)',
-            opacity: 0.9,
+            opacity: imageLoaded ? 0.85 : 0,
+            transition: 'opacity 0.5s ease',
           }}
         />
       </div>

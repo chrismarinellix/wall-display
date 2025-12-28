@@ -1,4 +1,4 @@
-import { useRef, useState, TouchEvent } from 'react';
+import { useRef, useState, useEffect, useCallback, TouchEvent } from 'react';
 import { format } from 'date-fns';
 import { useScreen } from '../../contexts/ScreenContext';
 import { useSettings } from '../../contexts/SettingsContext';
@@ -10,6 +10,7 @@ import { JapaneseScreen } from '../screens/JapaneseScreen';
 import { CalendarScreen } from '../screens/CalendarScreen';
 import { CountdownScreen } from '../screens/CountdownScreen';
 import { HomeAssistantScreen } from '../screens/HomeAssistantScreen';
+import { MomentsScreen } from '../screens/MomentsScreen';
 import { ScreenType } from '../../types/settings';
 import {
   Cloud,
@@ -21,6 +22,7 @@ import {
   Clock,
   Home,
   Pause,
+  Image,
 } from 'lucide-react';
 
 const screens: Record<ScreenType, React.ComponentType> = {
@@ -32,6 +34,7 @@ const screens: Record<ScreenType, React.ComponentType> = {
   calendar: CalendarScreen,
   countdown: CountdownScreen,
   homeassistant: HomeAssistantScreen,
+  moments: MomentsScreen,
 };
 
 const screenInfo: Record<ScreenType, { title: string; shortTitle: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }> = {
@@ -43,6 +46,7 @@ const screenInfo: Record<ScreenType, { title: string; shortTitle: string; Icon: 
   calendar: { title: 'Calendar', shortTitle: 'Cal', Icon: Calendar },
   countdown: { title: 'Countdown', shortTitle: 'Timer', Icon: Clock },
   homeassistant: { title: 'Home', shortTitle: 'Home', Icon: Home },
+  moments: { title: 'Moments', shortTitle: 'History', Icon: Image },
 };
 
 export function ScreenContainer() {
@@ -50,13 +54,45 @@ export function ScreenContainer() {
   const { settings } = useSettings();
   const [navExpanded, setNavExpanded] = useState(false);
   const [hoveredScreen, setHoveredScreen] = useState<ScreenType | null>(null);
+  const [dockVisible, setDockVisible] = useState(true);
+  const hideTimerRef = useRef<number | null>(null);
   const ScreenComponent = screens[currentScreen];
   const { title, Icon } = screenInfo[currentScreen];
 
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
 
+  // Hide dock after 3 seconds
+  const startHideTimer = useCallback(() => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+    }
+    hideTimerRef.current = window.setTimeout(() => {
+      setDockVisible(false);
+      setNavExpanded(false);
+    }, 3000);
+  }, []);
+
+  // Show dock and reset timer
+  const showDock = useCallback(() => {
+    setDockVisible(true);
+    startHideTimer();
+  }, [startHideTimer]);
+
+  // Start hide timer on mount
+  useEffect(() => {
+    startHideTimer();
+    return () => {
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+      }
+    };
+  }, [startHideTimer]);
+
   const handleTouchStart = (e: TouchEvent) => {
+    // Show dock on any touch
+    showDock();
+
     const target = e.target as HTMLElement;
     if (target.closest('button, input, [role="button"], .nav-dock')) {
       return;
@@ -85,6 +121,7 @@ export function ScreenContainer() {
       className="screen kiosk"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      onClick={showDock}
     >
       <div className="view">
         <div className="layout">
@@ -92,31 +129,33 @@ export function ScreenContainer() {
         </div>
       </div>
 
-      {/* Floating Navigation Dock - aligned with bottom */}
+      {/* Floating Navigation Dock - above title bar */}
       <div
         className="nav-dock"
         style={{
           position: 'absolute',
-          bottom: 0,
+          bottom: 50,
           left: '50%',
           transform: 'translateX(-50%)',
           display: 'flex',
           alignItems: 'center',
           gap: 2,
-          padding: '8px 12px',
-          background: 'rgba(255, 255, 255, 0.9)',
+          padding: '6px 10px',
+          background: 'rgba(255, 255, 255, 0.85)',
           backdropFilter: 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)',
-          borderRadius: '12px 12px 0 0',
-          boxShadow: '0 -1px 8px rgba(0, 0, 0, 0.04)',
-          borderTop: '1px solid rgba(0, 0, 0, 0.06)',
-          borderLeft: '1px solid rgba(0, 0, 0, 0.06)',
-          borderRight: '1px solid rgba(0, 0, 0, 0.06)',
+          borderRadius: 12,
+          boxShadow: '0 1px 8px rgba(0, 0, 0, 0.06)',
+          border: '1px solid rgba(0, 0, 0, 0.06)',
           zIndex: 100,
-          opacity: navExpanded ? 1 : 0.6,
+          opacity: dockVisible ? (navExpanded ? 1 : 0.6) : 0,
+          pointerEvents: dockVisible ? 'auto' : 'none',
           transition: 'opacity 0.3s ease',
         }}
-        onMouseEnter={() => setNavExpanded(true)}
+        onMouseEnter={() => {
+          showDock();
+          setNavExpanded(true);
+        }}
         onMouseLeave={() => {
           setNavExpanded(false);
           setHoveredScreen(null);
@@ -163,7 +202,7 @@ export function ScreenContainer() {
                 borderRadius: 10,
                 cursor: 'pointer',
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                color: isActive ? '#000' : '#333',
+                color: isActive ? '#000' : '#222',
                 minWidth: 30,
                 height: 30,
               }}
