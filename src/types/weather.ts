@@ -16,13 +16,14 @@ export interface CurrentWeather {
 }
 
 // AQI levels based on European Air Quality Index
+// Using monochrome colors - darker = worse air quality
 export function getAqiInfo(aqi: number): { label: string; color: string } {
-  if (aqi <= 20) return { label: 'Good', color: '#4ade80' };
-  if (aqi <= 40) return { label: 'Fair', color: '#a3e635' };
-  if (aqi <= 60) return { label: 'Moderate', color: '#facc15' };
-  if (aqi <= 80) return { label: 'Poor', color: '#fb923c' };
-  if (aqi <= 100) return { label: 'Very Poor', color: '#ef4444' };
-  return { label: 'Hazardous', color: '#991b1b' };
+  if (aqi <= 20) return { label: 'Good', color: '#888' };
+  if (aqi <= 40) return { label: 'Fair', color: '#666' };
+  if (aqi <= 60) return { label: 'Moderate', color: '#555' };
+  if (aqi <= 80) return { label: 'Poor', color: '#333' };
+  if (aqi <= 100) return { label: 'Very Poor', color: '#222' };
+  return { label: 'Hazardous', color: '#000' };
 }
 
 export interface WeatherForecast {

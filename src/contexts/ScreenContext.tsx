@@ -22,7 +22,6 @@ const SCREEN_DURATION_MULTIPLIERS: Record<ScreenType, number> = {
   pomodoro: 1,     // doesn't auto-cycle anyway
   japanese: 1.3,   // 39s - time to read and understand
   calendar: 1.5,   // 45s - time to read events
-  location: 0.8,   // 24s - quick glance at location
   countdown: 1.2,  // 36s - time to see countdowns
   homeassistant: 1, // 30s - quick status check
 };
@@ -63,14 +62,14 @@ export function ScreenProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer);
   }, [isPaused, settings.cycleInterval, nextScreen, currentScreen]);
 
-  // Pause on user interaction, resume after 60s
+  // Pause on user interaction, resume after 30s
   useEffect(() => {
     let resumeTimer: number;
 
     const handleInteraction = () => {
       setIsPaused(true);
       clearTimeout(resumeTimer);
-      resumeTimer = window.setTimeout(() => setIsPaused(false), 60000);
+      resumeTimer = window.setTimeout(() => setIsPaused(false), 30000);
     };
 
     window.addEventListener('click', handleInteraction);

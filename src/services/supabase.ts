@@ -263,3 +263,96 @@ export function subscribeToCountdowns(callback: (events: CountdownEvent[]) => vo
     supabase.removeChannel(channel);
   };
 }
+
+// ============ CALENDAR EVENTS ============
+
+export interface CalendarEventRecord {
+  id: string;
+  title: string;
+  start_date: string;
+  end_date?: string;
+  all_day: boolean;
+  location?: string;
+  created_at?: string;
+}
+
+// Get all calendar events
+export async function getCalendarEvents(): Promise<CalendarEventRecord[]> {
+  if (!supabase) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .order('start_date', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  } catch (e) {
+    console.error('Failed to fetch calendar events:', e);
+    return [];
+  }
+}
+
+// Add a calendar event
+export async function addCalendarEvent(event: CalendarEventRecord): Promise<void> {
+  if (!supabase) {
+    console.log('Supabase not configured');
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('calendar_events')
+      .insert(event);
+
+    if (error) throw error;
+    console.log('Added calendar event:', event.title);
+  } catch (e) {
+    console.error('Failed to add calendar event:', e);
+  }
+}
+
+// Remove a calendar event
+export async function removeCalendarEvent(id: string): Promise<void> {
+  if (!supabase) {
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('calendar_events')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    console.log('Removed calendar event:', id);
+  } catch (e) {
+    console.error('Failed to remove calendar event:', e);
+  }
+}
+
+// Subscribe to calendar event changes
+export function subscribeToCalendarEvents(callback: (events: CalendarEventRecord[]) => void): (() => void) | null {
+  if (!supabase) {
+    return null;
+  }
+
+  const channel = supabase
+    .channel('calendar-events-changes')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'calendar_events' },
+      async () => {
+        const events = await getCalendarEvents();
+        callback(events);
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}

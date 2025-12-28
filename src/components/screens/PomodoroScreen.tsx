@@ -104,16 +104,26 @@ function saveLocalHistory(history: PomodoroHistory) {
   localStorage.setItem('pomodoro-history', JSON.stringify(history));
 }
 
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function getTodayKey(): string {
-  return new Date().toISOString().split('T')[0];
+  return formatLocalDate(new Date());
 }
 
 function getLast60Days(): string[] {
   const days: string[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Normalize to start of day
+
   for (let i = 59; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    days.push(date.toISOString().split('T')[0]);
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    days.push(formatLocalDate(date));
   }
   return days;
 }
@@ -373,50 +383,79 @@ export function PomodoroScreen() {
     };
   }, [isRunning, savePartialMinutes]);
 
-  // Timer tick
+  // Store current values in refs to avoid effect dependency issues
+  const timerStateRef = useRef(timerState);
+  const historyRef = useRef(history);
+  const configRef = useRef(config);
+  const timesRef = useRef(times);
+  const soundEnabledRef = useRef(soundEnabled);
+
+  useEffect(() => { timerStateRef.current = timerState; }, [timerState]);
+  useEffect(() => { historyRef.current = history; }, [history]);
+  useEffect(() => { configRef.current = config; }, [config]);
+  useEffect(() => { timesRef.current = times; }, [times]);
+  useEffect(() => { soundEnabledRef.current = soundEnabled; }, [soundEnabled]);
+
+  // Timer tick - minimal dependencies for stable interval
   useEffect(() => {
     if (!isRunning) return;
 
     const interval = setInterval(() => {
-      const elapsed = (Date.now() - timerState.startedAt!) / 1000;
-      const remaining = Math.max(0, timerState.totalDuration - elapsed);
+      const state = timerStateRef.current;
+      const cfg = configRef.current;
+      const t = timesRef.current;
+      const hist = historyRef.current;
+      const sound = soundEnabledRef.current;
+
+      if (!state.startedAt) return;
+
+      const elapsed = (Date.now() - state.startedAt) / 1000;
+      const remaining = Math.max(0, state.totalDuration - elapsed);
       setTimeLeft(remaining);
 
-      // Save partial minutes every minute
+      // Save partial minutes every minute (using ref to avoid recreating interval)
       const elapsedMinutes = Math.floor(elapsed / 60);
-      if (elapsedMinutes > lastSaveRef.current && timerState.mode === 'work') {
+      if (elapsedMinutes > lastSaveRef.current && state.mode === 'work') {
         lastSaveRef.current = elapsedMinutes;
-        savePartialMinutes();
+        // Inline the save logic to avoid dependency on callback
+        const todayKey = getTodayKey();
+        const minutesToSave = elapsedMinutes - state.lastSavedMinute;
+        if (minutesToSave > 0) {
+          const newHistory = { ...hist };
+          if (!newHistory[todayKey]) {
+            newHistory[todayKey] = { count: 0, minutes: 0 };
+          }
+          newHistory[todayKey].minutes += minutesToSave;
+          setHistory(newHistory);
+          saveLocalHistory(newHistory);
+          if (supabase) {
+            addMinutes(todayKey, minutesToSave);
+          }
+          setTimerState(prev => ({ ...prev, lastSavedMinute: elapsedMinutes }));
+        }
       }
 
       // Timer complete
       if (remaining <= 0) {
-        if (soundEnabled) playNotificationSound();
+        if (sound) playNotificationSound();
 
-        if (timerState.mode === 'work') {
-          const newCount = timerState.completedPomodoros + 1;
-          const isLongBreak = newCount % config.sessionsUntilLongBreak === 0;
+        if (state.mode === 'work') {
+          const newCount = state.completedPomodoros + 1;
+          const isLongBreak = newCount % cfg.sessionsUntilLongBreak === 0;
           const nextMode = isLongBreak ? 'longBreak' : 'shortBreak';
-          const nextDuration = isLongBreak ? times.longBreak : times.shortBreak;
+          const nextDuration = isLongBreak ? t.longBreak : t.shortBreak;
 
           // Record completed pomodoro
           const todayKey = getTodayKey();
-          console.log(`[Pomodoro] Session complete! Recording for ${todayKey}`);
-          const newHistory = { ...history };
+          const newHistory = { ...hist };
           if (!newHistory[todayKey]) {
             newHistory[todayKey] = { count: 0, minutes: 0 };
           }
           newHistory[todayKey].count += 1;
-          console.log(`[Pomodoro] New count for ${todayKey}: ${newHistory[todayKey].count}`);
           setHistory(newHistory);
           saveLocalHistory(newHistory);
           if (supabase) {
-            console.log(`[Pomodoro] Incrementing count in Supabase...`);
-            incrementPomodoro(todayKey).then(() => {
-              console.log(`[Pomodoro] Supabase increment complete`);
-            });
-          } else {
-            console.log(`[Pomodoro] Supabase not configured, saved to localStorage only`);
+            incrementPomodoro(todayKey);
           }
 
           showNotification('Focus Complete!', `Time for a ${isLongBreak ? 'long' : 'short'} break.`);
@@ -436,18 +475,18 @@ export function PomodoroScreen() {
             mode: 'work',
             startedAt: null,
             pausedAt: null,
-            totalDuration: times.work,
-            completedPomodoros: timerState.completedPomodoros,
+            totalDuration: t.work,
+            completedPomodoros: state.completedPomodoros,
             lastSavedMinute: 0,
           });
-          setTimeLeft(times.work);
+          setTimeLeft(t.work);
         }
         lastSaveRef.current = 0;
       }
     }, 100);
 
     return () => clearInterval(interval);
-  }, [isRunning, timerState, config, times, soundEnabled, history, savePartialMinutes]);
+  }, [isRunning]); // Only depend on isRunning - use refs for everything else
 
   // Check if timer completed while away
   useEffect(() => {

@@ -9,7 +9,6 @@ const screenLabels: Record<ScreenType, string> = {
   pomodoro: 'Timer',
   japanese: 'Proverb',
   calendar: 'Calendar',
-  location: 'Location',
   countdown: 'Countdown',
   homeassistant: 'Home',
 };

@@ -2,6 +2,11 @@
   command = "npm run build"
   publish = "dist"
 
+# Edge function for calendar proxy
+[[edge_functions]]
+  function = "calendar-proxy"
+  path = "/api/calendar-proxy"
+
 # Handle client-side routing
 [[redirects]]
   from = "/*"

@@ -1,6 +1,28 @@
 import { useState, useEffect } from 'react';
-import { format, isToday, isTomorrow, startOfDay, addDays, isAfter, isBefore } from 'date-fns';
-import { Calendar, Clock, MapPin, RefreshCw } from 'lucide-react';
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  addDays,
+  addMonths,
+  subMonths,
+  isSameMonth,
+  isToday,
+  setYear,
+  getYear,
+  isAfter,
+  isBefore,
+} from 'date-fns';
+import { Calendar, ChevronLeft, ChevronRight, RefreshCw, Plus, X } from 'lucide-react';
+import {
+  getCalendarEvents,
+  addCalendarEvent,
+  removeCalendarEvent,
+  subscribeToCalendarEvents,
+  CalendarEventRecord,
+} from '../../services/supabase';
 
 interface CalendarEvent {
   id: string;
@@ -9,11 +31,12 @@ interface CalendarEvent {
   end: Date;
   location?: string;
   allDay: boolean;
+  rrule?: string;
+  isCustom?: boolean;
 }
 
 // Parse iCal date format
 function parseICalDate(dateStr: string): Date {
-  // Handle formats: 20251227T140000Z or 20251227
   if (dateStr.includes('T')) {
     const year = parseInt(dateStr.slice(0, 4));
     const month = parseInt(dateStr.slice(4, 6)) - 1;
@@ -27,7 +50,6 @@ function parseICalDate(dateStr: string): Date {
     }
     return new Date(year, month, day, hour, minute, second);
   } else {
-    // All day event
     const year = parseInt(dateStr.slice(0, 4));
     const month = parseInt(dateStr.slice(4, 6)) - 1;
     const day = parseInt(dateStr.slice(6, 8));
@@ -38,13 +60,11 @@ function parseICalDate(dateStr: string): Date {
 function parseICalFeed(icalText: string): CalendarEvent[] {
   const events: CalendarEvent[] = [];
   const lines = icalText.split(/\r?\n/);
-
   let currentEvent: Partial<CalendarEvent> | null = null;
 
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i];
 
-    // Handle line continuations (lines starting with space or tab)
     while (i + 1 < lines.length && (lines[i + 1].startsWith(' ') || lines[i + 1].startsWith('\t'))) {
       i++;
       line += lines[i].slice(1);
@@ -61,6 +81,7 @@ function parseICalFeed(icalText: string): CalendarEvent[] {
           end: currentEvent.end || currentEvent.start,
           location: currentEvent.location,
           allDay: currentEvent.allDay || false,
+          rrule: currentEvent.rrule,
         });
       }
       currentEvent = null;
@@ -68,7 +89,7 @@ function parseICalFeed(icalText: string): CalendarEvent[] {
       const colonIndex = line.indexOf(':');
       if (colonIndex > 0) {
         const keyPart = line.slice(0, colonIndex);
-        const key = keyPart.split(';')[0]; // Remove parameters like ;TZID=...
+        const key = keyPart.split(';')[0];
         const value = line.slice(colonIndex + 1);
 
         if (key === 'SUMMARY') {
@@ -84,6 +105,8 @@ function parseICalFeed(icalText: string): CalendarEvent[] {
           }
         } else if (key === 'DTEND') {
           currentEvent.end = parseICalDate(value);
+        } else if (key === 'RRULE') {
+          currentEvent.rrule = value;
         }
       }
     }
@@ -92,124 +115,206 @@ function parseICalFeed(icalText: string): CalendarEvent[] {
   return events;
 }
 
-async function fetchCalendarEvents(): Promise<CalendarEvent[]> {
+function expandRecurringEvents(events: CalendarEvent[], startDate: Date, endDate: Date): CalendarEvent[] {
+  const expandedEvents: CalendarEvent[] = [];
+  const startYear = getYear(startDate);
+  const endYear = getYear(endDate);
+
+  for (const event of events) {
+    if (event.rrule && event.rrule.includes('FREQ=YEARLY')) {
+      for (let year = startYear; year <= endYear; year++) {
+        const thisYearStart = setYear(event.start, year);
+        const thisYearEnd = setYear(event.end, year);
+
+        if (isAfter(thisYearStart, addDays(startDate, -1)) && isBefore(thisYearStart, addDays(endDate, 1))) {
+          expandedEvents.push({
+            ...event,
+            id: `${event.id}-${year}`,
+            start: thisYearStart,
+            end: thisYearEnd,
+          });
+        }
+      }
+    } else {
+      expandedEvents.push(event);
+    }
+  }
+
+  return expandedEvents;
+}
+
+async function fetchCalendarEvents(monthStart: Date, monthEnd: Date): Promise<CalendarEvent[]> {
   const icalUrl = import.meta.env.VITE_GOOGLE_CALENDAR_ICAL_URL;
 
   if (!icalUrl) {
-    console.log('No Google Calendar iCal URL configured (VITE_GOOGLE_CALENDAR_ICAL_URL)');
+    console.log('No Google Calendar iCal URL configured');
     return [];
   }
 
-  try {
-    console.log('[Calendar] Fetching iCal feed...');
-    // Use corsproxy.io - faster and more reliable
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(icalUrl)}`;
-    const response = await fetch(proxyUrl);
+  const proxies = [
+    `/api/calendar-proxy?url=${encodeURIComponent(icalUrl)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(icalUrl)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(icalUrl)}`,
+  ];
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch calendar: ${response.status}`);
+  for (const proxyUrl of proxies) {
+    try {
+      console.log(`[Calendar] Trying proxy: ${proxyUrl.split('?')[0]}...`);
+      const response = await fetch(proxyUrl);
+
+      if (!response.ok) continue;
+
+      const icalText = await response.text();
+      if (!icalText.includes('BEGIN:VCALENDAR')) continue;
+
+      const events = parseICalFeed(icalText);
+      const expandedEvents = expandRecurringEvents(events, monthStart, monthEnd);
+
+      return expandedEvents
+        .filter(event => {
+          const eventDate = event.start;
+          return isAfter(eventDate, addDays(monthStart, -1)) && isBefore(eventDate, addDays(monthEnd, 1));
+        })
+        .sort((a, b) => a.start.getTime() - b.start.getTime());
+    } catch (e) {
+      console.log(`[Calendar] Proxy failed:`, e);
+      continue;
     }
-
-    const icalText = await response.text();
-    const events = parseICalFeed(icalText);
-    console.log(`[Calendar] Parsed ${events.length} total events`);
-
-    // Filter to upcoming events (today and next 7 days)
-    const now = new Date();
-    const startOfToday = startOfDay(now);
-    const weekFromNow = addDays(now, 7);
-
-    const upcomingEvents = events
-      .filter(event => {
-        return isAfter(event.start, addDays(startOfToday, -1)) && isBefore(startOfDay(event.start), weekFromNow);
-      })
-      .sort((a, b) => a.start.getTime() - b.start.getTime());
-
-    console.log(`[Calendar] ${upcomingEvents.length} upcoming events`);
-    return upcomingEvents;
-  } catch (e) {
-    console.error('[Calendar] Failed to fetch calendar:', e);
-    return [];
   }
+
+  return [];
 }
 
-function formatEventTime(event: CalendarEvent): string {
-  if (event.allDay) {
-    return 'All day';
-  }
-  return format(event.start, 'h:mm a');
-}
-
-function formatEventDate(date: Date): string {
-  if (isToday(date)) return 'Today';
-  if (isTomorrow(date)) return 'Tomorrow';
-  return format(date, 'EEE, MMM d');
-}
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export function CalendarScreen() {
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [googleEvents, setGoogleEvents] = useState<CalendarEvent[]>([]);
+  const [customEvents, setCustomEvents] = useState<CalendarEventRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [newEventTitle, setNewEventTitle] = useState('');
 
-  const loadEvents = async () => {
+  const loadGoogleEvents = async () => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    const fetchedEvents = await fetchCalendarEvents(monthStart, monthEnd);
+    setGoogleEvents(fetchedEvents);
+  };
+
+  const loadCustomEvents = async () => {
+    const events = await getCalendarEvents();
+    setCustomEvents(events);
+  };
+
+  const loadAllEvents = async () => {
     setLoading(true);
-    const fetchedEvents = await fetchCalendarEvents();
-    setEvents(fetchedEvents);
-    setLastUpdate(new Date());
+    await Promise.all([loadGoogleEvents(), loadCustomEvents()]);
     setLoading(false);
   };
 
   useEffect(() => {
-    loadEvents();
+    loadAllEvents();
+  }, [currentMonth]);
 
-    // Refresh every 5 minutes
-    const interval = setInterval(loadEvents, 300000);
-    return () => clearInterval(interval);
+  // Subscribe to custom event changes
+  useEffect(() => {
+    const unsubscribe = subscribeToCalendarEvents((events) => {
+      setCustomEvents(events);
+    });
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
-  const icalConfigured = !!import.meta.env.VITE_GOOGLE_CALENDAR_ICAL_URL;
+  const handleDayClick = (day: Date) => {
+    setSelectedDate(day);
+    setNewEventTitle('');
+    setShowAddModal(true);
+  };
 
-  if (!icalConfigured) {
-    return (
-      <div className="flex flex--col" style={{ height: '100%' }}>
-        <div className="flex" style={{ alignItems: 'center', gap: 12, marginBottom: 24 }}>
-          <Calendar size={24} />
-          <span className="label">CALENDAR</span>
-        </div>
-        <div className="flex flex--center flex-1 flex--col" style={{ gap: 16 }}>
-          <span style={{ color: '#666', fontSize: 14 }}>Calendar not configured</span>
-          <span style={{ color: '#999', fontSize: 12, maxWidth: 300, textAlign: 'center' }}>
-            Add VITE_GOOGLE_CALENDAR_ICAL_URL to Netlify environment variables.
-            Get it from Google Calendar → Settings → Integrate calendar → Secret address in iCal format.
-          </span>
-        </div>
-      </div>
-    );
+  const handleAddEvent = async () => {
+    if (!selectedDate || !newEventTitle.trim()) return;
+
+    const newEvent: CalendarEventRecord = {
+      id: crypto.randomUUID(),
+      title: newEventTitle.trim(),
+      start_date: format(selectedDate, 'yyyy-MM-dd'),
+      all_day: true,
+    };
+
+    await addCalendarEvent(newEvent);
+    setShowAddModal(false);
+    setNewEventTitle('');
+    loadCustomEvents();
+  };
+
+  const handleDeleteEvent = async (id: string) => {
+    await removeCalendarEvent(id);
+    loadCustomEvents();
+  };
+
+  // Merge Google Calendar events with custom events
+  const allEvents: CalendarEvent[] = [
+    ...googleEvents,
+    ...customEvents.map((e) => ({
+      id: e.id,
+      title: e.title,
+      start: new Date(e.start_date),
+      end: e.end_date ? new Date(e.end_date) : new Date(e.start_date),
+      location: e.location,
+      allDay: e.all_day,
+      isCustom: true,
+    })),
+  ];
+
+  // Build calendar grid
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(currentMonth);
+  const calendarStart = startOfWeek(monthStart);
+  const calendarEnd = endOfWeek(monthEnd);
+
+  const days: Date[] = [];
+  let day = calendarStart;
+  while (day <= calendarEnd) {
+    days.push(day);
+    day = addDays(day, 1);
   }
 
   // Group events by date
-  const groupedEvents: { [key: string]: CalendarEvent[] } = {};
-  events.forEach(event => {
-    const dateKey = format(startOfDay(event.start), 'yyyy-MM-dd');
-    if (!groupedEvents[dateKey]) {
-      groupedEvents[dateKey] = [];
+  const eventsByDate: { [key: string]: CalendarEvent[] } = {};
+  allEvents.forEach(event => {
+    const dateKey = format(event.start, 'yyyy-MM-dd');
+    if (!eventsByDate[dateKey]) {
+      eventsByDate[dateKey] = [];
     }
-    groupedEvents[dateKey].push(event);
+    eventsByDate[dateKey].push(event);
   });
-
-  const sortedDays = Object.keys(groupedEvents).sort();
 
   return (
     <div className="flex flex--col" style={{ height: '100%' }}>
       {/* Header */}
-      <div className="flex flex--between" style={{ alignItems: 'center', marginBottom: 20 }}>
-        <div className="flex" style={{ alignItems: 'center', gap: 12 }}>
-          <Calendar size={20} />
-          <span className="label">UPCOMING</span>
-          <span style={{ fontSize: 12, color: '#999' }}>{events.length} events</span>
+      <div className="flex flex--between" style={{ alignItems: 'center', marginBottom: 16 }}>
+        <div className="flex" style={{ alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <span style={{ fontSize: 18, fontWeight: 500, minWidth: 160, textAlign: 'center' }}>
+            {format(currentMonth, 'MMMM yyyy')}
+          </span>
+          <button
+            onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+          >
+            <ChevronRight size={18} />
+          </button>
         </div>
         <button
-          onClick={loadEvents}
+          onClick={loadAllEvents}
           style={{
             background: 'none',
             border: '1px solid #e5e5e5',
@@ -218,69 +323,218 @@ export function CalendarScreen() {
             display: 'flex',
             alignItems: 'center',
           }}
-          title="Refresh"
         >
           <RefreshCw size={14} className={loading ? 'spin' : ''} />
         </button>
       </div>
 
-      {/* Events list */}
-      {events.length === 0 ? (
-        <div className="flex flex--center flex-1">
-          <span style={{ color: '#999', fontSize: 14 }}>
-            {loading ? 'Loading...' : 'No upcoming events'}
-          </span>
-        </div>
-      ) : (
-        <div style={{ flex: 1, overflow: 'auto' }}>
-          {sortedDays.map(dateKey => {
-            const dayEvents = groupedEvents[dateKey];
-            return (
-              <div key={dateKey} style={{ marginBottom: 20 }}>
-                {/* Date header */}
-                <div className="label label--gray" style={{ marginBottom: 10, fontSize: 11 }}>
-                  {formatEventDate(dayEvents[0].start)}
-                </div>
+      {/* Weekday headers */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 8 }}>
+        {WEEKDAYS.map(weekday => (
+          <div
+            key={weekday}
+            style={{
+              textAlign: 'center',
+              fontSize: 10,
+              fontWeight: 600,
+              color: '#999',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+            }}
+          >
+            {weekday}
+          </div>
+        ))}
+      </div>
 
-                {/* Events for this day */}
-                {dayEvents.map(event => (
-                  <div
-                    key={event.id}
-                    style={{
-                      marginBottom: 12,
-                      paddingLeft: 12,
-                      borderLeft: '2px solid #000',
-                    }}
-                  >
-                    <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 3 }}>
-                      {event.title}
-                    </div>
-                    <div className="flex gap--medium" style={{ color: '#666', fontSize: 12 }}>
-                      <div className="flex" style={{ alignItems: 'center', gap: 4 }}>
-                        <Clock size={11} />
-                        <span>{formatEventTime(event)}</span>
-                      </div>
-                      {event.location && (
-                        <div className="flex" style={{ alignItems: 'center', gap: 4 }}>
-                          <MapPin size={11} />
-                          <span style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {event.location}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+      {/* Calendar grid */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(7, 1fr)',
+          flex: 1,
+          gap: 1,
+          background: '#e5e5e5',
+        }}
+      >
+        {days.map(day => {
+          const dateKey = format(day, 'yyyy-MM-dd');
+          const dayEvents = eventsByDate[dateKey] || [];
+          const isCurrentMonth = isSameMonth(day, currentMonth);
+          const isCurrentDay = isToday(day);
+
+          return (
+            <div
+              key={dateKey}
+              role="button"
+              tabIndex={0}
+              onClick={() => handleDayClick(day)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') handleDayClick(day);
+              }}
+              style={{
+                background: isCurrentDay ? '#f5f5f5' : '#fff',
+                padding: 4,
+                minHeight: 60,
+                opacity: isCurrentMonth ? 1 : 0.4,
+                cursor: 'pointer',
+                position: 'relative',
+              }}
+            >
+              {/* Day number */}
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: isCurrentDay ? 700 : 400,
+                  color: isCurrentDay ? '#000' : '#333',
+                  marginBottom: 2,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <span>{format(day, 'd')}</span>
+                <Plus size={10} style={{ opacity: 0.3 }} />
               </div>
-            );
-          })}
-        </div>
-      )}
 
-      {/* Last updated */}
-      {lastUpdate && (
-        <div style={{ fontSize: 11, color: '#999', textAlign: 'center', paddingTop: 12 }}>
-          Updated {format(lastUpdate, 'h:mm a')}
+              {/* Events */}
+              {dayEvents.slice(0, 2).map(event => (
+                <div
+                  key={event.id}
+                  style={{
+                    fontSize: 9,
+                    padding: '2px 4px',
+                    marginBottom: 2,
+                    background: event.isCustom ? '#333' : '#000',
+                    color: '#fff',
+                    borderRadius: 2,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 2,
+                  }}
+                  title={`${event.title}${event.allDay ? '' : ` - ${format(event.start, 'h:mm a')}`}`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.title}</span>
+                  {event.isCustom && (
+                    <X
+                      size={10}
+                      style={{ cursor: 'pointer', flexShrink: 0, opacity: 0.7 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteEvent(event.id);
+                      }}
+                    />
+                  )}
+                </div>
+              ))}
+              {dayEvents.length > 2 && (
+                <div style={{ fontSize: 8, color: '#666' }}>
+                  +{dayEvents.length - 2} more
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Event count */}
+      <div style={{ fontSize: 11, color: '#999', textAlign: 'center', paddingTop: 8 }}>
+        {allEvents.length} events this month
+      </div>
+
+      {/* Add Event Modal */}
+      {showAddModal && selectedDate && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setShowAddModal(false)}
+        >
+          <div
+            style={{
+              background: '#fff',
+              padding: 24,
+              borderRadius: 8,
+              minWidth: 300,
+              maxWidth: '90%',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontSize: 16 }}>Add Event</h3>
+              <X
+                size={20}
+                style={{ cursor: 'pointer', opacity: 0.5 }}
+                onClick={() => setShowAddModal(false)}
+              />
+            </div>
+            <div style={{ marginBottom: 12, fontSize: 14, color: '#666' }}>
+              {format(selectedDate, 'EEEE, MMMM d, yyyy')}
+            </div>
+            <input
+              type="text"
+              placeholder="Event title"
+              value={newEventTitle}
+              onChange={(e) => setNewEventTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleAddEvent();
+              }}
+              autoFocus
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                fontSize: 14,
+                border: '1px solid #ddd',
+                borderRadius: 4,
+                marginBottom: 16,
+                boxSizing: 'border-box',
+              }}
+            />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowAddModal(false)}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: 14,
+                  border: '1px solid #ddd',
+                  borderRadius: 4,
+                  background: '#fff',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddEvent}
+                disabled={!newEventTitle.trim()}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: 14,
+                  border: 'none',
+                  borderRadius: 4,
+                  background: newEventTitle.trim() ? '#000' : '#ccc',
+                  color: '#fff',
+                  cursor: newEventTitle.trim() ? 'pointer' : 'not-allowed',
+                }}
+              >
+                Add Event
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
