@@ -15,14 +15,43 @@ import {
   isAfter,
   isBefore,
 } from 'date-fns';
-import { Calendar, ChevronLeft, ChevronRight, RefreshCw, Plus, X } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, RefreshCw, Plus, X, Pencil, Clock } from 'lucide-react';
 import {
   getCalendarEvents,
   addCalendarEvent,
   removeCalendarEvent,
+  updateCalendarEvent,
   subscribeToCalendarEvents,
   CalendarEventRecord,
 } from '../../services/supabase';
+
+// Common event templates with family members
+const COMMON_EVENTS = [
+  { label: 'Pick up Ella', value: 'Pick up Ella' },
+  { label: 'Pick up Olivier', value: 'Pick up Olivier' },
+  { label: 'Drop off Ella', value: 'Drop off Ella' },
+  { label: 'Drop off Olivier', value: 'Drop off Olivier' },
+  { label: 'Ella\'s activity', value: 'Ella\'s activity' },
+  { label: 'Olivier\'s activity', value: 'Olivier\'s activity' },
+  { label: 'Call with Chris', value: 'Call with Chris' },
+  { label: 'Meeting with Carline', value: 'Meeting with Carline' },
+  { label: 'Family dinner', value: 'Family dinner' },
+  { label: 'School pickup', value: 'School pickup' },
+  { label: 'Doctor appointment', value: 'Doctor appointment' },
+  { label: 'Birthday party', value: 'Birthday party' },
+];
+
+// Quick time presets
+const TIME_PRESETS = [
+  { label: 'All day', value: '' },
+  { label: 'Morning', value: '08:00' },
+  { label: 'Mid-morning', value: '10:00' },
+  { label: 'Noon', value: '12:00' },
+  { label: 'Afternoon', value: '15:00' },
+  { label: 'School end', value: '15:30' },
+  { label: 'Evening', value: '18:00' },
+  { label: 'Night', value: '20:00' },
+];
 
 interface CalendarEvent {
   id: string;
@@ -195,6 +224,9 @@ export function CalendarScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [newEventTitle, setNewEventTitle] = useState('');
+  const [newEventTime, setNewEventTime] = useState('');
+  const [editingEvent, setEditingEvent] = useState<CalendarEventRecord | null>(null);
+  const [draggedEvent, setDraggedEvent] = useState<CalendarEvent | null>(null);
 
   const loadGoogleEvents = async () => {
     const monthStart = startOfMonth(currentMonth);
@@ -231,27 +263,86 @@ export function CalendarScreen() {
   const handleDayClick = (day: Date) => {
     setSelectedDate(day);
     setNewEventTitle('');
+    setNewEventTime('');
+    setEditingEvent(null);
+    setShowAddModal(true);
+  };
+
+  const handleEditEvent = (event: CalendarEventRecord) => {
+    setEditingEvent(event);
+    setNewEventTitle(event.title);
+    setSelectedDate(new Date(event.start_date));
+    // Extract time if not all day
+    if (!event.all_day && event.start_date.includes('T')) {
+      const timePart = event.start_date.split('T')[1]?.slice(0, 5) || '';
+      setNewEventTime(timePart);
+    } else {
+      setNewEventTime('');
+    }
     setShowAddModal(true);
   };
 
   const handleAddEvent = async () => {
     if (!selectedDate || !newEventTitle.trim()) return;
 
-    const newEvent: CalendarEventRecord = {
-      id: crypto.randomUUID(),
-      title: newEventTitle.trim(),
-      start_date: format(selectedDate, 'yyyy-MM-dd'),
-      all_day: true,
-    };
+    const isAllDay = !newEventTime;
+    const startDate = isAllDay
+      ? format(selectedDate, 'yyyy-MM-dd')
+      : `${format(selectedDate, 'yyyy-MM-dd')}T${newEventTime}`;
 
-    await addCalendarEvent(newEvent);
+    if (editingEvent) {
+      // Update existing event
+      await updateCalendarEvent(editingEvent.id, {
+        title: newEventTitle.trim(),
+        start_date: startDate,
+        all_day: isAllDay,
+      });
+    } else {
+      // Create new event
+      const newEvent: CalendarEventRecord = {
+        id: crypto.randomUUID(),
+        title: newEventTitle.trim(),
+        start_date: startDate,
+        all_day: isAllDay,
+      };
+      await addCalendarEvent(newEvent);
+    }
+
     setShowAddModal(false);
     setNewEventTitle('');
+    setNewEventTime('');
+    setEditingEvent(null);
     loadCustomEvents();
   };
 
   const handleDeleteEvent = async (id: string) => {
     await removeCalendarEvent(id);
+    loadCustomEvents();
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (event: CalendarEvent) => {
+    if (event.isCustom) {
+      setDraggedEvent(event);
+    }
+  };
+
+  const handleDrop = async (targetDate: Date) => {
+    if (!draggedEvent || !draggedEvent.isCustom) return;
+
+    const customEvent = customEvents.find(e => e.id === draggedEvent.id);
+    if (!customEvent) return;
+
+    const isAllDay = customEvent.all_day;
+    const newStartDate = isAllDay
+      ? format(targetDate, 'yyyy-MM-dd')
+      : `${format(targetDate, 'yyyy-MM-dd')}T${customEvent.start_date.split('T')[1] || '12:00'}`;
+
+    await updateCalendarEvent(draggedEvent.id, {
+      start_date: newStartDate,
+    });
+
+    setDraggedEvent(null);
     loadCustomEvents();
   };
 
@@ -372,6 +463,18 @@ export function CalendarScreen() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') handleDayClick(day);
               }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.currentTarget.style.background = '#e8f4ff';
+              }}
+              onDragLeave={(e) => {
+                e.currentTarget.style.background = isCurrentDay ? '#f5f5f5' : '#fff';
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.currentTarget.style.background = isCurrentDay ? '#f5f5f5' : '#fff';
+                handleDrop(day);
+              }}
               style={{
                 background: isCurrentDay ? '#f5f5f5' : '#fff',
                 padding: 4,
@@ -379,6 +482,7 @@ export function CalendarScreen() {
                 opacity: isCurrentMonth ? 1 : 0.4,
                 cursor: 'pointer',
                 position: 'relative',
+                transition: 'background 0.15s ease',
               }}
             >
               {/* Day number */}
@@ -398,40 +502,65 @@ export function CalendarScreen() {
               </div>
 
               {/* Events */}
-              {dayEvents.slice(0, 2).map(event => (
-                <div
-                  key={event.id}
-                  style={{
-                    fontSize: 9,
-                    padding: '2px 4px',
-                    marginBottom: 2,
-                    background: event.isCustom ? '#333' : '#000',
-                    color: '#fff',
-                    borderRadius: 2,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 2,
-                  }}
-                  title={`${event.title}${event.allDay ? '' : ` - ${format(event.start, 'h:mm a')}`}`}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.title}</span>
-                  {event.isCustom && (
-                    <X
-                      size={10}
-                      style={{ cursor: 'pointer', flexShrink: 0, opacity: 0.7 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteEvent(event.id);
-                      }}
-                    />
-                  )}
-                </div>
-              ))}
+              {dayEvents.slice(0, 2).map(event => {
+                const customEventRecord = event.isCustom
+                  ? customEvents.find(e => e.id === event.id)
+                  : null;
+
+                return (
+                  <div
+                    key={event.id}
+                    draggable={event.isCustom}
+                    onDragStart={(e) => {
+                      e.stopPropagation();
+                      handleDragStart(event);
+                    }}
+                    style={{
+                      fontSize: 9,
+                      padding: '2px 4px',
+                      marginBottom: 2,
+                      background: event.isCustom ? '#333' : '#000',
+                      color: '#fff',
+                      borderRadius: 2,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 2,
+                      cursor: event.isCustom ? 'grab' : 'default',
+                    }}
+                    title={`${event.title}${event.allDay ? '' : ` - ${format(event.start, 'h:mm a')}`}${event.isCustom ? ' (drag to move)' : ''}`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {!event.allDay && <Clock size={8} style={{ marginRight: 2, opacity: 0.7 }} />}
+                      {event.title}
+                    </span>
+                    {event.isCustom && customEventRecord && (
+                      <div style={{ display: 'flex', gap: 2 }}>
+                        <Pencil
+                          size={10}
+                          style={{ cursor: 'pointer', flexShrink: 0, opacity: 0.7 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditEvent(customEventRecord);
+                          }}
+                        />
+                        <X
+                          size={10}
+                          style={{ cursor: 'pointer', flexShrink: 0, opacity: 0.7 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteEvent(event.id);
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               {dayEvents.length > 2 && (
                 <div style={{ fontSize: 8, color: '#666' }}>
                   +{dayEvents.length - 2} more
@@ -447,7 +576,7 @@ export function CalendarScreen() {
         {allEvents.length} events this month
       </div>
 
-      {/* Add Event Modal */}
+      {/* Add/Edit Event Modal */}
       {showAddModal && selectedDate && (
         <div
           style={{
@@ -462,32 +591,68 @@ export function CalendarScreen() {
             justifyContent: 'center',
             zIndex: 1000,
           }}
-          onClick={() => setShowAddModal(false)}
+          onClick={() => {
+            setShowAddModal(false);
+            setEditingEvent(null);
+          }}
         >
           <div
             style={{
               background: '#fff',
               padding: 24,
               borderRadius: 8,
-              minWidth: 300,
+              minWidth: 340,
               maxWidth: '90%',
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: 16 }}>Add Event</h3>
+              <h3 style={{ margin: 0, fontSize: 16 }}>{editingEvent ? 'Edit Event' : 'Add Event'}</h3>
               <X
                 size={20}
                 style={{ cursor: 'pointer', opacity: 0.5 }}
-                onClick={() => setShowAddModal(false)}
+                onClick={() => {
+                  setShowAddModal(false);
+                  setEditingEvent(null);
+                }}
               />
             </div>
             <div style={{ marginBottom: 12, fontSize: 14, color: '#666' }}>
               {format(selectedDate, 'EEEE, MMMM d, yyyy')}
             </div>
+
+            {/* Common Events Dropdown */}
+            {!editingEvent && (
+              <select
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) setNewEventTitle(e.target.value);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  fontSize: 14,
+                  border: '1px solid #ddd',
+                  borderRadius: 4,
+                  marginBottom: 10,
+                  backgroundColor: '#f9f9f9',
+                  color: '#666',
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="">Quick select event...</option>
+                {COMMON_EVENTS.map(event => (
+                  <option key={event.value} value={event.value}>
+                    {event.label}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Event title input */}
             <input
               type="text"
-              placeholder="Event title"
+              placeholder={editingEvent ? "Event title" : "Or type custom event"}
               value={newEventTitle}
               onChange={(e) => setNewEventTitle(e.target.value)}
               onKeyDown={(e) => {
@@ -500,13 +665,61 @@ export function CalendarScreen() {
                 fontSize: 14,
                 border: '1px solid #ddd',
                 borderRadius: 4,
-                marginBottom: 16,
+                marginBottom: 14,
                 boxSizing: 'border-box',
               }}
             />
+
+            {/* Time presets */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, color: '#999', marginBottom: 8, letterSpacing: '0.05em' }}>TIME OF DAY</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {TIME_PRESETS.map(preset => (
+                  <button
+                    key={preset.label}
+                    onClick={() => setNewEventTime(preset.value)}
+                    style={{
+                      padding: '6px 10px',
+                      fontSize: 11,
+                      border: newEventTime === preset.value ? '1px solid #333' : '1px solid #ddd',
+                      borderRadius: 4,
+                      backgroundColor: newEventTime === preset.value ? '#333' : '#fff',
+                      color: newEventTime === preset.value ? '#fff' : '#666',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom time input */}
+            {newEventTime && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <Clock size={14} color="#999" />
+                <input
+                  type="time"
+                  value={newEventTime}
+                  onChange={(e) => setNewEventTime(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    fontSize: 14,
+                    border: '1px solid #ddd',
+                    borderRadius: 4,
+                    flex: 1,
+                  }}
+                />
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={() => {
+                  setShowAddModal(false);
+                  setEditingEvent(null);
+                }}
                 style={{
                   padding: '8px 16px',
                   fontSize: 14,
@@ -531,7 +744,7 @@ export function CalendarScreen() {
                   cursor: newEventTitle.trim() ? 'pointer' : 'not-allowed',
                 }}
               >
-                Add Event
+                {editingEvent ? 'Save Changes' : 'Add Event'}
               </button>
             </div>
           </div>

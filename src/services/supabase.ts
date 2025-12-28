@@ -361,6 +361,25 @@ export async function removeCalendarEvent(id: string): Promise<void> {
   }
 }
 
+// Update a calendar event
+export async function updateCalendarEvent(id: string, updates: Partial<CalendarEventRecord>): Promise<void> {
+  if (!supabase) {
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('calendar_events')
+      .update(updates)
+      .eq('id', id);
+
+    if (error) throw error;
+    console.log('Updated calendar event:', id);
+  } catch (e) {
+    console.error('Failed to update calendar event:', e);
+  }
+}
+
 // Subscribe to calendar event changes
 export function subscribeToCalendarEvents(callback: (events: CalendarEventRecord[]) => void): (() => void) | null {
   if (!supabase) {
