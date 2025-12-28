@@ -87,6 +87,12 @@ export function ScreenProvider({ children }: { children: ReactNode }) {
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore keyboard shortcuts when typing in form elements
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
       if (e.key === 'ArrowRight' || e.key === ' ') {
         nextScreen();
       } else if (e.key === 'ArrowLeft') {

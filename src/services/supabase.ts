@@ -215,6 +215,33 @@ export async function addCountdown(event: CountdownEvent): Promise<void> {
   }
 }
 
+// Update a countdown
+export async function updateCountdown(id: string, updates: Partial<Pick<CountdownEvent, 'title' | 'target_date' | 'color'>>): Promise<void> {
+  if (!supabase) {
+    console.log('Supabase not configured, using localStorage');
+    const stored = localStorage.getItem('countdown-events');
+    if (stored) {
+      const events = JSON.parse(stored).map((e: CountdownEvent) =>
+        e.id === id ? { ...e, ...updates } : e
+      );
+      localStorage.setItem('countdown-events', JSON.stringify(events));
+    }
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('countdowns')
+      .update(updates)
+      .eq('id', id);
+
+    if (error) throw error;
+    console.log('Updated countdown in Supabase:', id);
+  } catch (e) {
+    console.error('Failed to update countdown:', e);
+  }
+}
+
 // Remove a countdown
 export async function removeCountdown(id: string): Promise<void> {
   if (!supabase) {

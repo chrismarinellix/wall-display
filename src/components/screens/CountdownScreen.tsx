@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { differenceInDays, differenceInHours, differenceInMinutes, differenceInSeconds, isPast, format } from 'date-fns';
-import { Plus, X, Calendar, Clock, RefreshCw } from 'lucide-react';
+import { differenceInDays, differenceInHours, differenceInMinutes, differenceInSeconds, isPast, format, startOfDay, differenceInMilliseconds } from 'date-fns';
+import { Plus, X, Calendar, Clock, RefreshCw, Pencil, Check } from 'lucide-react';
 import {
   getCountdowns,
   addCountdown,
   removeCountdown,
+  updateCountdown,
   subscribeToCountdowns,
   CountdownEvent as SupabaseCountdownEvent,
 } from '../../services/supabase';
@@ -12,10 +13,11 @@ import {
 interface CountdownEvent {
   id: string;
   title: string;
-  targetDate: string;
+  targetDate: string; // ISO string
   color: string;
 }
 
+// Convert between local format and Supabase format
 function fromSupabase(e: SupabaseCountdownEvent): CountdownEvent {
   return { id: e.id, title: e.title, targetDate: e.target_date, color: e.color };
 }
@@ -23,6 +25,8 @@ function fromSupabase(e: SupabaseCountdownEvent): CountdownEvent {
 function toSupabase(e: CountdownEvent): SupabaseCountdownEvent {
   return { id: e.id, title: e.title, target_date: e.targetDate, color: e.color };
 }
+
+const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899'];
 
 function getTimeRemaining(targetDate: string) {
   const target = new Date(targetDate);
@@ -40,217 +44,319 @@ function getTimeRemaining(targetDate: string) {
   return { days, hours, minutes, seconds, isPast: false };
 }
 
-function getExcitingMessage(days: number, hours: number, title: string): string {
-  const eventName = title.toLowerCase();
+// Calculate progress from start of today to target date
+function getProgressPercent(targetDate: string): number {
+  const target = new Date(targetDate);
+  const now = new Date();
+  const todayStart = startOfDay(now);
 
-  if (days === 0 && hours === 0) {
-    return "It's almost here!";
-  }
-  if (days === 0 && hours === 1) {
-    return "Just one more hour to go!";
-  }
-  if (days === 0 && hours <= 3) {
-    return "So close you can taste it!";
-  }
-  if (days === 0) {
-    return "Today's the day!";
-  }
-  if (days === 1) {
-    return "Tomorrow is the big day!";
-  }
-  if (days === 2) {
-    return "Just a couple of sleeps away!";
-  }
-  if (days <= 7) {
-    return "This week! The excitement builds...";
-  }
-  if (days <= 14) {
-    return "Getting closer every moment!";
-  }
-  if (days <= 30) {
-    return "Mark your calendar, it's coming!";
-  }
-  if (days <= 60) {
-    return "Something wonderful awaits...";
-  }
-  return "The countdown has begun!";
+  if (isPast(target)) return 100;
+
+  const totalMs = differenceInMilliseconds(target, todayStart);
+  const elapsedMs = differenceInMilliseconds(now, todayStart);
+
+  if (totalMs <= 0) return 100;
+
+  const percent = (elapsedMs / totalMs) * 100;
+  return Math.min(100, Math.max(0, percent));
 }
 
-function CountdownTimer({ event, onRemove, isFirst }: { event: CountdownEvent; onRemove: () => void; isFirst?: boolean }) {
+interface CountdownCardProps {
+  event: CountdownEvent;
+  onRemove: () => void;
+  onUpdate: (updates: Partial<Pick<CountdownEvent, 'title' | 'targetDate' | 'color'>>) => void;
+}
+
+function CountdownCard({ event, onRemove, onUpdate }: CountdownCardProps) {
   const [timeLeft, setTimeLeft] = useState(getTimeRemaining(event.targetDate));
+  const [progress, setProgress] = useState(getProgressPercent(event.targetDate));
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(event.title);
+  const [editDate, setEditDate] = useState(format(new Date(event.targetDate), 'yyyy-MM-dd'));
+  const [editTime, setEditTime] = useState(format(new Date(event.targetDate), 'HH:mm'));
+  const [editColor, setEditColor] = useState(event.color);
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setTimeLeft(getTimeRemaining(event.targetDate));
+      setProgress(getProgressPercent(event.targetDate));
     }, 1000);
     return () => clearInterval(interval);
   }, [event.targetDate]);
 
-  // Calculate progress based on created time vs target
-  const target = new Date(event.targetDate);
-  const now = new Date();
-  const totalMs = 30 * 24 * 60 * 60 * 1000; // 30 days baseline
-  const remainingMs = target.getTime() - now.getTime();
-  const progress = Math.max(0, Math.min(100, ((totalMs - remainingMs) / totalMs) * 100));
+  // Reset edit form when event changes
+  useEffect(() => {
+    setEditTitle(event.title);
+    setEditDate(format(new Date(event.targetDate), 'yyyy-MM-dd'));
+    setEditTime(format(new Date(event.targetDate), 'HH:mm'));
+    setEditColor(event.color);
+  }, [event]);
 
+  const handleSave = () => {
+    const newTargetDate = new Date(`${editDate}T${editTime}`);
+    onUpdate({
+      title: editTitle.trim(),
+      targetDate: newTargetDate.toISOString(),
+      color: editColor,
+    });
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditTitle(event.title);
+    setEditDate(format(new Date(event.targetDate), 'yyyy-MM-dd'));
+    setEditTime(format(new Date(event.targetDate), 'HH:mm'));
+    setEditColor(event.color);
+    setIsEditing(false);
+  };
+
+  // Don't render past events
   if (timeLeft.isPast) {
-    return (
-      <div style={{ marginBottom: isFirst ? 48 : 32 }}>
-        <div className="flex flex--between" style={{ alignItems: 'flex-start' }}>
-          <div>
-            <div style={{
-              fontSize: isFirst ? 13 : 11,
-              fontWeight: 500,
-              letterSpacing: '0.2em',
-              color: '#999',
-              marginBottom: 8,
-              textTransform: 'uppercase',
-            }}>
-              {event.title}
-            </div>
-            <div style={{ fontSize: isFirst ? 24 : 16, color: '#bbb', fontWeight: 300 }}>
-              Event has passed
-            </div>
-          </div>
-          <button
-            onClick={onRemove}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, padding: 4 }}
-          >
-            <X size={14} />
-          </button>
-        </div>
-      </div>
-    );
+    return null;
   }
 
-  const TimeUnit = ({ value, label, large }: { value: number | string; label: string; large?: boolean }) => (
-    <div style={{ textAlign: 'center' }}>
-      <div style={{
-        fontSize: large ? 72 : (isFirst ? 48 : 28),
-        fontWeight: 100,
-        lineHeight: 1,
-        fontVariantNumeric: 'tabular-nums',
-        color: '#000',
-        letterSpacing: '-0.02em',
-      }}>
-        {typeof value === 'number' ? String(value).padStart(2, '0') : value}
-      </div>
-      <div style={{
-        fontSize: large ? 11 : (isFirst ? 10 : 8),
-        fontWeight: 500,
-        color: '#aaa',
-        letterSpacing: '0.2em',
-        marginTop: large ? 12 : 6,
-        textTransform: 'uppercase',
-      }}>
-        {label}
-      </div>
-    </div>
-  );
-
-  const Separator = () => (
-    <div style={{
-      fontSize: isFirst ? 48 : 28,
-      fontWeight: 100,
-      color: '#ddd',
-      lineHeight: 1,
-      marginTop: isFirst ? -8 : -4,
-    }}>
-      :
-    </div>
-  );
-
   return (
-    <div style={{ marginBottom: isFirst ? 48 : 32 }}>
-      {/* Event title */}
-      <div className="flex flex--between" style={{ alignItems: 'flex-start', marginBottom: isFirst ? 24 : 12 }}>
-        <div style={{
-          fontSize: isFirst ? 13 : 11,
-          fontWeight: 500,
-          letterSpacing: '0.2em',
-          color: '#666',
-          textTransform: 'uppercase',
-        }}>
-          {event.title}
-        </div>
-        <button
-          onClick={onRemove}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, padding: 4 }}
-        >
-          <X size={14} />
-        </button>
-      </div>
-
-      {/* Time display with exciting message */}
-      <div className="flex" style={{
-        gap: isFirst ? 16 : 10,
-        alignItems: 'flex-start',
-        justifyContent: 'flex-start',
-        flexWrap: 'wrap',
-      }}>
-        {timeLeft.days > 0 && (
-          <>
-            <TimeUnit value={timeLeft.days} label={timeLeft.days === 1 ? 'Day' : 'Days'} large={isFirst} />
-            {isFirst && <Separator />}
-          </>
-        )}
-        <TimeUnit value={timeLeft.hours} label="Hrs" large={isFirst && timeLeft.days === 0} />
-        <Separator />
-        <TimeUnit value={timeLeft.minutes} label="Min" large={isFirst && timeLeft.days === 0} />
-        <Separator />
-        <TimeUnit value={timeLeft.seconds} label="Sec" />
-
-        {/* Exciting message */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          marginLeft: isFirst ? 24 : 12,
-          paddingLeft: isFirst ? 24 : 12,
-          borderLeft: '1px solid #ddd',
-          height: isFirst ? 72 : 40,
-        }}>
-          <span style={{
-            fontSize: isFirst ? 18 : 12,
-            fontWeight: 300,
-            fontStyle: 'italic',
-            color: '#888',
-            letterSpacing: '0.02em',
-          }}>
-            {getExcitingMessage(timeLeft.days, timeLeft.hours, event.title)}
-          </span>
-        </div>
-      </div>
-
-      {/* Progress bar - elegant thin line */}
-      <div style={{
-        marginTop: isFirst ? 32 : 16,
-        height: 1,
-        background: '#eee',
-        position: 'relative',
+    <div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        marginBottom: 16,
         overflow: 'hidden',
-      }}>
-        <div style={{
-          position: 'absolute',
-          left: 0,
-          top: 0,
-          height: '100%',
-          width: `${progress}%`,
-          background: '#000',
-          transition: 'width 1s linear',
-        }} />
-      </div>
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+        border: '1px solid #eee',
+        transition: 'box-shadow 0.2s ease',
+      }}
+    >
+      {/* Color accent bar */}
+      <div style={{ height: 4, backgroundColor: event.color }} />
 
-      {/* Target date for first item */}
-      {isFirst && (
-        <div style={{
-          marginTop: 16,
-          fontSize: 12,
-          color: '#bbb',
-          fontWeight: 400,
-        }}>
-          {format(new Date(event.targetDate), "EEEE, d MMMM yyyy 'at' h:mm a")}
+      {/* Card content */}
+      <div style={{ padding: 20 }}>
+        {/* Header row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                backgroundColor: event.color,
+              }}
+            />
+            <span style={{ fontSize: 16, fontWeight: 500, color: '#333' }}>{event.title}</span>
+          </div>
+          <div style={{ display: 'flex', gap: 4, opacity: isHovered ? 1 : 0, transition: 'opacity 0.2s ease' }}>
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              style={{
+                background: 'none',
+                border: '1px solid #e5e5e5',
+                borderRadius: 4,
+                cursor: 'pointer',
+                padding: 6,
+                display: 'flex',
+                alignItems: 'center',
+                color: '#666',
+              }}
+              title="Edit"
+            >
+              <Pencil size={12} />
+            </button>
+            <button
+              onClick={onRemove}
+              style={{
+                background: 'none',
+                border: '1px solid #e5e5e5',
+                borderRadius: 4,
+                cursor: 'pointer',
+                padding: 6,
+                display: 'flex',
+                alignItems: 'center',
+                color: '#666',
+              }}
+              title="Remove"
+            >
+              <X size={12} />
+            </button>
+          </div>
         </div>
-      )}
+
+        {/* Time display */}
+        <div style={{ display: 'flex', gap: 24, marginBottom: 16 }}>
+          {timeLeft.days > 0 && (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 36, fontWeight: 300, color: event.color, lineHeight: 1 }}>
+                {timeLeft.days}
+              </div>
+              <div style={{ fontSize: 10, color: '#999', letterSpacing: '0.15em', marginTop: 4, textTransform: 'uppercase' }}>
+                days
+              </div>
+            </div>
+          )}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 36, fontWeight: 300, color: event.color, lineHeight: 1 }}>
+              {String(timeLeft.hours).padStart(2, '0')}
+            </div>
+            <div style={{ fontSize: 10, color: '#999', letterSpacing: '0.15em', marginTop: 4, textTransform: 'uppercase' }}>
+              hrs
+            </div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 36, fontWeight: 300, color: timeLeft.days > 0 ? '#999' : event.color, lineHeight: 1 }}>
+              {String(timeLeft.minutes).padStart(2, '0')}
+            </div>
+            <div style={{ fontSize: 10, color: '#999', letterSpacing: '0.15em', marginTop: 4, textTransform: 'uppercase' }}>
+              min
+            </div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 36, fontWeight: 300, color: '#ccc', lineHeight: 1 }}>
+              {String(timeLeft.seconds).padStart(2, '0')}
+            </div>
+            <div style={{ fontSize: 10, color: '#ccc', letterSpacing: '0.15em', marginTop: 4, textTransform: 'uppercase' }}>
+              sec
+            </div>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 11, color: '#999' }}>
+              {format(new Date(event.targetDate), 'MMM d, yyyy \'at\' h:mm a')}
+            </span>
+            <span style={{ fontSize: 11, color: '#999', fontWeight: 500 }}>
+              {progress.toFixed(1)}% of day elapsed
+            </span>
+          </div>
+          <div style={{ height: 4, backgroundColor: '#f0f0f0', borderRadius: 2, overflow: 'hidden' }}>
+            <div
+              style={{
+                height: '100%',
+                width: `${progress}%`,
+                backgroundColor: event.color,
+                borderRadius: 2,
+                transition: 'width 1s linear',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Edit form */}
+        {isEditing && (
+          <div
+            style={{
+              marginTop: 16,
+              padding: 16,
+              backgroundColor: '#f9f9f9',
+              borderRadius: 6,
+              border: '1px solid #eee',
+            }}
+          >
+            <input
+              type="text"
+              placeholder="Event name"
+              value={editTitle}
+              onChange={e => setEditTitle(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid #ddd',
+                borderRadius: 6,
+                marginBottom: 10,
+                fontSize: 14,
+                boxSizing: 'border-box',
+              }}
+            />
+            <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
+                <Calendar size={14} color="#999" />
+                <input
+                  type="date"
+                  value={editDate}
+                  onChange={e => setEditDate(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: '10px 12px',
+                    border: '1px solid #ddd',
+                    borderRadius: 6,
+                    fontSize: 14,
+                  }}
+                />
+              </div>
+              <input
+                type="time"
+                value={editTime}
+                onChange={e => setEditTime(e.target.value)}
+                style={{
+                  padding: '10px 12px',
+                  border: '1px solid #ddd',
+                  borderRadius: 6,
+                  fontSize: 14,
+                  width: 120,
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+              {COLORS.map(color => (
+                <button
+                  key={color}
+                  onClick={() => setEditColor(color)}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    backgroundColor: color,
+                    border: editColor === color ? '3px solid #333' : '3px solid transparent',
+                    cursor: 'pointer',
+                    transition: 'transform 0.1s ease',
+                    transform: editColor === color ? 'scale(1.1)' : 'scale(1)',
+                  }}
+                />
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={handleSave}
+                style={{
+                  flex: 1,
+                  padding: '10px 16px',
+                  backgroundColor: '#333',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}
+              >
+                <Check size={14} />
+                Save
+              </button>
+              <button
+                onClick={handleCancel}
+                style={{
+                  padding: '10px 16px',
+                  backgroundColor: '#fff',
+                  color: '#666',
+                  border: '1px solid #ddd',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontSize: 14,
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -262,7 +368,9 @@ export function CountdownScreen() {
   const [newTitle, setNewTitle] = useState('');
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('12:00');
+  const [selectedColor, setSelectedColor] = useState(COLORS[0]);
 
+  // Load events from Supabase on mount
   const loadEvents = async () => {
     setLoading(true);
     const data = await getCountdowns();
@@ -274,13 +382,21 @@ export function CountdownScreen() {
 
   useEffect(() => {
     loadEvents();
+
+    // Subscribe to realtime changes
     const unsubscribe = subscribeToCountdowns((data) => {
       setEvents(data.map(fromSupabase).sort((a, b) =>
         new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime()
       ));
     });
-    return () => { if (unsubscribe) unsubscribe(); };
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
+
+  // Filter out past events
+  const activeEvents = events.filter(e => !isPast(new Date(e.targetDate)));
 
   const handleAddEvent = async () => {
     if (!newTitle.trim() || !newDate) return;
@@ -290,13 +406,15 @@ export function CountdownScreen() {
       id: Date.now().toString(),
       title: newTitle.trim(),
       targetDate: targetDate.toISOString(),
-      color: '#000',
+      color: selectedColor,
     };
 
+    // Optimistically update UI
     setEvents(prev => [...prev, event].sort((a, b) =>
       new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime()
     ));
 
+    // Save to Supabase
     await addCountdown(toSupabase(event));
 
     setNewTitle('');
@@ -306,32 +424,52 @@ export function CountdownScreen() {
   };
 
   const handleRemoveEvent = async (id: string) => {
+    // Optimistically update UI
     setEvents(prev => prev.filter(e => e.id !== id));
+    // Remove from Supabase
     await removeCountdown(id);
+  };
+
+  const handleUpdateEvent = async (id: string, updates: Partial<Pick<CountdownEvent, 'title' | 'targetDate' | 'color'>>) => {
+    // Optimistically update UI
+    setEvents(prev => prev.map(e =>
+      e.id === id ? { ...e, ...updates } : e
+    ).sort((a, b) =>
+      new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime()
+    ));
+
+    // Convert targetDate to target_date for Supabase
+    const supabaseUpdates: Record<string, string | undefined> = {};
+    if (updates.title) supabaseUpdates.title = updates.title;
+    if (updates.targetDate) supabaseUpdates.target_date = updates.targetDate;
+    if (updates.color) supabaseUpdates.color = updates.color;
+
+    await updateCountdown(id, supabaseUpdates);
   };
 
   return (
     <div className="flex flex--col" style={{ height: '100%' }}>
-      {/* Minimal header */}
-      <div className="flex flex--between" style={{ alignItems: 'center', marginBottom: 32 }}>
-        <div style={{
-          fontSize: 11,
-          fontWeight: 500,
-          letterSpacing: '0.25em',
-          color: '#999',
-          textTransform: 'uppercase',
-        }}>
-          {events.length} {events.length === 1 ? 'Countdown' : 'Countdowns'}
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Clock size={20} color="#333" />
+          <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.1em', color: '#333' }}>COUNTDOWNS</span>
+          <span style={{ fontSize: 12, color: '#999' }}>
+            {activeEvents.length} {activeEvents.length === 1 ? 'event' : 'events'}
+          </span>
         </div>
-        <div className="flex gap--small">
+        <div style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={loadEvents}
             style={{
-              background: 'none',
-              border: 'none',
+              background: '#fff',
+              border: '1px solid #e5e5e5',
+              borderRadius: 6,
               cursor: 'pointer',
               padding: 8,
-              opacity: 0.4,
+              display: 'flex',
+              alignItems: 'center',
+              color: '#666',
             }}
             title="Refresh"
           >
@@ -340,41 +478,51 @@ export function CountdownScreen() {
           <button
             onClick={() => setShowAddForm(!showAddForm)}
             style={{
-              background: showAddForm ? '#000' : 'none',
-              border: 'none',
+              background: showAddForm ? '#333' : '#fff',
+              border: '1px solid #e5e5e5',
+              borderRadius: 6,
               cursor: 'pointer',
               padding: 8,
-              borderRadius: 4,
+              display: 'flex',
+              alignItems: 'center',
+              color: showAddForm ? '#fff' : '#666',
             }}
+            title="Add countdown"
           >
-            <Plus size={14} color={showAddForm ? '#fff' : '#000'} />
+            <Plus size={14} />
           </button>
         </div>
       </div>
 
-      {/* Add Form - minimal and elegant */}
+      {/* Add Form */}
       {showAddForm && (
-        <div style={{ marginBottom: 32, paddingBottom: 24, borderBottom: '1px solid #eee' }}>
+        <div
+          style={{
+            padding: 20,
+            backgroundColor: '#fff',
+            marginBottom: 20,
+            borderRadius: 8,
+            border: '1px solid #eee',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+          }}
+        >
           <input
             type="text"
             placeholder="Event name"
             value={newTitle}
             onChange={e => setNewTitle(e.target.value)}
-            autoFocus
             style={{
               width: '100%',
-              padding: '12px 0',
-              border: 'none',
-              borderBottom: '1px solid #ddd',
-              fontSize: 18,
-              fontWeight: 300,
-              outline: 'none',
-              marginBottom: 16,
-              background: 'transparent',
+              padding: '12px 14px',
+              border: '1px solid #ddd',
+              borderRadius: 6,
+              marginBottom: 12,
+              fontSize: 14,
+              boxSizing: 'border-box',
             }}
           />
-          <div className="flex gap--medium" style={{ marginBottom: 16 }}>
-            <div className="flex" style={{ alignItems: 'center', gap: 8, flex: 1 }}>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
               <Calendar size={14} color="#999" />
               <input
                 type="date"
@@ -382,29 +530,44 @@ export function CountdownScreen() {
                 onChange={e => setNewDate(e.target.value)}
                 style={{
                   flex: 1,
-                  padding: '10px 12px',
-                  border: '1px solid #eee',
-                  borderRadius: 4,
+                  padding: '12px 14px',
+                  border: '1px solid #ddd',
+                  borderRadius: 6,
                   fontSize: 14,
-                  background: '#fafafa',
                 }}
               />
             </div>
-            <div className="flex" style={{ alignItems: 'center', gap: 8 }}>
-              <Clock size={14} color="#999" />
-              <input
-                type="time"
-                value={newTime}
-                onChange={e => setNewTime(e.target.value)}
+            <input
+              type="time"
+              value={newTime}
+              onChange={e => setNewTime(e.target.value)}
+              style={{
+                padding: '12px 14px',
+                border: '1px solid #ddd',
+                borderRadius: 6,
+                fontSize: 14,
+                width: 120,
+              }}
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <span style={{ fontSize: 12, color: '#999' }}>Color:</span>
+            {COLORS.map(color => (
+              <button
+                key={color}
+                onClick={() => setSelectedColor(color)}
                 style={{
-                  padding: '10px 12px',
-                  border: '1px solid #eee',
-                  borderRadius: 4,
-                  fontSize: 14,
-                  background: '#fafafa',
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  backgroundColor: color,
+                  border: selectedColor === color ? '3px solid #333' : '3px solid transparent',
+                  cursor: 'pointer',
+                  transition: 'transform 0.1s ease',
+                  transform: selectedColor === color ? 'scale(1.1)' : 'scale(1)',
                 }}
               />
-            </div>
+            ))}
           </div>
           <button
             onClick={handleAddEvent}
@@ -412,15 +575,13 @@ export function CountdownScreen() {
             style={{
               width: '100%',
               padding: '12px 16px',
-              backgroundColor: newTitle.trim() && newDate ? '#000' : '#ddd',
+              backgroundColor: !newTitle.trim() || !newDate ? '#ccc' : '#333',
               color: '#fff',
               border: 'none',
-              borderRadius: 4,
-              cursor: newTitle.trim() && newDate ? 'pointer' : 'not-allowed',
-              fontSize: 13,
+              borderRadius: 6,
+              cursor: !newTitle.trim() || !newDate ? 'not-allowed' : 'pointer',
+              fontSize: 14,
               fontWeight: 500,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
             }}
           >
             Add Countdown
@@ -429,38 +590,35 @@ export function CountdownScreen() {
       )}
 
       {/* Events list */}
-      {events.length === 0 ? (
-        <div className="flex flex--center flex-1 flex--col" style={{ gap: 16 }}>
-          <div style={{
-            width: 80,
-            height: 80,
-            borderRadius: '50%',
-            border: '1px solid #eee',
+      {activeEvents.length === 0 ? (
+        <div
+          style={{
+            flex: 1,
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-          }}>
-            <Clock size={28} strokeWidth={1} color="#ccc" />
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 14, color: '#999', marginBottom: 4 }}>
-              {loading ? 'Loading...' : 'No countdowns yet'}
-            </div>
-            {!loading && (
-              <div style={{ fontSize: 12, color: '#ccc' }}>
-                Tap + to add your first event
-              </div>
-            )}
-          </div>
+            gap: 8,
+          }}
+        >
+          <Clock size={32} color="#ddd" />
+          <span style={{ color: '#999', fontSize: 14 }}>
+            {loading ? 'Loading...' : 'No upcoming events'}
+          </span>
+          {!loading && (
+            <span style={{ color: '#ccc', fontSize: 12 }}>
+              Click + to add a countdown
+            </span>
+          )}
         </div>
       ) : (
         <div style={{ flex: 1, overflow: 'auto' }}>
-          {events.map((event, index) => (
-            <CountdownTimer
+          {activeEvents.map(event => (
+            <CountdownCard
               key={event.id}
               event={event}
               onRemove={() => handleRemoveEvent(event.id)}
-              isFirst={index === 0}
+              onUpdate={(updates) => handleUpdateEvent(event.id, updates)}
             />
           ))}
         </div>
