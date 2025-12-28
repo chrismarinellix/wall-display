@@ -6,7 +6,7 @@ import { useStocks } from '../../hooks/useStocks';
 import { useNews } from '../../hooks/useNews';
 import { generateDailySummary } from '../../services/aiService';
 import { weatherCodeToDescription } from '../../types/weather';
-import { getDailyHabits, toggleHabit, subscribeToHabits, DailyHabit } from '../../services/supabase';
+import { getDailyHabits, toggleHabit, subscribeToHabits, DailyHabit, getCalendarEvents, CalendarEventRecord } from '../../services/supabase';
 
 interface Summary {
   greeting: string;
@@ -23,10 +23,16 @@ export function SummaryScreen() {
   const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [habits, setHabits] = useState<DailyHabit[]>([]);
+  const [customEvents, setCustomEvents] = useState<CalendarEventRecord[]>([]);
 
   // Load habits from Supabase on mount
   useEffect(() => {
     getDailyHabits().then(setHabits);
+  }, []);
+
+  // Load custom calendar events from Supabase
+  useEffect(() => {
+    getCalendarEvents().then(setCustomEvents);
   }, []);
 
   // Subscribe to realtime habit changes
@@ -90,14 +96,37 @@ export function SummaryScreen() {
           ),
         } : undefined,
         calendar: {
-          events: events.slice(0, 5).map(e => ({
-            title: e.title,
-            time: e.allDay ? 'All day' : e.start.toLocaleTimeString('en-US', {
-              hour: 'numeric',
-              minute: '2-digit'
-            }),
-            isAllDay: e.allDay,
-          })),
+          events: [
+            // Events from Google/Outlook calendar hook
+            ...events.map(e => ({
+              title: e.title,
+              time: e.allDay ? 'All day' : e.start.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit'
+              }),
+              isAllDay: e.allDay,
+              start: e.start,
+            })),
+            // Custom events from Supabase
+            ...customEvents.map(e => ({
+              title: e.title,
+              time: e.all_day ? 'All day' : new Date(e.start_date).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit'
+              }),
+              isAllDay: e.all_day,
+              start: new Date(e.start_date),
+            })),
+          ]
+            .filter(e => {
+              // Filter to today's events only
+              const today = new Date();
+              const eventDate = e.start;
+              return eventDate.toDateString() === today.toDateString();
+            })
+            .sort((a, b) => a.start.getTime() - b.start.getTime())
+            .slice(0, 8)
+            .map(({ title, time, isAllDay }) => ({ title, time, isAllDay })),
         },
         stocks: {
           crypto: crypto.map(c => ({
@@ -119,7 +148,7 @@ export function SummaryScreen() {
     } finally {
       setLoading(false);
     }
-  }, [weather, forecast, events, crypto, news, groqApiKey]);
+  }, [weather, forecast, events, customEvents, crypto, news, groqApiKey]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
