@@ -8,7 +8,8 @@ export type ScreenType =
   | 'countdown'
   | 'homeassistant'
   | 'moments'
-  | 'summary';
+  | 'summary'
+  | 'setup';
 
 export interface RssFeed {
   url: string;

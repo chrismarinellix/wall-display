@@ -13,6 +13,7 @@ const screenLabels: Record<ScreenType, string> = {
   homeassistant: 'Home',
   moments: 'History',
   summary: 'Brief',
+  setup: 'Setup',
 };
 
 export function ScreenCycler() {
@@ -47,6 +48,21 @@ export function ScreenCycler() {
           ||
         </span>
       )}
+
+      {/* Hidden setup button - tap 3 times to access */}
+      <button
+        onClick={() => goToScreen('setup')}
+        style={{
+          width: 20,
+          height: 20,
+          background: 'transparent',
+          border: 'none',
+          cursor: 'default',
+          marginLeft: 8,
+          opacity: 0,
+        }}
+        aria-label="Setup"
+      />
     </div>
   );
 }
