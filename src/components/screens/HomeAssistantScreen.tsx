@@ -85,7 +85,7 @@ function FanCard({
       minWidth: 180,
       maxWidth: 240,
     }}>
-      {/* Title with Temperature */}
+      {/* Title with Temperature - always show temp area for symmetry */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -102,21 +102,20 @@ function FanCard({
         }}>
           {name}
         </span>
-        {temp !== null && (
-          <span style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 3,
-            fontSize: 11,
-            color: '#666',
-            background: '#1a1a1a',
-            padding: '2px 6px',
-            borderRadius: 4,
-          }}>
-            <Thermometer size={10} />
-            {temp.toFixed(1)}°
-          </span>
-        )}
+        <span style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 3,
+          fontSize: 11,
+          color: temp !== null ? '#666' : '#333',
+          background: '#1a1a1a',
+          padding: '2px 6px',
+          borderRadius: 4,
+          opacity: temp !== null ? 1 : 0.4,
+        }}>
+          <Thermometer size={10} />
+          {temp !== null ? `${temp.toFixed(1)}°` : '--'}
+        </span>
       </div>
 
       {/* Fan Icon */}
@@ -191,121 +190,121 @@ function FanCard({
         })}
       </div>
 
-      {/* Feature toggles */}
+      {/* Feature toggles - always show for symmetry */}
       <div style={{
         display: 'flex',
         gap: 8,
         marginTop: 4,
       }}>
-        {whoosh && (
-          <button
-            onClick={onToggleWhoosh}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '4px 8px',
-              background: whooshOn ? '#2a2a2a' : '#111',
-              border: whooshOn ? '1px solid #444' : '1px solid #222',
-              borderRadius: 6,
-              cursor: 'pointer',
-              color: whooshOn ? '#fff' : '#444',
-              fontSize: 9,
-              fontWeight: 500,
-              letterSpacing: '0.05em',
-            }}
-            title="Whoosh mode - natural breeze effect"
-          >
-            <Wind size={12} />
-            WHOOSH
-          </button>
-        )}
-        {ecoMode && (
-          <button
-            onClick={onToggleEco}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '4px 8px',
-              background: ecoOn ? '#1a2a1a' : '#111',
-              border: ecoOn ? '1px solid #2a4a2a' : '1px solid #222',
-              borderRadius: 6,
-              cursor: 'pointer',
-              color: ecoOn ? '#4a4' : '#444',
-              fontSize: 9,
-              fontWeight: 500,
-              letterSpacing: '0.05em',
-            }}
-            title="Eco mode - energy saving"
-          >
-            <Leaf size={12} />
-            ECO
-          </button>
-        )}
+        <button
+          onClick={() => whoosh && onToggleWhoosh()}
+          disabled={!whoosh}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '4px 8px',
+            background: whooshOn ? '#2a2a2a' : '#111',
+            border: whooshOn ? '1px solid #444' : '1px solid #222',
+            borderRadius: 6,
+            cursor: whoosh ? 'pointer' : 'default',
+            color: whooshOn ? '#fff' : '#444',
+            fontSize: 9,
+            fontWeight: 500,
+            letterSpacing: '0.05em',
+            opacity: whoosh ? 1 : 0.25,
+          }}
+          title="Whoosh mode - natural breeze effect"
+        >
+          <Wind size={12} />
+          WHOOSH
+        </button>
+        <button
+          onClick={() => ecoMode && onToggleEco()}
+          disabled={!ecoMode}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '4px 8px',
+            background: ecoOn ? '#1a2a1a' : '#111',
+            border: ecoOn ? '1px solid #2a4a2a' : '1px solid #222',
+            borderRadius: 6,
+            cursor: ecoMode ? 'pointer' : 'default',
+            color: ecoOn ? '#4a4' : '#444',
+            fontSize: 9,
+            fontWeight: 500,
+            letterSpacing: '0.05em',
+            opacity: ecoMode ? 1 : 0.25,
+          }}
+          title="Eco mode - energy saving"
+        >
+          <Leaf size={12} />
+          ECO
+        </button>
       </div>
 
-      {/* Light Control */}
-      {light && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          width: '100%',
-          marginTop: 8,
-        }}>
-          <div
-            onClick={onToggleLight}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: '50%',
-              background: lightIsOn ? '#2a2a1a' : '#111',
-              border: lightIsOn ? '1px solid #444422' : '1px solid #222',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
-          >
-            <Lightbulb
-              size={14}
-              color={lightIsOn ? '#aa9944' : '#333'}
-              fill={lightIsOn ? '#aa9944' : 'none'}
-              strokeWidth={1.5}
-            />
-          </div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: 8,
-              color: '#444',
-              letterSpacing: '0.1em',
-            }}>
-              <span>LIGHT</span>
-              <span>{lightIsOn ? `${brightnessPercent}%` : 'OFF'}</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="255"
-              value={brightness}
-              onChange={(e) => onSetBrightness(parseInt(e.target.value))}
-              style={{
-                width: '100%',
-                height: 3,
-                borderRadius: 2,
-                appearance: 'none',
-                background: `linear-gradient(to right, #444 0%, #444 ${brightnessPercent}%, #1a1a1a ${brightnessPercent}%, #1a1a1a 100%)`,
-                cursor: 'pointer',
-                opacity: lightIsOn ? 1 : 0.4,
-              }}
-            />
-          </div>
+      {/* Light Control - always show for symmetry */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        width: '100%',
+        marginTop: 8,
+        opacity: light ? 1 : 0.25,
+      }}>
+        <div
+          onClick={() => light && onToggleLight()}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: '50%',
+            background: lightIsOn ? '#2a2a1a' : '#111',
+            border: lightIsOn ? '1px solid #444422' : '1px solid #222',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: light ? 'pointer' : 'default',
+            flexShrink: 0,
+          }}
+        >
+          <Lightbulb
+            size={14}
+            color={lightIsOn ? '#aa9944' : '#333'}
+            fill={lightIsOn ? '#aa9944' : 'none'}
+            strokeWidth={1.5}
+          />
         </div>
-      )}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: 8,
+            color: '#444',
+            letterSpacing: '0.1em',
+          }}>
+            <span>LIGHT</span>
+            <span>{light ? (lightIsOn ? `${brightnessPercent}%` : 'OFF') : 'N/A'}</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="255"
+            value={brightness}
+            onChange={(e) => light && onSetBrightness(parseInt(e.target.value))}
+            disabled={!light}
+            style={{
+              width: '100%',
+              height: 3,
+              borderRadius: 2,
+              appearance: 'none',
+              background: `linear-gradient(to right, #444 0%, #444 ${brightnessPercent}%, #1a1a1a ${brightnessPercent}%, #1a1a1a 100%)`,
+              cursor: light ? 'pointer' : 'default',
+              opacity: light ? (lightIsOn ? 1 : 0.4) : 0.3,
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 }

@@ -97,15 +97,17 @@ export function SummaryScreen() {
     return () => clearInterval(interval);
   }, [generateSummary]);
 
+  const dateStr = currentTime.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
+
   const timeStr = currentTime.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true
-  });
-  const dateStr = currentTime.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric'
   });
 
   if (loading && !summary) {
@@ -117,22 +119,22 @@ export function SummaryScreen() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#fff',
+          background: '#faf9f6',
         }}
       >
         <div
           style={{
             width: 32,
             height: 32,
-            border: '2px solid #eee',
+            border: '2px solid #ddd',
             borderTopColor: '#000',
             borderRadius: '50%',
             animation: 'spin 0.8s linear infinite',
           }}
         />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        <p style={{ marginTop: 24, color: '#999', fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-          Preparing briefing
+        <p style={{ marginTop: 24, color: '#666', fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: 'Georgia, serif' }}>
+          Composing Edition
         </p>
       </div>
     );
@@ -148,10 +150,10 @@ export function SummaryScreen() {
           alignItems: 'center',
           justifyContent: 'center',
           padding: 48,
-          background: '#fff',
+          background: '#faf9f6',
         }}
       >
-        <div style={{ fontSize: 13, color: '#666', textAlign: 'center', maxWidth: 360, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 13, color: '#666', textAlign: 'center', maxWidth: 360, lineHeight: 1.6, fontFamily: 'Georgia, serif' }}>
           {error}
         </div>
         <button
@@ -181,224 +183,235 @@ export function SummaryScreen() {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        background: '#fff',
+        background: '#faf9f6',
         overflow: 'hidden',
+        fontFamily: 'Georgia, "Times New Roman", serif',
       }}
     >
-      {/* Hero Header */}
+      {/* Masthead */}
       <div
         style={{
-          padding: '40px 48px 32px',
-          background: '#000',
-          color: '#fff',
+          padding: '24px 40px 16px',
+          borderBottom: '3px double #000',
         }}
       >
+        {/* Top line with date and time */}
         <div
           style={{
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            marginBottom: 24,
+            alignItems: 'center',
+            marginBottom: 12,
+            paddingBottom: 8,
+            borderBottom: '1px solid #ccc',
           }}
         >
-          <div
-            style={{
-              fontSize: 64,
-              fontWeight: 200,
-              letterSpacing: '-0.03em',
-              lineHeight: 1,
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
+          <span style={{ fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#666' }}>
+            {dateStr}
+          </span>
+          <span style={{ fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#666' }}>
             {timeStr}
-          </div>
-          <div
-            style={{
-              textAlign: 'right',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 500,
-                letterSpacing: '0.2em',
-                textTransform: 'uppercase',
-                opacity: 0.5,
-                marginBottom: 4,
-              }}
-            >
-              Daily Briefing
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                fontWeight: 400,
-                opacity: 0.8,
-              }}
-            >
-              {dateStr}
-            </div>
-          </div>
+          </span>
         </div>
 
-        {/* Greeting */}
+        {/* Newspaper Title */}
         <div
           style={{
-            fontSize: 24,
-            fontWeight: 300,
-            lineHeight: 1.4,
-            opacity: 0.95,
-            maxWidth: 600,
+            textAlign: 'center',
+            marginBottom: 8,
           }}
         >
-          {summary?.greeting || 'Welcome to your daily briefing.'}
+          <h1
+            style={{
+              fontSize: 42,
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              margin: 0,
+              fontFamily: '"Times New Roman", Georgia, serif',
+              color: '#000',
+            }}
+          >
+            The Daily Briefing
+          </h1>
+        </div>
+
+        {/* Tagline */}
+        <div
+          style={{
+            textAlign: 'center',
+            fontSize: 10,
+            letterSpacing: '0.3em',
+            textTransform: 'uppercase',
+            color: '#888',
+          }}
+        >
+          All the news that fits your morning
         </div>
       </div>
 
-      {/* Content Grid */}
+      {/* Main Content Area */}
       <div
         style={{
           flex: 1,
           display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gridTemplateRows: '1fr 1fr',
+          gridTemplateColumns: '1fr 2fr 1fr',
           overflow: 'hidden',
         }}
       >
-        <SummaryCard
-          number="01"
-          label="Weather"
-          content={summary?.weatherSummary || 'Weather data loading...'}
-          position="top-left"
-        />
-        <SummaryCard
-          number="02"
-          label="Schedule"
-          content={summary?.daySummary || 'Calendar data loading...'}
-          position="top-right"
-        />
-        <SummaryCard
-          number="03"
-          label="Markets"
-          content={summary?.marketSummary || 'Market data loading...'}
-          position="bottom-left"
-        />
-        <SummaryCard
-          number="04"
-          label="Headlines"
-          content={summary?.newsSummary || 'News loading...'}
-          position="bottom-right"
-        />
-      </div>
-
-      {/* Footer Advice */}
-      <div
-        style={{
-          padding: '20px 48px',
-          background: '#fafafa',
-          borderTop: '1px solid #eee',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-        }}
-      >
+        {/* Left Column - Weather & Markets */}
         <div
           style={{
-            width: 4,
-            height: 4,
-            background: '#000',
-            borderRadius: '50%',
-            flexShrink: 0,
-          }}
-        />
-        <div
-          style={{
-            fontSize: 13,
-            fontWeight: 400,
-            color: '#333',
-            lineHeight: 1.5,
-            fontStyle: 'italic',
+            borderRight: '1px solid #ddd',
+            padding: '20px 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 20,
           }}
         >
-          {summary?.advice || 'Have a productive day ahead.'}
+          <NewspaperSection title="Weather">
+            <p style={{ fontSize: 13, lineHeight: 1.7, color: '#333', margin: 0 }}>
+              {summary?.weatherSummary || 'Weather data loading...'}
+            </p>
+          </NewspaperSection>
+
+          <div style={{ borderTop: '1px solid #ddd', paddingTop: 20 }}>
+            <NewspaperSection title="Markets">
+              <p style={{ fontSize: 13, lineHeight: 1.7, color: '#333', margin: 0 }}>
+                {summary?.marketSummary || 'Market data loading...'}
+              </p>
+            </NewspaperSection>
+          </div>
         </div>
+
+        {/* Center Column - Main Story (Greeting/Schedule) */}
+        <div
+          style={{
+            padding: '20px 32px',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          {/* Lead Story / Greeting */}
+          <div style={{ marginBottom: 24 }}>
+            <h2
+              style={{
+                fontSize: 28,
+                fontWeight: 700,
+                lineHeight: 1.2,
+                margin: '0 0 16px 0',
+                color: '#000',
+              }}
+            >
+              {summary?.greeting || 'Welcome to your daily briefing.'}
+            </h2>
+            <div
+              style={{
+                width: 60,
+                height: 3,
+                background: '#000',
+                marginBottom: 16,
+              }}
+            />
+          </div>
+
+          {/* Schedule Section */}
+          <NewspaperSection title="Today's Schedule">
+            <p style={{ fontSize: 14, lineHeight: 1.8, color: '#333', margin: 0, textAlign: 'justify' }}>
+              {summary?.daySummary || 'Calendar data loading...'}
+            </p>
+          </NewspaperSection>
+
+          {/* Quote/Advice at bottom of center column */}
+          <div
+            style={{
+              marginTop: 'auto',
+              paddingTop: 20,
+              borderTop: '1px solid #ddd',
+            }}
+          >
+            <blockquote
+              style={{
+                fontSize: 14,
+                fontStyle: 'italic',
+                color: '#555',
+                margin: 0,
+                paddingLeft: 16,
+                borderLeft: '3px solid #ccc',
+                lineHeight: 1.6,
+              }}
+            >
+              {summary?.advice || 'Have a productive day ahead.'}
+            </blockquote>
+          </div>
+        </div>
+
+        {/* Right Column - Headlines */}
+        <div
+          style={{
+            borderLeft: '1px solid #ddd',
+            padding: '20px 24px',
+          }}
+        >
+          <NewspaperSection title="Headlines">
+            <p style={{ fontSize: 13, lineHeight: 1.7, color: '#333', margin: 0 }}>
+              {summary?.newsSummary || 'News loading...'}
+            </p>
+          </NewspaperSection>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div
+        style={{
+          padding: '12px 40px',
+          borderTop: '1px solid #ddd',
+          background: '#f5f4f1',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <span
+          style={{
+            fontSize: 9,
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+            color: '#999',
+          }}
+        >
+          Updated every 30 minutes
+        </span>
       </div>
     </div>
   );
 }
 
-function SummaryCard({
-  number,
-  label,
-  content,
-  position,
+function NewspaperSection({
+  title,
+  children,
 }: {
-  number: string;
-  label: string;
-  content: string;
-  position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  title: string;
+  children: React.ReactNode;
 }) {
-  const borderStyles: Record<string, React.CSSProperties> = {
-    'top-left': { borderRight: '1px solid #eee', borderBottom: '1px solid #eee' },
-    'top-right': { borderBottom: '1px solid #eee' },
-    'bottom-left': { borderRight: '1px solid #eee' },
-    'bottom-right': {},
-  };
-
   return (
-    <div
-      style={{
-        background: '#fff',
-        padding: '28px 36px',
-        display: 'flex',
-        flexDirection: 'column',
-        ...borderStyles[position],
-      }}
-    >
-      {/* Header */}
-      <div
+    <div>
+      <h3
         style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          gap: 12,
-          marginBottom: 16,
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: '0.15em',
+          textTransform: 'uppercase',
+          margin: '0 0 12px 0',
+          paddingBottom: 6,
+          borderBottom: '2px solid #000',
+          display: 'inline-block',
+          color: '#000',
         }}
       >
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 500,
-            color: '#ccc',
-            fontVariantNumeric: 'tabular-nums',
-          }}
-        >
-          {number}
-        </span>
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 600,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            color: '#000',
-          }}
-        >
-          {label}
-        </span>
-      </div>
-
-      {/* Content */}
-      <div
-        style={{
-          fontSize: 14,
-          lineHeight: 1.75,
-          color: '#444',
-          fontWeight: 400,
-          flex: 1,
-        }}
-      >
-        {content}
-      </div>
+        {title}
+      </h3>
+      {children}
     </div>
   );
 }
