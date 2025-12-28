@@ -19,10 +19,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       try {
         const parsed = JSON.parse(stored);
         // Filter stored screens to only include valid ones, then add any new ones
+        // New screens are added at the beginning (like 'summary' for quick access)
         const validScreens = defaultSettings.screenOrder;
         const storedScreens = (parsed.screenOrder || []).filter((s: string) => validScreens.includes(s as any));
         const newScreens = validScreens.filter(s => !storedScreens.includes(s));
-        const screenOrder = storedScreens.length > 0 ? [...storedScreens, ...newScreens] : validScreens;
+        const screenOrder = storedScreens.length > 0 ? [...newScreens, ...storedScreens] : validScreens;
         // Override stored lat/lon with env vars to fix stale location data
         return { ...defaultSettings, ...parsed, screenOrder, latitude, longitude };
       } catch {
