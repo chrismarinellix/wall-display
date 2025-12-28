@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Fan, Power } from 'lucide-react';
+import { Fan, Power, Lightbulb, Sun } from 'lucide-react';
 import { useWeather } from '../../hooks/useWeather';
 import { useCalendar } from '../../hooks/useCalendar';
 import { useStocks } from '../../hooks/useStocks';
@@ -7,7 +7,7 @@ import { useNews } from '../../hooks/useNews';
 import { generateDailySummary } from '../../services/aiService';
 import { weatherCodeToDescription } from '../../types/weather';
 
-// Fan entity interface
+// Entity interfaces
 interface FanEntity {
   entity_id: string;
   state: string;
@@ -18,6 +18,135 @@ interface FanEntity {
     preset_modes?: string[];
     percentage_step?: number;
   };
+}
+
+interface LightEntity {
+  entity_id: string;
+  state: string;
+  attributes: {
+    friendly_name?: string;
+    brightness?: number;
+    color_mode?: string;
+  };
+}
+
+// Light Control Component
+function LightControl({ light, onToggle, onSetBrightness }: {
+  light: LightEntity;
+  onToggle: () => void;
+  onSetBrightness: (brightness: number) => void;
+}) {
+  const isOn = light.state === 'on';
+  const brightness = light.attributes.brightness || 0;
+  const brightnessPercent = Math.round((brightness / 255) * 100);
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 20,
+        padding: '16px 24px',
+        background: isOn ? 'linear-gradient(135deg, #fefce8 0%, #fef08a 100%)' : '#fafafa',
+        borderRadius: 12,
+        border: isOn ? '1px solid #fde047' : '1px solid #e5e5e5',
+        transition: 'all 0.3s ease',
+        flex: 1,
+      }}
+    >
+      {/* Light Icon */}
+      <div
+        onClick={onToggle}
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: '50%',
+          background: isOn ? '#eab308' : '#e5e5e5',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
+          boxShadow: isOn ? '0 4px 12px rgba(234, 179, 8, 0.3)' : 'none',
+        }}
+      >
+        <Lightbulb
+          size={24}
+          color={isOn ? '#fff' : '#999'}
+          fill={isOn ? '#fff' : 'none'}
+        />
+      </div>
+
+      {/* Light Info */}
+      <div style={{ flex: 1 }}>
+        <div style={{
+          fontSize: 14,
+          fontWeight: 600,
+          color: '#333',
+          marginBottom: 4,
+        }}>
+          {light.attributes.friendly_name || light.entity_id.split('.')[1]}
+        </div>
+        <div style={{
+          fontSize: 11,
+          color: '#999',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+        }}>
+          {isOn ? `${brightnessPercent}%` : 'Off'}
+        </div>
+      </div>
+
+      {/* Brightness Slider */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        flex: 1,
+        maxWidth: 200,
+      }}>
+        <Sun size={14} color="#999" />
+        <input
+          type="range"
+          min="0"
+          max="255"
+          value={brightness}
+          onChange={(e) => onSetBrightness(parseInt(e.target.value))}
+          style={{
+            flex: 1,
+            height: 6,
+            borderRadius: 3,
+            appearance: 'none',
+            background: `linear-gradient(to right, #eab308 0%, #eab308 ${brightnessPercent}%, #ddd ${brightnessPercent}%, #ddd 100%)`,
+            cursor: 'pointer',
+            opacity: isOn ? 1 : 0.5,
+          }}
+        />
+        <Sun size={18} color={isOn ? '#eab308' : '#999'} />
+      </div>
+
+      {/* Power Button */}
+      <button
+        onClick={onToggle}
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: '50%',
+          border: 'none',
+          background: isOn ? '#ef4444' : '#22c55e',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          marginLeft: 8,
+        }}
+        title={isOn ? 'Turn Off' : 'Turn On'}
+      >
+        <Power size={16} color="#fff" />
+      </button>
+    </div>
+  );
 }
 
 // Fan Control Component
@@ -146,15 +275,16 @@ function FanControl({ fan, onToggle, onSetSpeed }: {
   );
 }
 
-// Fan Controls Bar Component
-function FanControlsBar() {
+// Home Controls Bar Component (Fans + Lights)
+function HomeControlsBar() {
   const [fans, setFans] = useState<FanEntity[]>([]);
+  const [lights, setLights] = useState<LightEntity[]>([]);
   const [loading, setLoading] = useState(true);
 
   const haUrl = import.meta.env.VITE_HOME_ASSISTANT_URL;
   const haToken = import.meta.env.VITE_HOME_ASSISTANT_TOKEN;
 
-  const fetchFans = useCallback(async () => {
+  const fetchEntities = useCallback(async () => {
     if (!haUrl || !haToken) {
       setLoading(false);
       return;
@@ -170,11 +300,13 @@ function FanControlsBar() {
 
       if (!response.ok) return;
 
-      const data: FanEntity[] = await response.json();
-      const fanEntities = data.filter(e => e.entity_id.startsWith('fan.'));
+      const data: (FanEntity | LightEntity)[] = await response.json();
+      const fanEntities = data.filter(e => e.entity_id.startsWith('fan.')) as FanEntity[];
+      const lightEntities = data.filter(e => e.entity_id.startsWith('light.')) as LightEntity[];
       setFans(fanEntities);
+      setLights(lightEntities);
     } catch (e) {
-      console.error('Failed to fetch fans:', e);
+      console.error('Failed to fetch entities:', e);
     } finally {
       setLoading(false);
     }
@@ -192,7 +324,7 @@ function FanControlsBar() {
         },
         body: JSON.stringify({ entity_id: entityId }),
       });
-      setTimeout(fetchFans, 300);
+      setTimeout(fetchEntities, 300);
     } catch (e) {
       console.error('Failed to toggle fan:', e);
     }
@@ -202,7 +334,6 @@ function FanControlsBar() {
     if (!haUrl || !haToken) return;
 
     try {
-      // If fan is off, turn it on first
       const fan = fans.find(f => f.entity_id === entityId);
       if (fan?.state === 'off') {
         await fetch(`${haUrl}/api/services/fan/turn_on`, {
@@ -215,7 +346,6 @@ function FanControlsBar() {
         });
       }
 
-      // Set speed
       await fetch(`${haUrl}/api/services/fan/set_percentage`, {
         method: 'POST',
         headers: {
@@ -224,19 +354,66 @@ function FanControlsBar() {
         },
         body: JSON.stringify({ entity_id: entityId, percentage }),
       });
-      setTimeout(fetchFans, 300);
+      setTimeout(fetchEntities, 300);
     } catch (e) {
       console.error('Failed to set fan speed:', e);
     }
   };
 
-  useEffect(() => {
-    fetchFans();
-    const interval = setInterval(fetchFans, 15000);
-    return () => clearInterval(interval);
-  }, [fetchFans]);
+  const toggleLight = async (entityId: string) => {
+    if (!haUrl || !haToken) return;
 
-  if (!haUrl || !haToken || fans.length === 0) {
+    try {
+      await fetch(`${haUrl}/api/services/light/toggle`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${haToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ entity_id: entityId }),
+      });
+      setTimeout(fetchEntities, 300);
+    } catch (e) {
+      console.error('Failed to toggle light:', e);
+    }
+  };
+
+  const setLightBrightness = async (entityId: string, brightness: number) => {
+    if (!haUrl || !haToken) return;
+
+    try {
+      if (brightness === 0) {
+        await fetch(`${haUrl}/api/services/light/turn_off`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${haToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ entity_id: entityId }),
+        });
+      } else {
+        await fetch(`${haUrl}/api/services/light/turn_on`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${haToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ entity_id: entityId, brightness }),
+        });
+      }
+      setTimeout(fetchEntities, 300);
+    } catch (e) {
+      console.error('Failed to set light brightness:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchEntities();
+    const interval = setInterval(fetchEntities, 15000);
+    return () => clearInterval(interval);
+  }, [fetchEntities]);
+
+  if (!haUrl || !haToken || (fans.length === 0 && lights.length === 0)) {
     return null;
   }
 
@@ -251,50 +428,83 @@ function FanControlsBar() {
         background: '#fff',
         borderTop: '1px solid #eee',
         display: 'flex',
-        alignItems: 'center',
-        gap: 24,
+        flexDirection: 'column',
+        gap: 12,
       }}
     >
-      {/* Label */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          minWidth: 80,
-        }}
-      >
-        <Fan size={16} color="#666" />
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 600,
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
-            color: '#999',
-          }}
-        >
-          Climate
-        </span>
-      </div>
+      {/* Fans Row */}
+      {fans.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              minWidth: 70,
+            }}
+          >
+            <Fan size={16} color="#666" />
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                color: '#999',
+              }}
+            >
+              Fans
+            </span>
+          </div>
+          <div style={{ display: 'flex', flex: 1, gap: 12 }}>
+            {fans.map(fan => (
+              <FanControl
+                key={fan.entity_id}
+                fan={fan}
+                onToggle={() => toggleFan(fan.entity_id)}
+                onSetSpeed={(pct) => setFanSpeed(fan.entity_id, pct)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
-      {/* Fan Controls */}
-      <div
-        style={{
-          display: 'flex',
-          flex: 1,
-          gap: 16,
-        }}
-      >
-        {fans.map(fan => (
-          <FanControl
-            key={fan.entity_id}
-            fan={fan}
-            onToggle={() => toggleFan(fan.entity_id)}
-            onSetSpeed={(pct) => setFanSpeed(fan.entity_id, pct)}
-          />
-        ))}
-      </div>
+      {/* Lights Row */}
+      {lights.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              minWidth: 70,
+            }}
+          >
+            <Lightbulb size={16} color="#666" />
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                color: '#999',
+              }}
+            >
+              Lights
+            </span>
+          </div>
+          <div style={{ display: 'flex', flex: 1, gap: 12 }}>
+            {lights.map(light => (
+              <LightControl
+                key={light.entity_id}
+                light={light}
+                onToggle={() => toggleLight(light.entity_id)}
+                onSetBrightness={(b) => setLightBrightness(light.entity_id, b)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -585,7 +795,7 @@ export function SummaryScreen() {
       </div>
 
       {/* Fan Controls */}
-      <FanControlsBar />
+      <HomeControlsBar />
 
       {/* Footer Advice */}
       <div
