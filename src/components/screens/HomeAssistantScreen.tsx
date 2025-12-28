@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Fan, ChevronDown, ChevronUp, Sun, Wind, AlertCircle } from 'lucide-react';
+import { Fan, Power, Lightbulb, Sun, AlertCircle } from 'lucide-react';
 
 interface FanEntity {
   entity_id: string;
@@ -7,9 +7,9 @@ interface FanEntity {
   attributes: {
     friendly_name?: string;
     percentage?: number;
-    percentage_step?: number;
-    preset_modes?: string[];
     preset_mode?: string;
+    preset_modes?: string[];
+    percentage_step?: number;
   };
 }
 
@@ -19,199 +19,256 @@ interface LightEntity {
   attributes: {
     friendly_name?: string;
     brightness?: number;
+    color_mode?: string;
   };
 }
 
-interface FanWithLight {
-  fan: FanEntity | null;
-  light: LightEntity | null;
-  name: string;
-}
-
-const SPEED_LABELS = ['Off', '1', '2', '3', '4', '5', '6', '7'];
-
-function FanLozenge({
-  fanData,
-  onToggleFan,
-  onSetSpeed,
-  onToggleLight,
-  onSetBrightness
-}: {
-  fanData: FanWithLight;
-  onToggleFan: () => void;
+// Fan Control Component (same design as SummaryScreen)
+function FanControl({ fan, onToggle, onSetSpeed }: {
+  fan: FanEntity;
+  onToggle: () => void;
   onSetSpeed: (percentage: number) => void;
-  onToggleLight: () => void;
-  onSetBrightness: (brightness: number) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const { fan, light, name } = fanData;
+  const isOn = fan.state === 'on';
+  const percentage = fan.attributes.percentage || 0;
+  const speedStep = fan.attributes.percentage_step || 14.29;
+  const currentSpeed = Math.round(percentage / speedStep);
+  const maxSpeed = Math.round(100 / speedStep);
 
-  const fanIsOn = fan?.state === 'on';
-  const lightIsOn = light?.state === 'on';
-  const currentSpeed = fan?.attributes.percentage ? Math.round(fan.attributes.percentage / 14.28) : 0;
-  const currentBrightness = light?.attributes.brightness || 0;
-  const brightnessPercent = Math.round((currentBrightness / 255) * 100);
+  const speeds = Array.from({ length: maxSpeed }, (_, i) => i + 1);
 
   return (
     <div
       style={{
-        background: '#f5f5f5',
-        borderRadius: 16,
-        padding: 20,
-        border: '1px solid #e0e0e0',
-        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 20,
+        padding: '16px 24px',
+        background: isOn ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' : '#fafafa',
+        borderRadius: 12,
+        border: isOn ? '1px solid #86efac' : '1px solid #e5e5e5',
+        transition: 'all 0.3s ease',
       }}
     >
-      {/* Main row - fan name and toggle */}
+      {/* Fan Icon with animation */}
       <div
-        onClick={() => setExpanded(!expanded)}
+        onClick={onToggle}
         style={{
+          width: 48,
+          height: 48,
+          borderRadius: '50%',
+          background: isOn ? '#22c55e' : '#e5e5e5',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          justifyContent: 'center',
           cursor: 'pointer',
+          transition: 'all 0.3s ease',
+          boxShadow: isOn ? '0 4px 12px rgba(34, 197, 94, 0.3)' : 'none',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: '50%',
-              background: fanIsOn ? '#333' : '#ddd',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Fan
-              size={20}
-              color={fanIsOn ? '#fff' : '#999'}
-              style={{
-                animation: fanIsOn ? 'spin 1s linear infinite' : 'none',
-              }}
-            />
-          </div>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 600, color: '#333' }}>
-              {name}
-            </div>
-            <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
-              {fanIsOn ? `Speed ${currentSpeed}` : 'Off'}
-              {light && ` · Light ${lightIsOn ? `${brightnessPercent}%` : 'Off'}`}
-            </div>
-          </div>
-        </div>
-        {expanded ? (
-          <ChevronUp size={20} color="#666" />
-        ) : (
-          <ChevronDown size={20} color="#666" />
-        )}
+        <Fan
+          size={24}
+          color={isOn ? '#fff' : '#999'}
+          style={{
+            animation: isOn ? `spin ${2 - (percentage / 100) * 1.5}s linear infinite` : 'none',
+          }}
+        />
       </div>
 
-      {/* Expanded controls */}
-      {expanded && (
-        <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Fan speed control */}
-          {fan && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <Wind size={14} color="#666" />
-                <span style={{ fontSize: 12, color: '#666', fontWeight: 500 }}>Fan Speed</span>
-              </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {SPEED_LABELS.map((label, index) => {
-                  const isActive = fanIsOn ? currentSpeed === index : index === 0;
-                  return (
-                    <button
-                      key={index}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (index === 0) {
-                          onToggleFan();
-                        } else {
-                          onSetSpeed(index * 14.28);
-                        }
-                      }}
-                      style={{
-                        flex: 1,
-                        padding: '8px 0',
-                        border: 'none',
-                        borderRadius: 6,
-                        background: isActive ? '#333' : '#e5e5e5',
-                        color: isActive ? '#fff' : '#666',
-                        fontSize: 12,
-                        fontWeight: 500,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Light brightness control */}
-          {light && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <Sun size={14} color="#666" />
-                <span style={{ fontSize: 12, color: '#666', fontWeight: 500 }}>Light</span>
-                <span style={{ fontSize: 11, color: '#999', marginLeft: 'auto' }}>
-                  {lightIsOn ? `${brightnessPercent}%` : 'Off'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleLight();
-                  }}
-                  style={{
-                    width: 40,
-                    height: 32,
-                    border: 'none',
-                    borderRadius: 6,
-                    background: lightIsOn ? '#333' : '#e5e5e5',
-                    color: lightIsOn ? '#fff' : '#666',
-                    fontSize: 11,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {lightIsOn ? 'ON' : 'OFF'}
-                </button>
-                <input
-                  type="range"
-                  min="0"
-                  max="255"
-                  value={currentBrightness}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    onSetBrightness(parseInt(e.target.value));
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  style={{
-                    flex: 1,
-                    height: 6,
-                    accentColor: '#333',
-                    cursor: 'pointer',
-                  }}
-                />
-              </div>
-            </div>
-          )}
+      {/* Fan Info */}
+      <div style={{ flex: 1 }}>
+        <div style={{
+          fontSize: 14,
+          fontWeight: 600,
+          color: '#333',
+          marginBottom: 4,
+        }}>
+          {fan.attributes.friendly_name || fan.entity_id.split('.')[1]}
         </div>
-      )}
+        <div style={{
+          fontSize: 11,
+          color: '#999',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+        }}>
+          {isOn ? `Speed ${currentSpeed}/${maxSpeed}` : 'Off'}
+        </div>
+      </div>
+
+      {/* Speed Control */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4,
+      }}>
+        {speeds.map((speed) => {
+          const speedPercent = speed * speedStep;
+          const isActive = isOn && currentSpeed >= speed;
+          return (
+            <button
+              key={speed}
+              onClick={() => onSetSpeed(speedPercent)}
+              style={{
+                width: 8,
+                height: 12 + speed * 4,
+                borderRadius: 2,
+                border: 'none',
+                background: isActive ? '#22c55e' : '#ddd',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                opacity: isOn ? 1 : 0.5,
+              }}
+              title={`Speed ${speed}`}
+            />
+          );
+        })}
+      </div>
+
+      {/* Power Button */}
+      <button
+        onClick={onToggle}
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: '50%',
+          border: 'none',
+          background: isOn ? '#ef4444' : '#22c55e',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          marginLeft: 8,
+        }}
+        title={isOn ? 'Turn Off' : 'Turn On'}
+      >
+        <Power size={16} color="#fff" />
+      </button>
+    </div>
+  );
+}
+
+// Light Control Component (same design as SummaryScreen)
+function LightControl({ light, onToggle, onSetBrightness }: {
+  light: LightEntity;
+  onToggle: () => void;
+  onSetBrightness: (brightness: number) => void;
+}) {
+  const isOn = light.state === 'on';
+  const brightness = light.attributes.brightness || 0;
+  const brightnessPercent = Math.round((brightness / 255) * 100);
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 20,
+        padding: '16px 24px',
+        background: isOn ? 'linear-gradient(135deg, #fefce8 0%, #fef08a 100%)' : '#fafafa',
+        borderRadius: 12,
+        border: isOn ? '1px solid #fde047' : '1px solid #e5e5e5',
+        transition: 'all 0.3s ease',
+      }}
+    >
+      {/* Light Icon */}
+      <div
+        onClick={onToggle}
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: '50%',
+          background: isOn ? '#eab308' : '#e5e5e5',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
+          boxShadow: isOn ? '0 4px 12px rgba(234, 179, 8, 0.3)' : 'none',
+        }}
+      >
+        <Lightbulb
+          size={24}
+          color={isOn ? '#fff' : '#999'}
+          fill={isOn ? '#fff' : 'none'}
+        />
+      </div>
+
+      {/* Light Info */}
+      <div style={{ flex: 1 }}>
+        <div style={{
+          fontSize: 14,
+          fontWeight: 600,
+          color: '#333',
+          marginBottom: 4,
+        }}>
+          {light.attributes.friendly_name || light.entity_id.split('.')[1]}
+        </div>
+        <div style={{
+          fontSize: 11,
+          color: '#999',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+        }}>
+          {isOn ? `${brightnessPercent}%` : 'Off'}
+        </div>
+      </div>
+
+      {/* Brightness Slider */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        flex: 1,
+        maxWidth: 200,
+      }}>
+        <Sun size={14} color="#999" />
+        <input
+          type="range"
+          min="0"
+          max="255"
+          value={brightness}
+          onChange={(e) => onSetBrightness(parseInt(e.target.value))}
+          style={{
+            flex: 1,
+            height: 6,
+            borderRadius: 3,
+            appearance: 'none',
+            background: `linear-gradient(to right, #eab308 0%, #eab308 ${brightnessPercent}%, #ddd ${brightnessPercent}%, #ddd 100%)`,
+            cursor: 'pointer',
+            opacity: isOn ? 1 : 0.5,
+          }}
+        />
+        <Sun size={18} color={isOn ? '#eab308' : '#999'} />
+      </div>
+
+      {/* Power Button */}
+      <button
+        onClick={onToggle}
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: '50%',
+          border: 'none',
+          background: isOn ? '#ef4444' : '#22c55e',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          marginLeft: 8,
+        }}
+        title={isOn ? 'Turn Off' : 'Turn On'}
+      >
+        <Power size={16} color="#fff" />
+      </button>
     </div>
   );
 }
 
 export function HomeAssistantScreen() {
-  const [fans, setFans] = useState<FanWithLight[]>([]);
+  const [fans, setFans] = useState<FanEntity[]>([]);
+  const [lights, setLights] = useState<LightEntity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -240,27 +297,18 @@ export function HomeAssistantScreen() {
 
       const data = await response.json();
 
-      // Find fans and their associated lights
-      const fanEntities = data.filter((e: FanEntity) => e.entity_id.startsWith('fan.'));
-      const lightEntities = data.filter((e: LightEntity) => e.entity_id.startsWith('light.'));
+      // Get only the two fans we care about
+      const fanEntities = data.filter((e: FanEntity) =>
+        e.entity_id.startsWith('fan.')
+      ) as FanEntity[];
 
-      // Match fans with their lights (by name similarity)
-      const fansWithLights: FanWithLight[] = fanEntities.slice(0, 2).map((fan: FanEntity) => {
-        const fanName = fan.attributes.friendly_name || fan.entity_id.split('.')[1];
-        // Try to find a matching light (e.g., "Office Fan" -> "Office Fan Light")
-        const matchingLight = lightEntities.find((light: LightEntity) => {
-          const lightName = light.attributes.friendly_name || '';
-          return lightName.toLowerCase().includes(fanName.toLowerCase().replace(' fan', '').trim());
-        });
+      // Get lights that match the fan names (for fan lights)
+      const lightEntities = data.filter((e: LightEntity) =>
+        e.entity_id.startsWith('light.')
+      ) as LightEntity[];
 
-        return {
-          fan,
-          light: matchingLight || null,
-          name: fanName.replace(' Fan', '').replace(' fan', ''),
-        };
-      });
-
-      setFans(fansWithLights);
+      setFans(fanEntities.slice(0, 2)); // Only first 2 fans
+      setLights(lightEntities);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to connect');
@@ -289,6 +337,17 @@ export function HomeAssistantScreen() {
   const setFanSpeed = async (entityId: string, percentage: number) => {
     if (!haUrl || !haToken) return;
     try {
+      const fan = fans.find(f => f.entity_id === entityId);
+      if (fan?.state === 'off') {
+        await fetch(`${haUrl}/api/services/fan/turn_on`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${haToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ entity_id: entityId }),
+        });
+      }
       await fetch(`${haUrl}/api/services/fan/set_percentage`, {
         method: 'POST',
         headers: {
@@ -323,23 +382,45 @@ export function HomeAssistantScreen() {
   const setLightBrightness = async (entityId: string, brightness: number) => {
     if (!haUrl || !haToken) return;
     try {
-      await fetch(`${haUrl}/api/services/light/turn_on`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${haToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ entity_id: entityId, brightness }),
-      });
+      if (brightness === 0) {
+        await fetch(`${haUrl}/api/services/light/turn_off`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${haToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ entity_id: entityId }),
+        });
+      } else {
+        await fetch(`${haUrl}/api/services/light/turn_on`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${haToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ entity_id: entityId, brightness }),
+        });
+      }
       setTimeout(fetchEntities, 300);
     } catch (e) {
       console.error('Failed to set brightness:', e);
     }
   };
 
+  // Find the matching light for a fan
+  const getLightForFan = (fan: FanEntity): LightEntity | null => {
+    const fanName = (fan.attributes.friendly_name || '').toLowerCase();
+    return lights.find(light => {
+      const lightName = (light.attributes.friendly_name || '').toLowerCase();
+      // Match "Master Bedroom Fan" with "Master Bedroom Fan Light" or similar
+      const baseName = fanName.replace(' fan', '').trim();
+      return lightName.includes(baseName);
+    }) || null;
+  };
+
   useEffect(() => {
     fetchEntities();
-    const interval = setInterval(fetchEntities, 30000);
+    const interval = setInterval(fetchEntities, 15000);
     return () => clearInterval(interval);
   }, [fetchEntities]);
 
@@ -370,6 +451,7 @@ export function HomeAssistantScreen() {
         color: '#999',
       }}>
         <Fan size={24} style={{ animation: 'spin 1s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
@@ -397,27 +479,51 @@ export function HomeAssistantScreen() {
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'center',
-      padding: 24,
-      gap: 16,
+      padding: '24px 48px',
+      gap: 24,
+      background: '#fff',
     }}>
-      {fans.map((fanData, index) => (
-        <FanLozenge
-          key={fanData.fan?.entity_id || index}
-          fanData={fanData}
-          onToggleFan={() => fanData.fan && toggleFan(fanData.fan.entity_id)}
-          onSetSpeed={(pct) => fanData.fan && setFanSpeed(fanData.fan.entity_id, pct)}
-          onToggleLight={() => fanData.light && toggleLight(fanData.light.entity_id)}
-          onSetBrightness={(b) => fanData.light && setLightBrightness(fanData.light.entity_id, b)}
-        />
-      ))}
-
       {/* CSS for spin animation */}
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      {fans.map((fan) => {
+        const light = getLightForFan(fan);
+        const fanName = (fan.attributes.friendly_name || fan.entity_id.split('.')[1])
+          .replace(' Fan', '')
+          .replace(' fan', '');
+
+        return (
+          <div key={fan.entity_id} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Fan name header */}
+            <div style={{
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
+              color: '#999',
+              paddingLeft: 4,
+            }}>
+              {fanName}
+            </div>
+
+            {/* Fan Control */}
+            <FanControl
+              fan={fan}
+              onToggle={() => toggleFan(fan.entity_id)}
+              onSetSpeed={(pct) => setFanSpeed(fan.entity_id, pct)}
+            />
+
+            {/* Light Control (if exists) */}
+            {light && (
+              <LightControl
+                light={light}
+                onToggle={() => toggleLight(light.entity_id)}
+                onSetBrightness={(b) => setLightBrightness(light.entity_id, b)}
+              />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
