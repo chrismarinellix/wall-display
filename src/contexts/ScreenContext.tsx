@@ -15,7 +15,7 @@ interface ScreenContextType {
 
 const ScreenContext = createContext<ScreenContextType | null>(null);
 
-// Return to weather after 1 minute of inactivity
+// Return to summary/home after 1 minute of inactivity
 const INACTIVITY_TIMEOUT = 60000;
 
 export function ScreenProvider({ children }: { children: ReactNode }) {
@@ -27,13 +27,19 @@ export function ScreenProvider({ children }: { children: ReactNode }) {
   const screens = settings.screenOrder;
   const currentScreen = screens[currentIndex];
 
-  const goToWeather = useCallback(() => {
+  const goToHome = useCallback(() => {
+    // Prefer summary screen, fallback to weather, then first screen
+    const summaryIndex = screens.indexOf('summary');
+    if (summaryIndex !== -1) {
+      setCurrentIndex(summaryIndex);
+      return;
+    }
     const weatherIndex = screens.indexOf('weather');
     if (weatherIndex !== -1) {
       setCurrentIndex(weatherIndex);
-    } else {
-      setCurrentIndex(0); // Fallback to first screen
+      return;
     }
+    setCurrentIndex(0);
   }, [screens]);
 
   const resetInactivityTimer = useCallback(() => {
@@ -41,9 +47,9 @@ export function ScreenProvider({ children }: { children: ReactNode }) {
       clearTimeout(inactivityTimerRef.current);
     }
     inactivityTimerRef.current = window.setTimeout(() => {
-      goToWeather();
+      goToHome();
     }, INACTIVITY_TIMEOUT);
-  }, [goToWeather]);
+  }, [goToHome]);
 
   const nextScreen = useCallback(() => {
     setCurrentIndex(prev => (prev + 1) % screens.length);
