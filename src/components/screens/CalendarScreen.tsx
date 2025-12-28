@@ -215,6 +215,117 @@ async function fetchCalendarEvents(monthStart: Date, monthEnd: Date): Promise<Ca
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+// Responsive styles using CSS clamp() for smooth scaling
+const styles: Record<string, React.CSSProperties> = {
+  container: {
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 'clamp(8px, 2vw, 16px)',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  monthTitle: {
+    fontSize: 'clamp(14px, 4vw, 18px)',
+    fontWeight: 500,
+    minWidth: 'clamp(120px, 30vw, 160px)',
+    textAlign: 'center',
+  },
+  weekdayHeader: {
+    textAlign: 'center',
+    fontSize: 'clamp(8px, 2vw, 10px)',
+    fontWeight: 600,
+    color: '#999',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  calendarGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(7, 1fr)',
+    flex: 1,
+    gap: 1,
+    background: '#e5e5e5',
+  },
+  dayCell: {
+    padding: 'clamp(2px, 1vw, 4px)',
+    minHeight: 'clamp(40px, 10vw, 60px)',
+    cursor: 'pointer',
+    position: 'relative' as const,
+    transition: 'background 0.15s ease',
+  },
+  dayNumber: {
+    fontSize: 'clamp(10px, 2.5vw, 12px)',
+    marginBottom: 2,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  eventTag: {
+    fontSize: 'clamp(7px, 1.8vw, 9px)',
+    padding: 'clamp(1px, 0.5vw, 2px) clamp(2px, 1vw, 4px)',
+    marginBottom: 2,
+    background: '#000',
+    color: '#fff',
+    borderRadius: 2,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 2,
+  },
+  modal: {
+    position: 'fixed' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0,0,0,0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    padding: 16,
+  },
+  modalContent: {
+    background: '#fff',
+    padding: 'clamp(16px, 4vw, 24px)',
+    borderRadius: 8,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '90vh',
+    overflow: 'auto',
+  },
+  input: {
+    width: '100%',
+    padding: 'clamp(8px, 2vw, 10px) clamp(10px, 2.5vw, 12px)',
+    fontSize: 'clamp(13px, 3vw, 14px)',
+    border: '1px solid #ddd',
+    borderRadius: 4,
+    boxSizing: 'border-box' as const,
+  },
+  timePresetButton: {
+    padding: 'clamp(4px, 1.5vw, 6px) clamp(6px, 2vw, 10px)',
+    fontSize: 'clamp(10px, 2.5vw, 11px)',
+    borderRadius: 4,
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+  },
+  button: {
+    padding: 'clamp(6px, 2vw, 8px) clamp(12px, 3vw, 16px)',
+    fontSize: 'clamp(12px, 3vw, 14px)',
+    borderRadius: 4,
+    cursor: 'pointer',
+  },
+};
 
 export function CalendarScreen() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -383,25 +494,28 @@ export function CalendarScreen() {
     eventsByDate[dateKey].push(event);
   });
 
+  // Detect mobile viewport
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 600;
+
   return (
-    <div className="flex flex--col" style={{ height: '100%' }}>
+    <div style={styles.container}>
       {/* Header */}
-      <div className="flex flex--between" style={{ alignItems: 'center', marginBottom: 16 }}>
-        <div className="flex" style={{ alignItems: 'center', gap: 8 }}>
+      <div style={styles.header}>
+        <div className="flex" style={{ alignItems: 'center', gap: 'clamp(4px, 1.5vw, 8px)' }}>
           <button
             onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={isMobile ? 16 : 18} />
           </button>
-          <span style={{ fontSize: 18, fontWeight: 500, minWidth: 160, textAlign: 'center' }}>
-            {format(currentMonth, 'MMMM yyyy')}
+          <span style={styles.monthTitle}>
+            {format(currentMonth, isMobile ? 'MMM yyyy' : 'MMMM yyyy')}
           </span>
           <button
             onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={isMobile ? 16 : 18} />
           </button>
         </div>
         <button
@@ -413,6 +527,7 @@ export function CalendarScreen() {
             padding: 6,
             display: 'flex',
             alignItems: 'center',
+            borderRadius: 4,
           }}
         >
           <RefreshCw size={14} className={loading ? 'spin' : ''} />
@@ -420,34 +535,16 @@ export function CalendarScreen() {
       </div>
 
       {/* Weekday headers */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 8 }}>
-        {WEEKDAYS.map(weekday => (
-          <div
-            key={weekday}
-            style={{
-              textAlign: 'center',
-              fontSize: 10,
-              fontWeight: 600,
-              color: '#999',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}
-          >
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 'clamp(4px, 1.5vw, 8px)' }}>
+        {(isMobile ? WEEKDAYS_SHORT : WEEKDAYS).map((weekday, idx) => (
+          <div key={idx} style={styles.weekdayHeader}>
             {weekday}
           </div>
         ))}
       </div>
 
       {/* Calendar grid */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          flex: 1,
-          gap: 1,
-          background: '#e5e5e5',
-        }}
-      >
+      <div style={styles.calendarGrid}>
         {days.map(day => {
           const dateKey = format(day, 'yyyy-MM-dd');
           const dayEvents = eventsByDate[dateKey] || [];
@@ -457,12 +554,7 @@ export function CalendarScreen() {
           return (
             <div
               key={dateKey}
-              role="button"
-              tabIndex={0}
               onClick={() => handleDayClick(day)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') handleDayClick(day);
-              }}
               onDragOver={(e) => {
                 e.preventDefault();
                 if (!isCurrentDay) {
@@ -482,15 +574,11 @@ export function CalendarScreen() {
                 handleDrop(day);
               }}
               style={{
+                ...styles.dayCell,
                 background: isCurrentDay
                   ? 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)'
                   : '#fff',
-                padding: 4,
-                minHeight: 60,
                 opacity: isCurrentMonth ? 1 : 0.4,
-                cursor: 'pointer',
-                position: 'relative',
-                transition: 'all 0.2s ease',
                 boxShadow: isCurrentDay
                   ? 'inset 0 0 0 2px #000, 0 2px 8px rgba(0,0,0,0.15)'
                   : 'none',
@@ -499,13 +587,9 @@ export function CalendarScreen() {
               {/* Day number */}
               <div
                 style={{
-                  fontSize: 12,
+                  ...styles.dayNumber,
                   fontWeight: isCurrentDay ? 700 : 400,
                   color: isCurrentDay ? '#fff' : '#333',
-                  marginBottom: 2,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
                 }}
               >
                 <span
@@ -537,11 +621,11 @@ export function CalendarScreen() {
                     TODAY
                   </span>
                 )}
-                {!isCurrentDay && <Plus size={10} style={{ opacity: 0.3 }} />}
+                {!isCurrentDay && !isMobile && <Plus size={10} style={{ opacity: 0.3 }} />}
               </div>
 
               {/* Events */}
-              {dayEvents.slice(0, 2).map(event => {
+              {dayEvents.slice(0, isMobile ? 1 : 2).map(event => {
                 const customEventRecord = event.isCustom
                   ? customEvents.find(e => e.id === event.id)
                   : null;
@@ -549,37 +633,27 @@ export function CalendarScreen() {
                 return (
                   <div
                     key={event.id}
-                    draggable={event.isCustom}
+                    draggable={event.isCustom && !isMobile}
                     onDragStart={(e) => {
                       e.stopPropagation();
                       handleDragStart(event);
                     }}
                     style={{
-                      fontSize: 9,
-                      padding: '2px 4px',
-                      marginBottom: 2,
+                      ...styles.eventTag,
                       background: isCurrentDay
                         ? (event.isCustom ? 'rgba(255,255,255,0.85)' : '#fff')
                         : (event.isCustom ? '#333' : '#000'),
                       color: isCurrentDay ? '#000' : '#fff',
-                      borderRadius: 2,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 2,
-                      cursor: event.isCustom ? 'grab' : 'default',
+                      cursor: event.isCustom && !isMobile ? 'grab' : 'default',
                     }}
                     title={`${event.title}${event.allDay ? '' : ` - ${format(event.start, 'h:mm a')}`}${event.isCustom ? ' (drag to move)' : ''}`}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {!event.allDay && <Clock size={8} style={{ marginRight: 2, opacity: 0.7 }} />}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
+                      {!event.allDay && !isMobile && <Clock size={8} style={{ marginRight: 2, opacity: 0.7 }} />}
                       {event.title}
                     </span>
-                    {event.isCustom && customEventRecord && (
+                    {event.isCustom && customEventRecord && !isMobile && (
                       <div style={{ display: 'flex', gap: 2 }}>
                         <Pencil
                           size={10}
@@ -602,9 +676,9 @@ export function CalendarScreen() {
                   </div>
                 );
               })}
-              {dayEvents.length > 2 && (
-                <div style={{ fontSize: 8, color: isCurrentDay ? 'rgba(255,255,255,0.7)' : '#666' }}>
-                  +{dayEvents.length - 2} more
+              {dayEvents.length > (isMobile ? 1 : 2) && (
+                <div style={{ fontSize: 'clamp(6px, 1.5vw, 8px)', color: isCurrentDay ? 'rgba(255,255,255,0.7)' : '#666' }}>
+                  +{dayEvents.length - (isMobile ? 1 : 2)} more
                 </div>
               )}
             </div>
@@ -613,42 +687,25 @@ export function CalendarScreen() {
       </div>
 
       {/* Event count */}
-      <div style={{ fontSize: 11, color: '#999', textAlign: 'center', paddingTop: 8 }}>
+      <div style={{ fontSize: 'clamp(9px, 2.5vw, 11px)', color: '#999', textAlign: 'center', paddingTop: 'clamp(4px, 1.5vw, 8px)' }}>
         {allEvents.length} events this month
       </div>
 
       {/* Add/Edit Event Modal */}
       {showAddModal && selectedDate && (
         <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
+          style={styles.modal}
           onClick={() => {
             setShowAddModal(false);
             setEditingEvent(null);
           }}
         >
           <div
-            style={{
-              background: '#fff',
-              padding: 24,
-              borderRadius: 8,
-              minWidth: 340,
-              maxWidth: '90%',
-            }}
+            style={styles.modalContent}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: 16 }}>{editingEvent ? 'Edit Event' : 'Add Event'}</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'clamp(12px, 3vw, 16px)' }}>
+              <h3 style={{ margin: 0, fontSize: 'clamp(14px, 3.5vw, 16px)' }}>{editingEvent ? 'Edit Event' : 'Add Event'}</h3>
               <X
                 size={20}
                 style={{ cursor: 'pointer', opacity: 0.5 }}
@@ -670,19 +727,14 @@ export function CalendarScreen() {
                     setSelectedDate(newDate);
                   }}
                   style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    fontSize: 14,
-                    border: '1px solid #ddd',
-                    borderRadius: 4,
-                    boxSizing: 'border-box',
+                    ...styles.input,
                     cursor: 'pointer',
                   }}
                 />
               </div>
             ) : (
-              <div style={{ marginBottom: 12, fontSize: 14, color: '#666' }}>
-                {format(selectedDate, 'EEEE, MMMM d, yyyy')}
+              <div style={{ marginBottom: 'clamp(8px, 2vw, 12px)', fontSize: 'clamp(12px, 3vw, 14px)', color: '#666' }}>
+                {format(selectedDate, isMobile ? 'EEE, MMM d' : 'EEEE, MMMM d, yyyy')}
               </div>
             )}
 
@@ -694,11 +746,7 @@ export function CalendarScreen() {
                   if (e.target.value) setNewEventTitle(e.target.value);
                 }}
                 style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  fontSize: 14,
-                  border: '1px solid #ddd',
-                  borderRadius: 4,
+                  ...styles.input,
                   marginBottom: 10,
                   backgroundColor: '#f9f9f9',
                   color: '#666',
@@ -725,33 +773,58 @@ export function CalendarScreen() {
               }}
               autoFocus
               style={{
-                width: '100%',
-                padding: '10px 12px',
-                fontSize: 14,
-                border: '1px solid #ddd',
-                borderRadius: 4,
-                marginBottom: 14,
-                boxSizing: 'border-box',
+                ...styles.input,
+                marginBottom: 'clamp(10px, 2.5vw, 14px)',
               }}
             />
 
-            {/* Time presets */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, color: '#999', marginBottom: 8, letterSpacing: '0.05em' }}>TIME OF DAY</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {/* Exact time input */}
+            <div style={{ marginBottom: 'clamp(10px, 2.5vw, 14px)' }}>
+              <div style={{ fontSize: 'clamp(9px, 2.5vw, 11px)', color: '#999', marginBottom: 'clamp(4px, 1.5vw, 8px)', letterSpacing: '0.05em' }}>TIME (optional)</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Clock size={14} color="#999" />
+                <input
+                  type="time"
+                  value={newEventTime}
+                  onChange={(e) => setNewEventTime(e.target.value)}
+                  style={{
+                    ...styles.input,
+                    flex: 1,
+                  }}
+                  placeholder="Leave empty for all-day"
+                />
+                {newEventTime && (
+                  <button
+                    onClick={() => setNewEventTime('')}
+                    style={{
+                      background: 'none',
+                      border: '1px solid #ddd',
+                      borderRadius: 4,
+                      padding: '6px 10px',
+                      fontSize: 'clamp(10px, 2.5vw, 11px)',
+                      color: '#666',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Quick time presets */}
+            <div style={{ marginBottom: 'clamp(10px, 2.5vw, 14px)' }}>
+              <div style={{ fontSize: 'clamp(9px, 2.5vw, 11px)', color: '#999', marginBottom: 'clamp(4px, 1.5vw, 8px)', letterSpacing: '0.05em' }}>QUICK PRESETS</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'clamp(4px, 1.5vw, 6px)' }}>
                 {TIME_PRESETS.map(preset => (
                   <button
                     key={preset.label}
                     onClick={() => setNewEventTime(preset.value)}
                     style={{
-                      padding: '6px 10px',
-                      fontSize: 11,
+                      ...styles.timePresetButton,
                       border: newEventTime === preset.value ? '1px solid #333' : '1px solid #ddd',
-                      borderRadius: 4,
                       backgroundColor: newEventTime === preset.value ? '#333' : '#fff',
                       color: newEventTime === preset.value ? '#fff' : '#666',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
                     }}
                   >
                     {preset.label}
@@ -760,25 +833,6 @@ export function CalendarScreen() {
               </div>
             </div>
 
-            {/* Custom time input */}
-            {newEventTime && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <Clock size={14} color="#999" />
-                <input
-                  type="time"
-                  value={newEventTime}
-                  onChange={(e) => setNewEventTime(e.target.value)}
-                  style={{
-                    padding: '8px 12px',
-                    fontSize: 14,
-                    border: '1px solid #ddd',
-                    borderRadius: 4,
-                    flex: 1,
-                  }}
-                />
-              </div>
-            )}
-
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 onClick={() => {
@@ -786,12 +840,9 @@ export function CalendarScreen() {
                   setEditingEvent(null);
                 }}
                 style={{
-                  padding: '8px 16px',
-                  fontSize: 14,
+                  ...styles.button,
                   border: '1px solid #ddd',
-                  borderRadius: 4,
                   background: '#fff',
-                  cursor: 'pointer',
                 }}
               >
                 Cancel
@@ -800,16 +851,14 @@ export function CalendarScreen() {
                 onClick={handleAddEvent}
                 disabled={!newEventTitle.trim()}
                 style={{
-                  padding: '8px 16px',
-                  fontSize: 14,
+                  ...styles.button,
                   border: 'none',
-                  borderRadius: 4,
                   background: newEventTitle.trim() ? '#000' : '#ccc',
                   color: '#fff',
                   cursor: newEventTitle.trim() ? 'pointer' : 'not-allowed',
                 }}
               >
-                {editingEvent ? 'Save Changes' : 'Add Event'}
+                {editingEvent ? 'Save' : 'Add'}
               </button>
             </div>
           </div>

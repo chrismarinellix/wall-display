@@ -47,7 +47,7 @@ const screenInfo: Record<ScreenType, { title: string; shortTitle: string; Icon: 
   weather: { title: 'Weather', shortTitle: 'Weather', Icon: Cloud },
   stocks: { title: 'Markets', shortTitle: 'Markets', Icon: TrendingUp },
   quotes: { title: 'Quote', shortTitle: 'Quote', Icon: Quote },
-  pomodoro: { title: 'Pomodoro', shortTitle: 'Focus', Icon: Timer },
+  pomodoro: { title: 'Focus', shortTitle: 'Focus', Icon: Timer },
   japanese: { title: 'Proverb', shortTitle: 'Proverb', Icon: Languages },
   calendar: { title: 'Calendar', shortTitle: 'Cal', Icon: Calendar },
   countdown: { title: 'Countdown', shortTitle: 'Timer', Icon: Clock },
@@ -70,7 +70,7 @@ export function ScreenContainer() {
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
 
-  // Hide dock after 3 seconds
+  // Hide dock after 6 seconds
   const startHideTimer = useCallback(() => {
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current);
@@ -78,7 +78,15 @@ export function ScreenContainer() {
     hideTimerRef.current = window.setTimeout(() => {
       setDockVisible(false);
       setNavExpanded(false);
-    }, 3000);
+    }, 6000);
+  }, []);
+
+  // Stop hide timer (when mouse is over dock)
+  const stopHideTimer = useCallback(() => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
   }, []);
 
   // Show dock and reset timer
@@ -161,12 +169,14 @@ export function ScreenContainer() {
           transition: 'opacity 0.3s ease',
         }}
         onMouseEnter={() => {
-          showDock();
+          stopHideTimer();
+          setDockVisible(true);
           setNavExpanded(true);
         }}
         onMouseLeave={() => {
           setNavExpanded(false);
           setHoveredScreen(null);
+          startHideTimer();
         }}
       >
         {/* Pause indicator */}

@@ -21,7 +21,6 @@ interface TimerConfig {
 }
 
 const PRESETS: Record<string, TimerConfig> = {
-  test: { work: 0.083, shortBreak: 0.033, longBreak: 0.05, sessionsUntilLongBreak: 2 }, // 5s/2s/3s for testing
   micro: { work: 5, shortBreak: 1, longBreak: 5, sessionsUntilLongBreak: 4 },
   short: { work: 15, shortBreak: 3, longBreak: 10, sessionsUntilLongBreak: 4 },
   standard: { work: 25, shortBreak: 5, longBreak: 15, sessionsUntilLongBreak: 4 },
@@ -29,7 +28,6 @@ const PRESETS: Record<string, TimerConfig> = {
 };
 
 const PRESET_LABELS: Record<string, string> = {
-  test: 'TEST',
   micro: '5/1',
   short: '15/3',
   standard: '25/5',

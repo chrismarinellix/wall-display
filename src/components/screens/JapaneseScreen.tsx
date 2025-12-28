@@ -1,21 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { proverbs } from '../../data/proverbs';
 
-function getRandomProverb() {
-  const index = Math.floor(Math.random() * proverbs.length);
+function getRandomProverb(excludeIndex?: number) {
+  let index;
+  do {
+    index = Math.floor(Math.random() * proverbs.length);
+  } while (index === excludeIndex && proverbs.length > 1);
   return { proverb: proverbs[index], index };
 }
 
 export function JapaneseScreen() {
-  const [proverbData, setProverbData] = useState(getRandomProverb);
+  const [proverbData, setProverbData] = useState(() => getRandomProverb());
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Get a new random proverb each time the component mounts (screen shown)
+  // Get a new random proverb each time the screen becomes visible
   useEffect(() => {
-    setProverbData(getRandomProverb());
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        setProverbData(prev => getRandomProverb(prev.index));
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+
+  // Also refresh when component mounts (navigating to this screen)
+  useEffect(() => {
+    setProverbData(prev => getRandomProverb(prev.index));
+  }, [refreshKey]);
+
+  // Refresh on click anywhere on the screen
+  const handleClick = useCallback(() => {
+    setProverbData(prev => getRandomProverb(prev.index));
   }, []);
 
   return (
     <div
+      onClick={handleClick}
       style={{
         position: 'relative',
         height: '100%',
@@ -28,24 +50,9 @@ export function JapaneseScreen() {
         padding: '0 48px',
         background: '#faf8f5',
         overflow: 'hidden',
+        cursor: 'pointer',
       }}
     >
-      {/* Subtle wave pattern background */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          opacity: 0.03,
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20'%3E%3Cpath fill='none' stroke='%23000' stroke-width='0.5' d='M0 10 Q 12.5 0, 25 10 T 50 10 T 75 10 T 100 10'/%3E%3C/svg%3E")`,
-          backgroundSize: '150px 30px',
-          backgroundRepeat: 'repeat',
-          pointerEvents: 'none',
-        }}
-      />
-
       {/* Decorative red seal/stamp in corner */}
       <div
         style={{

@@ -15,80 +15,76 @@ interface ScreenContextType {
 
 const ScreenContext = createContext<ScreenContextType | null>(null);
 
-// Return to summary/home after 1 minute of inactivity
-const INACTIVITY_TIMEOUT = 60000;
+// Auto-cycle through screens every 1 minute
+const CYCLE_INTERVAL = 60000;
 
 export function ScreenProvider({ children }: { children: ReactNode }) {
   const { settings } = useSettings();
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    // Start on a random screen
+    const screenCount = settings.screenOrder.length;
+    return Math.floor(Math.random() * screenCount);
+  });
   const [isPaused, setIsPaused] = useState(false);
-  const inactivityTimerRef = useRef<number | null>(null);
+  const cycleTimerRef = useRef<number | null>(null);
 
   const screens = settings.screenOrder;
   const currentScreen = screens[currentIndex];
 
-  const goToHome = useCallback(() => {
-    // Prefer summary screen, fallback to weather, then first screen
-    const summaryIndex = screens.indexOf('summary');
-    if (summaryIndex !== -1) {
-      setCurrentIndex(summaryIndex);
-      return;
-    }
-    const weatherIndex = screens.indexOf('weather');
-    if (weatherIndex !== -1) {
-      setCurrentIndex(weatherIndex);
-      return;
-    }
-    setCurrentIndex(0);
-  }, [screens]);
+  // Go to a random different screen
+  const goToRandomScreen = useCallback(() => {
+    if (screens.length <= 1) return;
 
-  const resetInactivityTimer = useCallback(() => {
-    if (inactivityTimerRef.current) {
-      clearTimeout(inactivityTimerRef.current);
+    setCurrentIndex(prev => {
+      // Pick a random index that's different from current
+      let newIndex;
+      do {
+        newIndex = Math.floor(Math.random() * screens.length);
+      } while (newIndex === prev && screens.length > 1);
+      return newIndex;
+    });
+  }, [screens.length]);
+
+  // Reset the cycle timer (called after manual navigation)
+  const resetCycleTimer = useCallback(() => {
+    if (cycleTimerRef.current) {
+      clearInterval(cycleTimerRef.current);
     }
-    inactivityTimerRef.current = window.setTimeout(() => {
-      goToHome();
-    }, INACTIVITY_TIMEOUT);
-  }, [goToHome]);
+    // Start new cycle timer
+    cycleTimerRef.current = window.setInterval(() => {
+      goToRandomScreen();
+    }, CYCLE_INTERVAL);
+  }, [goToRandomScreen]);
 
   const nextScreen = useCallback(() => {
     setCurrentIndex(prev => (prev + 1) % screens.length);
-    resetInactivityTimer();
-  }, [screens.length, resetInactivityTimer]);
+    resetCycleTimer();
+  }, [screens.length, resetCycleTimer]);
 
   const prevScreen = useCallback(() => {
     setCurrentIndex(prev => (prev - 1 + screens.length) % screens.length);
-    resetInactivityTimer();
-  }, [screens.length, resetInactivityTimer]);
+    resetCycleTimer();
+  }, [screens.length, resetCycleTimer]);
 
   const goToScreen = useCallback((screen: ScreenType) => {
     const index = screens.indexOf(screen);
     if (index !== -1) setCurrentIndex(index);
-    resetInactivityTimer();
-  }, [screens, resetInactivityTimer]);
+    resetCycleTimer();
+  }, [screens, resetCycleTimer]);
 
-  // Start inactivity timer on mount and reset on any interaction
+  // Auto-cycle timer
   useEffect(() => {
-    const handleInteraction = () => {
-      resetInactivityTimer();
-    };
-
-    // Start the timer
-    resetInactivityTimer();
-
-    window.addEventListener('click', handleInteraction);
-    window.addEventListener('touchstart', handleInteraction);
-    window.addEventListener('keydown', handleInteraction);
+    // Start the cycle timer
+    cycleTimerRef.current = window.setInterval(() => {
+      goToRandomScreen();
+    }, CYCLE_INTERVAL);
 
     return () => {
-      window.removeEventListener('click', handleInteraction);
-      window.removeEventListener('touchstart', handleInteraction);
-      window.removeEventListener('keydown', handleInteraction);
-      if (inactivityTimerRef.current) {
-        clearTimeout(inactivityTimerRef.current);
+      if (cycleTimerRef.current) {
+        clearInterval(cycleTimerRef.current);
       }
     };
-  }, [resetInactivityTimer]);
+  }, [goToRandomScreen]);
 
   // Keyboard navigation
   useEffect(() => {

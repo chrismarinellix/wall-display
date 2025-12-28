@@ -6,7 +6,7 @@ const screenLabels: Record<ScreenType, string> = {
   weather: 'Weather',
   stocks: 'Markets',
   quotes: 'Quote',
-  pomodoro: 'Timer',
+  pomodoro: 'Focus',
   japanese: 'Proverb',
   calendar: 'Calendar',
   countdown: 'Countdown',

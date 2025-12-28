@@ -28,6 +28,81 @@ const TIME_RANGES: { key: TimeRange; label: string; interval: string }[] = [
   { key: '1y', label: '1Y', interval: '1wk' },
 ];
 
+// Responsive styles
+const stockStyles: Record<string, React.CSSProperties> = {
+  container: {
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 'clamp(12px, 3vw, 16px)',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  ticker: {
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 'clamp(11px, 2.5vw, 13px)',
+    color: '#666',
+  },
+  priceSection: {
+    marginBottom: 'clamp(12px, 3vw, 16px)',
+  },
+  currentPrice: {
+    fontSize: 'clamp(36px, 12vw, 56px)',
+    fontWeight: 200,
+  },
+  priceChange: {
+    fontSize: 'clamp(11px, 2.5vw, 13px)',
+    color: '#666',
+    marginTop: 4,
+  },
+  rangeButton: {
+    background: 'none',
+    cursor: 'pointer',
+    padding: 'clamp(3px, 1vw, 4px) clamp(6px, 2vw, 10px)',
+    fontSize: 'clamp(9px, 2.3vw, 11px)',
+  },
+  positionContainer: {
+    display: 'flex',
+    gap: 'clamp(16px, 4vw, 24px)',
+  },
+  positionSection: {
+    flex: 1,
+  },
+  positionLabel: {
+    marginBottom: 8,
+    fontSize: 'clamp(8px, 2vw, 10px)',
+  },
+  positionRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  positionRowLabel: {
+    fontSize: 'clamp(10px, 2.5vw, 12px)',
+    color: '#666',
+  },
+  positionRowValue: {
+    fontSize: 'clamp(10px, 2.5vw, 12px)',
+    fontWeight: 500,
+  },
+  currentValue: {
+    fontSize: 'clamp(18px, 5vw, 24px)',
+    fontWeight: 500,
+    marginBottom: 4,
+  },
+  profitLoss: {
+    fontSize: 'clamp(12px, 3vw, 14px)',
+    fontWeight: 500,
+  },
+};
+
 async function fetchAAPLData(range: TimeRange): Promise<StockData | null> {
   const rangeConfig = TIME_RANGES.find(r => r.key === range) || TIME_RANGES[2];
   const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=${rangeConfig.interval}&range=${range}`;
@@ -252,6 +327,8 @@ export function StocksScreen() {
     setTimeRange(range);
   };
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 600;
+
   if (!stock) {
     return <div className="flex flex--center flex-1"><span className="description">Loading AAPL...</span></div>;
   }
@@ -273,15 +350,15 @@ export function StocksScreen() {
   };
 
   return (
-    <div className="flex flex--col" style={{ height: '100%' }}>
+    <div style={stockStyles.container}>
       {/* Header */}
-      <div className="flex flex--between" style={{ alignItems: 'flex-start', marginBottom: 16 }}>
+      <div style={stockStyles.header}>
         <div>
-          <div className="label" style={{ marginBottom: 4 }}>AAPL</div>
-          <div style={{ fontSize: 13, color: '#666' }}>Apple Inc. · NASDAQ</div>
+          <div className="label" style={stockStyles.ticker}>AAPL</div>
+          <div style={stockStyles.subtitle}>{isMobile ? 'Apple' : 'Apple Inc. · NASDAQ'}</div>
         </div>
         <div className="flex gap--small" style={{ alignItems: 'center' }}>
-          {isPositive ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+          {isPositive ? <TrendingUp size={isMobile ? 14 : 18} /> : <TrendingDown size={isMobile ? 14 : 18} />}
           <span className="label" style={{ color: isPositive ? '#000' : '#666' }}>
             {isPositive ? '+' : ''}{stock.changePercent.toFixed(2)}%
           </span>
@@ -289,28 +366,25 @@ export function StocksScreen() {
       </div>
 
       {/* Current Price */}
-      <div style={{ marginBottom: 16 }}>
-        <div className="value" style={{ fontSize: 56, fontWeight: 200 }}>
+      <div style={stockStyles.priceSection}>
+        <div className="value" style={stockStyles.currentPrice}>
           ${stock.price.toFixed(2)}
         </div>
-        <div style={{ fontSize: 13, color: '#666', marginTop: 4 }}>
+        <div style={stockStyles.priceChange}>
           {isPositive ? '+' : ''}${stock.change.toFixed(2)} today
         </div>
       </div>
 
       {/* Time Range Buttons */}
-      <div className="flex gap--small" style={{ marginBottom: 12 }}>
+      <div className="flex gap--small" style={{ marginBottom: 'clamp(8px, 2vw, 12px)', flexWrap: 'wrap' }}>
         {TIME_RANGES.map((range) => (
           <button
             key={range.key}
             onClick={() => handleRangeChange(range.key)}
             className={`label ${timeRange === range.key ? '' : 'label--gray'}`}
             style={{
-              background: 'none',
+              ...stockStyles.rangeButton,
               border: timeRange === range.key ? '1px solid #000' : '1px solid #e5e5e5',
-              cursor: 'pointer',
-              padding: '4px 10px',
-              fontSize: 11,
             }}
           >
             {range.label}
@@ -322,10 +396,11 @@ export function StocksScreen() {
             background: 'none',
             border: '1px solid #e5e5e5',
             cursor: 'pointer',
-            padding: '4px 8px',
+            padding: 'clamp(3px, 1vw, 4px) clamp(6px, 1.5vw, 8px)',
             display: 'flex',
             alignItems: 'center',
             marginLeft: 'auto',
+            borderRadius: 4,
           }}
           title="Refresh data"
         >
@@ -335,9 +410,9 @@ export function StocksScreen() {
 
       {/* Full-Width Chart - breaks out of container to edge of screen */}
       <div style={{
-        marginLeft: -32,
-        marginRight: -32,
-        marginBottom: 16,
+        marginLeft: isMobile ? -16 : -32,
+        marginRight: isMobile ? -16 : -32,
+        marginBottom: 'clamp(12px, 3vw, 16px)',
       }}>
         <StockChart
           data={stock.history}
@@ -347,45 +422,45 @@ export function StocksScreen() {
       </div>
 
       {/* Data Source & Last Update */}
-      <div className="flex flex--between" style={{ marginBottom: 16, fontSize: 11, color: '#999' }}>
+      <div className="flex flex--between" style={{ marginBottom: 'clamp(12px, 3vw, 16px)', fontSize: 'clamp(9px, 2.3vw, 11px)', color: '#999', flexWrap: 'wrap', gap: 4 }}>
         <span>Source: {stock.dataSource}</span>
         <span>Updated: {formatTime(stock.lastUpdate)}</span>
       </div>
 
-      <div className="divider" style={{ marginBottom: 16 }} />
+      <div className="divider" style={{ marginBottom: 'clamp(12px, 3vw, 16px)' }} />
 
-      {/* Your Position - Compact */}
-      <div className="flex flex--between" style={{ gap: 24 }}>
-        <div style={{ flex: 1 }}>
-          <div className="label label--gray" style={{ marginBottom: 8, fontSize: 10 }}>YOUR POSITION</div>
-          <div className="flex flex--between" style={{ marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: '#666' }}>Shares</span>
-            <span style={{ fontSize: 12, fontWeight: 500 }}>{SHARES}</span>
+      {/* Your Position - Responsive layout */}
+      <div style={{ ...stockStyles.positionContainer, flexDirection: isMobile ? 'column' : 'row' }}>
+        <div style={stockStyles.positionSection}>
+          <div className="label label--gray" style={stockStyles.positionLabel}>YOUR POSITION</div>
+          <div style={stockStyles.positionRow}>
+            <span style={stockStyles.positionRowLabel}>Shares</span>
+            <span style={stockStyles.positionRowValue}>{SHARES}</span>
           </div>
-          <div className="flex flex--between" style={{ marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: '#666' }}>Avg Cost</span>
-            <span style={{ fontSize: 12, fontWeight: 500 }}>${COST_BASIS.toFixed(2)}</span>
+          <div style={stockStyles.positionRow}>
+            <span style={stockStyles.positionRowLabel}>Avg Cost</span>
+            <span style={stockStyles.positionRowValue}>${COST_BASIS.toFixed(2)}</span>
           </div>
-          <div className="flex flex--between">
-            <span style={{ fontSize: 12, color: '#666' }}>Total Cost</span>
-            <span style={{ fontSize: 12, fontWeight: 500 }}>${TOTAL_COST.toLocaleString()}</span>
+          <div style={stockStyles.positionRow}>
+            <span style={stockStyles.positionRowLabel}>Total Cost</span>
+            <span style={stockStyles.positionRowValue}>${TOTAL_COST.toLocaleString()}</span>
           </div>
         </div>
 
-        <div style={{ width: 1, background: '#e5e5e5' }} />
+        {!isMobile && <div style={{ width: 1, background: '#e5e5e5' }} />}
+        {isMobile && <div style={{ height: 1, background: '#e5e5e5', margin: '12px 0' }} />}
 
-        <div style={{ flex: 1 }}>
-          <div className="label label--gray" style={{ marginBottom: 8, fontSize: 10 }}>CURRENT VALUE</div>
-          <div style={{ fontSize: 24, fontWeight: 500, marginBottom: 4 }}>
+        <div style={stockStyles.positionSection}>
+          <div className="label label--gray" style={stockStyles.positionLabel}>CURRENT VALUE</div>
+          <div style={stockStyles.currentValue}>
             ${currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </div>
           <div style={{
-            fontSize: 14,
-            fontWeight: 500,
+            ...stockStyles.profitLoss,
             color: isProfitable ? '#000' : '#666'
           }}>
             {isProfitable ? '+' : ''}${profitLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-            <span style={{ fontSize: 12, marginLeft: 6 }}>
+            <span style={{ fontSize: 'clamp(10px, 2.5vw, 12px)', marginLeft: 6 }}>
               ({isProfitable ? '+' : ''}{profitLossPercent.toFixed(1)}%)
             </span>
           </div>
