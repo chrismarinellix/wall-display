@@ -108,15 +108,21 @@ export function SummaryScreen() {
               start: e.start,
             })),
             // Custom events from Supabase
-            ...customEvents.map(e => ({
-              title: e.title,
-              time: e.all_day ? 'All day' : new Date(e.start_date).toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit'
-              }),
-              isAllDay: e.all_day,
-              start: new Date(e.start_date),
-            })),
+            ...customEvents.map(e => {
+              // Handle timezone - if stored as local time without Z suffix, don't convert
+              const startDate = e.start_date.endsWith('Z') || e.start_date.includes('+')
+                ? new Date(e.start_date)
+                : new Date(e.start_date + '+11:00'); // Melbourne time
+              return {
+                title: e.title,
+                time: e.all_day ? 'All day' : startDate.toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit'
+                }),
+                isAllDay: e.all_day,
+                start: startDate,
+              };
+            }),
           ]
             .filter(e => {
               // Filter to today's events only
