@@ -397,7 +397,19 @@ function FanCard({
       }}>
         {/* Left Arrow - Decrease */}
         <button
-          onClick={() => {
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const newSpeed = Math.max(0, currentSpeed - 1);
+            if (newSpeed === 0) {
+              onToggleFan();
+            } else {
+              onSetSpeed(newSpeed * 14.29);
+            }
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
             const newSpeed = Math.max(0, currentSpeed - 1);
             if (newSpeed === 0) {
               onToggleFan();
@@ -406,24 +418,24 @@ function FanCard({
             }
           }}
           style={{
-            width: 44,
-            height: 44,
+            width: 52,
+            height: 52,
             borderRadius: '50%',
-            border: 'none',
+            border: '2px solid #ddd',
             background: fanIsOn
-              ? 'linear-gradient(135deg, #f8f8f8 0%, #e8e8e8 100%)'
-              : '#f0f0f0',
+              ? 'linear-gradient(135deg, #fff 0%, #f0f0f0 100%)'
+              : '#f5f5f5',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: fanIsOn
-              ? '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)'
-              : 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             transition: 'all 0.2s ease',
+            WebkitTapHighlightColor: 'transparent',
+            touchAction: 'manipulation',
           }}
         >
-          <ChevronLeft size={22} color={fanIsOn ? '#333' : '#bbb'} strokeWidth={2.5} />
+          <ChevronLeft size={26} color={fanIsOn ? '#333' : '#999'} strokeWidth={2.5} />
         </button>
 
         {/* Speed Display */}
@@ -454,7 +466,19 @@ function FanCard({
 
         {/* Right Arrow - Increase */}
         <button
-          onClick={() => {
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!fanIsOn) {
+              onSetSpeed(14.29);
+            } else {
+              const newSpeed = Math.min(7, currentSpeed + 1);
+              onSetSpeed(newSpeed * 14.29);
+            }
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
             if (!fanIsOn) {
               onSetSpeed(14.29);
             } else {
@@ -463,24 +487,24 @@ function FanCard({
             }
           }}
           style={{
-            width: 44,
-            height: 44,
+            width: 52,
+            height: 52,
             borderRadius: '50%',
-            border: 'none',
+            border: '2px solid #ddd',
             background: fanIsOn
-              ? 'linear-gradient(135deg, #f8f8f8 0%, #e8e8e8 100%)'
-              : '#f0f0f0',
+              ? 'linear-gradient(135deg, #fff 0%, #f0f0f0 100%)'
+              : '#f5f5f5',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: fanIsOn
-              ? '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)'
-              : 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             transition: 'all 0.2s ease',
+            WebkitTapHighlightColor: 'transparent',
+            touchAction: 'manipulation',
           }}
         >
-          <ChevronRight size={22} color={fanIsOn ? '#333' : '#bbb'} strokeWidth={2.5} />
+          <ChevronRight size={26} color={fanIsOn ? '#333' : '#999'} strokeWidth={2.5} />
         </button>
       </div>
 
@@ -564,62 +588,152 @@ function FanCard({
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 10,
+        gap: 12,
         width: '100%',
-        marginTop: 8,
+        marginTop: 12,
+        padding: '12px 0',
+        borderTop: '1px solid #eee',
         opacity: light ? 1 : 0.4,
       }}>
-        <div
-          onClick={() => light && onToggleLight()}
+        {/* Light Icon/Toggle */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            light && onToggleLight();
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            light && onToggleLight();
+          }}
+          disabled={!light}
           style={{
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             borderRadius: '50%',
+            border: lightIsOn ? '2px solid #d4a84b' : '2px solid #ddd',
             background: lightIsOn ? '#fffbf0' : '#f5f5f5',
-            border: lightIsOn ? '1px solid #d4a84b' : '1px solid #e5e5e5',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: light ? 'pointer' : 'default',
             flexShrink: 0,
+            boxShadow: lightIsOn ? '0 0 12px rgba(212, 168, 75, 0.3)' : 'none',
+            transition: 'all 0.2s ease',
+            WebkitTapHighlightColor: 'transparent',
           }}
         >
           <Lightbulb
-            size={16}
-            color={lightIsOn ? '#d4a84b' : '#ccc'}
+            size={18}
+            color={lightIsOn ? '#d4a84b' : '#bbb'}
             fill={lightIsOn ? '#d4a84b' : 'none'}
             strokeWidth={1.5}
           />
-        </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{
+        </button>
+
+        {/* Decrease Brightness */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            if (light && lightIsOn) {
+              const newBrightness = Math.max(0, brightness - 51);
+              onSetBrightness(newBrightness);
+            }
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            if (light && lightIsOn) {
+              const newBrightness = Math.max(0, brightness - 51);
+              onSetBrightness(newBrightness);
+            }
+          }}
+          disabled={!light || !lightIsOn}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            border: '1px solid #ddd',
+            background: '#fff',
             display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: 9,
-            color: '#999',
-            letterSpacing: '0.1em',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: (light && lightIsOn) ? 'pointer' : 'default',
+            opacity: (light && lightIsOn) ? 1 : 0.4,
+            WebkitTapHighlightColor: 'transparent',
+            touchAction: 'manipulation',
+          }}
+        >
+          <ChevronLeft size={18} color="#666" strokeWidth={2} />
+        </button>
+
+        {/* Brightness Display */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}>
+          <div style={{
+            fontSize: 18,
+            fontWeight: 300,
+            color: lightIsOn ? '#333' : '#ccc',
           }}>
-            <span>LIGHT</span>
-            <span>{light ? (lightIsOn ? `${brightnessPercent}%` : 'OFF') : 'N/A'}</span>
+            {light ? (lightIsOn ? `${brightnessPercent}%` : 'OFF') : 'N/A'}
           </div>
-          <input
-            type="range"
-            min="0"
-            max="255"
-            value={brightness}
-            onChange={(e) => light && onSetBrightness(parseInt(e.target.value))}
-            disabled={!light}
-            style={{
-              width: '100%',
-              height: 4,
-              borderRadius: 2,
-              appearance: 'none',
-              background: `linear-gradient(to right, #d4a84b 0%, #d4a84b ${brightnessPercent}%, #e5e5e5 ${brightnessPercent}%, #e5e5e5 100%)`,
-              cursor: light ? 'pointer' : 'default',
-              opacity: light ? (lightIsOn ? 1 : 0.5) : 0.3,
-            }}
-          />
+          <div style={{
+            fontSize: 8,
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            color: '#999',
+          }}>
+            LIGHT
+          </div>
         </div>
+
+        {/* Increase Brightness */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            if (light) {
+              if (!lightIsOn) {
+                onSetBrightness(128);
+              } else {
+                const newBrightness = Math.min(255, brightness + 51);
+                onSetBrightness(newBrightness);
+              }
+            }
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            if (light) {
+              if (!lightIsOn) {
+                onSetBrightness(128);
+              } else {
+                const newBrightness = Math.min(255, brightness + 51);
+                onSetBrightness(newBrightness);
+              }
+            }
+          }}
+          disabled={!light}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            border: '1px solid #ddd',
+            background: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: light ? 'pointer' : 'default',
+            opacity: light ? 1 : 0.4,
+            WebkitTapHighlightColor: 'transparent',
+            touchAction: 'manipulation',
+          }}
+        >
+          <ChevronRight size={18} color="#666" strokeWidth={2} />
+        </button>
       </div>
     </div>
   );
