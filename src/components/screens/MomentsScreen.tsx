@@ -1,5 +1,97 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { historicalMoments, HistoricalMoment } from '../../data/moments';
+
+// Floating text that dissolves and reappears in different positions
+function FloatingText({
+  text,
+  style = {},
+  moveInterval = 5000,
+}: {
+  text: string;
+  style?: React.CSSProperties;
+  moveInterval?: number;
+}) {
+  const [position, setPosition] = useState({ x: 50, y: 50 }); // percent from center
+  const [phase, setPhase] = useState<'visible' | 'dissolving' | 'moving' | 'appearing'>('appearing');
+  const [key, setKey] = useState(0);
+
+  useEffect(() => {
+    const cycle = () => {
+      // Dissolve
+      setPhase('dissolving');
+
+      setTimeout(() => {
+        // Move to new position
+        setPhase('moving');
+        setPosition({
+          x: 20 + Math.random() * 60, // 20-80% of width
+          y: 20 + Math.random() * 60, // 20-80% of height
+        });
+        setKey(k => k + 1);
+
+        setTimeout(() => {
+          // Appear at new position
+          setPhase('appearing');
+
+          setTimeout(() => {
+            setPhase('visible');
+          }, 800);
+        }, 100);
+      }, 800);
+    };
+
+    // Initial appear
+    setTimeout(() => setPhase('visible'), 800);
+
+    const timer = setInterval(cycle, moveInterval);
+    return () => clearInterval(timer);
+  }, [moveInterval]);
+
+  const getOpacity = () => {
+    switch (phase) {
+      case 'dissolving': return 0;
+      case 'moving': return 0;
+      case 'appearing': return 1;
+      case 'visible': return 1;
+    }
+  };
+
+  const getBlur = () => {
+    switch (phase) {
+      case 'dissolving': return 20;
+      case 'moving': return 20;
+      case 'appearing': return 0;
+      case 'visible': return 0;
+    }
+  };
+
+  const getScale = () => {
+    switch (phase) {
+      case 'dissolving': return 1.1;
+      case 'moving': return 0.9;
+      case 'appearing': return 1;
+      case 'visible': return 1;
+    }
+  };
+
+  return (
+    <div
+      key={key}
+      style={{
+        position: 'absolute',
+        left: `${position.x}%`,
+        top: `${position.y}%`,
+        transform: `translate(-50%, -50%) scale(${getScale()})`,
+        opacity: getOpacity(),
+        filter: `blur(${getBlur()}px)`,
+        transition: phase === 'moving' ? 'none' : 'all 0.8s ease-in-out',
+        ...style,
+      }}
+    >
+      {text}
+    </div>
+  );
+}
 
 // Map keywords to Unsplash image IDs for reliable loading
 const imageMap: Record<string, string> = {
@@ -337,27 +429,43 @@ export function MomentsScreen() {
         }}
       />
 
-      {/* Giant Year - artistic background element */}
-      <div
+      {/* Floating Giant Year - dissolves and reappears in different positions */}
+      <FloatingText
+        text={moment.year}
+        moveInterval={5000}
         style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
           fontSize: 280,
           fontWeight: 100,
           fontFamily: '"Playfair Display", Georgia, serif',
-          color: 'rgba(255,255,255,0.15)',
+          color: 'rgba(255,255,255,0.2)',
           letterSpacing: '-0.05em',
           lineHeight: 1,
-          textShadow: '0 0 100px rgba(255,255,255,0.1)',
-          animation: 'yearPulse 8s ease-in-out infinite',
+          textShadow: '0 0 100px rgba(255,255,255,0.15)',
           pointerEvents: 'none',
           userSelect: 'none',
+          zIndex: 1,
         }}
-      >
-        {moment.year}
-      </div>
+      />
+
+      {/* Floating Title - dissolves and reappears (offset timing from year) */}
+      <FloatingText
+        text={moment.title}
+        moveInterval={5000}
+        style={{
+          fontSize: 36,
+          fontWeight: 300,
+          fontFamily: '"Playfair Display", Georgia, serif',
+          color: 'rgba(255,255,255,0.7)',
+          letterSpacing: '0.02em',
+          lineHeight: 1.2,
+          textShadow: '0 0 40px rgba(0,0,0,0.5)',
+          pointerEvents: 'none',
+          userSelect: 'none',
+          maxWidth: '60%',
+          textAlign: 'center',
+          zIndex: 2,
+        }}
+      />
 
       {/* Content - centered artistic layout */}
       <div
