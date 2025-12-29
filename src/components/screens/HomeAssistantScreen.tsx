@@ -745,6 +745,9 @@ export function HomeAssistantScreen() {
       const lights = data.filter((e: LightEntity) => e.entity_id.startsWith('light.'));
       const sensors = data.filter((e: SensorEntity) => e.entity_id.startsWith('sensor.'));
       const switches = data.filter((e: SwitchEntity) => e.entity_id.startsWith('switch.'));
+
+      console.log('[HA] Found fans:', fans.map((f: FanEntity) => f.entity_id));
+      console.log('[HA] Found lights:', lights.map((l: LightEntity) => l.entity_id));
       const climates = data.filter((e: ClimateEntity) =>
         e.entity_id.startsWith('climate.') &&
         e.entity_id.toLowerCase().includes('hallway')
@@ -786,6 +789,7 @@ export function HomeAssistantScreen() {
         };
       });
 
+      console.log('[HA] Matched fans with extras:', matched.map(m => ({ name: m.name, id: m.fan.entity_id, hasLight: !!m.light })));
       setFansWithExtras(matched);
       setError(null);
     } catch (e) {
