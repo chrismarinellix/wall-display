@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Dumbbell, Bike, Beef, Salad, Droplet, Moon, Check } from 'lucide-react';
 import { useWeather } from '../../hooks/useWeather';
 import { useCalendar } from '../../hooks/useCalendar';
 import { useStocks } from '../../hooks/useStocks';
 import { useNews } from '../../hooks/useNews';
+import { useSettings } from '../../contexts/SettingsContext';
 import { generateDailySummary } from '../../services/aiService';
 import { weatherCodeToDescription } from '../../types/weather';
 import { getDailyHabits, toggleHabit, subscribeToHabits, DailyHabit, getCalendarEvents, CalendarEventRecord } from '../../services/supabase';
@@ -15,6 +16,158 @@ interface Summary {
   marketSummary: string;
   newsSummary: string;
   advice: string;
+}
+
+// Dispersion text component - text explodes/coalesces character by character
+function DispersionText({
+  text,
+  isVisible,
+  style = {},
+  charDelay = 20,
+  duration = 500,
+}: {
+  text: string;
+  isVisible: boolean;
+  style?: React.CSSProperties;
+  charDelay?: number;
+  duration?: number;
+}) {
+  const offsets = useMemo(() =>
+    text.split('').map(() => ({
+      x: (Math.random() - 0.5) * 80,
+      y: (Math.random() - 0.5) * 50,
+      r: (Math.random() - 0.5) * 40,
+    })), [text]
+  );
+
+  return (
+    <span style={{ display: 'inline', ...style }}>
+      {text.split('').map((char, i) => (
+        <span
+          key={i}
+          style={{
+            display: 'inline-block',
+            animation: isVisible
+              ? `coalesce ${duration}ms cubic-bezier(0.23, 1, 0.32, 1) ${i * charDelay}ms forwards`
+              : `disperse ${duration}ms cubic-bezier(0.55, 0.055, 0.675, 0.19) ${i * charDelay}ms forwards`,
+            opacity: isVisible ? 0 : 1,
+            whiteSpace: char === ' ' ? 'pre' : 'normal',
+            ['--tx' as string]: `${offsets[i].x}px`,
+            ['--ty' as string]: `${offsets[i].y}px`,
+            ['--tr' as string]: `${offsets[i].r}deg`,
+          }}
+        >
+          {char === ' ' ? '\u00A0' : char}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+// Animated spotlight that cycles through live data items
+function LiveDataSpotlight({
+  items,
+}: {
+  items: { label: string; value: string; sublabel?: string }[];
+}) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    if (items.length === 0) return;
+
+    const cycleDuration = 4000;
+    const animDuration = 600;
+
+    const cycle = () => {
+      setIsVisible(false);
+      setTimeout(() => {
+        setCurrentIndex((prev) => (prev + 1) % items.length);
+        setIsVisible(true);
+      }, animDuration + 200);
+    };
+
+    const timer = setInterval(cycle, cycleDuration);
+    return () => clearInterval(timer);
+  }, [items.length]);
+
+  if (items.length === 0) return null;
+
+  const current = items[currentIndex];
+
+  return (
+    <div
+      style={{
+        padding: '16px 20px',
+        background: 'linear-gradient(135deg, #f8f7f4 0%, #f0efe8 100%)',
+        borderLeft: '4px solid #000',
+        marginBottom: 16,
+        minHeight: 70,
+      }}
+    >
+      <div style={{ marginBottom: 4 }}>
+        <DispersionText
+          text={current.label.toUpperCase()}
+          isVisible={isVisible}
+          charDelay={15}
+          duration={400}
+          style={{
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: '0.2em',
+            color: '#888',
+            fontFamily: 'system-ui, sans-serif',
+          }}
+        />
+      </div>
+      <div>
+        <DispersionText
+          text={current.value}
+          isVisible={isVisible}
+          charDelay={25}
+          duration={500}
+          style={{
+            fontSize: 22,
+            fontWeight: 400,
+            color: '#000',
+            fontFamily: 'Georgia, serif',
+          }}
+        />
+      </div>
+      {current.sublabel && (
+        <div style={{ marginTop: 4 }}>
+          <DispersionText
+            text={current.sublabel}
+            isVisible={isVisible}
+            charDelay={20}
+            duration={450}
+            style={{
+              fontSize: 11,
+              color: '#666',
+              fontStyle: 'italic',
+              fontFamily: 'Georgia, serif',
+            }}
+          />
+        </div>
+      )}
+
+      {/* Progress dots */}
+      <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+        {items.map((_, i) => (
+          <div
+            key={i}
+            style={{
+              width: i === currentIndex ? 16 : 6,
+              height: 6,
+              borderRadius: 3,
+              background: i === currentIndex ? '#000' : '#ccc',
+              transition: 'all 0.3s ease',
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function SummaryScreen() {
@@ -67,6 +220,7 @@ export function SummaryScreen() {
   const { events } = useCalendar();
   const { crypto } = useStocks();
   const { items: news } = useNews();
+  const { settings } = useSettings();
 
   const groqApiKey = import.meta.env.VITE_GROQ_API_KEY || '';
 
@@ -75,6 +229,74 @@ export function SummaryScreen() {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
+
+  // Build live data items from real data
+  const liveDataItems = useMemo(() => {
+    const items: { label: string; value: string; sublabel?: string }[] = [];
+
+    // Weather
+    if (weather) {
+      const condition = weatherCodeToDescription[weather.weatherCode] || 'Clear';
+      items.push({
+        label: 'Weather',
+        value: `${Math.round(weather.temperature)}° ${condition}`,
+        sublabel: forecast[0] ? `High ${forecast[0].tempMax}° / Low ${forecast[0].tempMin}°` : undefined,
+      });
+    }
+
+    // Crypto prices
+    if (crypto.length > 0) {
+      const btc = crypto.find(c => c.symbol === 'BTC');
+      if (btc) {
+        items.push({
+          label: 'Bitcoin',
+          value: `$${btc.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+          sublabel: `${btc.change24h >= 0 ? '+' : ''}${btc.change24h.toFixed(1)}% today`,
+        });
+      }
+      const eth = crypto.find(c => c.symbol === 'ETH');
+      if (eth) {
+        items.push({
+          label: 'Ethereum',
+          value: `$${eth.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+          sublabel: `${eth.change24h >= 0 ? '+' : ''}${eth.change24h.toFixed(1)}% today`,
+        });
+      }
+    }
+
+    // Next calendar event
+    const todayEvents = events.filter(e => {
+      const today = new Date();
+      return e.start.toDateString() === today.toDateString();
+    }).sort((a, b) => a.start.getTime() - b.start.getTime());
+
+    const nextEvent = todayEvents.find(e => e.start > new Date());
+    if (nextEvent) {
+      const timeUntil = Math.round((nextEvent.start.getTime() - Date.now()) / 60000);
+      items.push({
+        label: 'Next Event',
+        value: nextEvent.title.length > 20 ? nextEvent.title.slice(0, 20) + '...' : nextEvent.title,
+        sublabel: timeUntil < 60 ? `in ${timeUntil} minutes` : `at ${nextEvent.start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`,
+      });
+    }
+
+    // Countdown from settings
+    if (settings.countdown?.targetDate) {
+      const target = new Date(settings.countdown.targetDate);
+      const now = new Date();
+      const diff = target.getTime() - now.getTime();
+      if (diff > 0) {
+        const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+        items.push({
+          label: 'Countdown',
+          value: `${days} day${days !== 1 ? 's' : ''}`,
+          sublabel: `until ${settings.countdown.label || 'target date'}`,
+        });
+      }
+    }
+
+    return items;
+  }, [weather, forecast, crypto, events, settings.countdown]);
 
   const generateSummary = useCallback(async () => {
     if (!groqApiKey) {
@@ -260,6 +482,42 @@ export function SummaryScreen() {
         WebkitOverflowScrolling: 'touch',
       }}
     >
+      {/* CSS Keyframes for dispersion animation */}
+      <style>{`
+        @keyframes coalesce {
+          0% {
+            opacity: 0;
+            transform: translate(var(--tx), var(--ty)) rotate(var(--tr)) scale(0.5);
+            filter: blur(6px);
+          }
+          50% {
+            opacity: 0.8;
+            filter: blur(2px);
+          }
+          100% {
+            opacity: 1;
+            transform: translate(0, 0) rotate(0deg) scale(1);
+            filter: blur(0);
+          }
+        }
+        @keyframes disperse {
+          0% {
+            opacity: 1;
+            transform: translate(0, 0) rotate(0deg) scale(1);
+            filter: blur(0);
+          }
+          50% {
+            opacity: 0.5;
+            filter: blur(2px);
+          }
+          100% {
+            opacity: 0;
+            transform: translate(var(--tx), var(--ty)) rotate(var(--tr)) scale(0.3);
+            filter: blur(6px);
+          }
+        }
+      `}</style>
+
       {/* Masthead */}
       <div
         style={{
@@ -332,23 +590,28 @@ export function SummaryScreen() {
           minHeight: 'min-content',
         }}
       >
-        {/* Left Column - Weather & Markets */}
+        {/* Left Column - Live Data Spotlight & Weather */}
         <div
           style={{
             borderRight: '1px solid #ddd',
             padding: '20px 24px',
             display: 'flex',
             flexDirection: 'column',
-            gap: 20,
+            gap: 16,
           }}
         >
+          {/* Live animated data spotlight */}
+          {liveDataItems.length > 0 && (
+            <LiveDataSpotlight items={liveDataItems} />
+          )}
+
           <NewspaperSection title="Weather">
             <p style={{ fontSize: 13, lineHeight: 1.7, color: '#333', margin: 0 }}>
               {summary?.weatherSummary || 'Weather data loading...'}
             </p>
           </NewspaperSection>
 
-          <div style={{ borderTop: '1px solid #ddd', paddingTop: 20 }}>
+          <div style={{ borderTop: '1px solid #ddd', paddingTop: 16 }}>
             <NewspaperSection title="Markets">
               <p style={{ fontSize: 13, lineHeight: 1.7, color: '#333', margin: 0 }}>
                 {summary?.marketSummary || 'Market data loading...'}
