@@ -360,7 +360,11 @@ function FanCard({
 
       {/* Fan Icon */}
       <div
-        onClick={onToggleFan}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleFan();
+        }}
+        role="button"
         style={{
           width: 80,
           height: 80,
@@ -376,7 +380,6 @@ function FanCard({
           boxShadow: fanIsOn
             ? '0 0 20px rgba(0,0,0,0.08)'
             : 'none',
-          transition: 'all 0.4s ease',
         }}
       >
         <Fan
@@ -384,7 +387,7 @@ function FanCard({
           color={fanIsOn ? '#333' : '#ccc'}
           strokeWidth={1.5}
           style={{
-            animation: fanIsOn ? `spin ${2.5 - (fanSpeed / 100) * 2}s linear infinite` : 'none',
+            animation: fanIsOn ? `spin ${Math.max(0.3, 2.5 - currentSpeed * 0.3)}s linear infinite` : 'none',
           }}
         />
       </div>
@@ -398,18 +401,11 @@ function FanCard({
         {/* Left Arrow - Decrease */}
         <button
           type="button"
+          role="button"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            const newSpeed = Math.max(0, currentSpeed - 1);
-            if (newSpeed === 0) {
-              onToggleFan();
-            } else {
-              onSetSpeed(newSpeed * 14.29);
-            }
-          }}
-          onTouchEnd={(e) => {
-            e.preventDefault();
+            console.log('[FAN] Left arrow clicked, currentSpeed:', currentSpeed);
             const newSpeed = Math.max(0, currentSpeed - 1);
             if (newSpeed === 0) {
               onToggleFan();
@@ -418,24 +414,22 @@ function FanCard({
             }
           }}
           style={{
-            width: 52,
-            height: 52,
+            width: 56,
+            height: 56,
             borderRadius: '50%',
-            border: '2px solid #ddd',
-            background: fanIsOn
-              ? 'linear-gradient(135deg, #fff 0%, #f0f0f0 100%)'
-              : '#f5f5f5',
+            border: '2px solid #ccc',
+            background: '#fff',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            transition: 'all 0.2s ease',
-            WebkitTapHighlightColor: 'transparent',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+            WebkitTapHighlightColor: 'rgba(0,0,0,0.1)',
             touchAction: 'manipulation',
+            userSelect: 'none',
           }}
         >
-          <ChevronLeft size={26} color={fanIsOn ? '#333' : '#999'} strokeWidth={2.5} />
+          <ChevronLeft size={28} color={fanIsOn ? '#333' : '#999'} strokeWidth={2.5} />
         </button>
 
         {/* Speed Display */}
@@ -467,18 +461,11 @@ function FanCard({
         {/* Right Arrow - Increase */}
         <button
           type="button"
+          role="button"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (!fanIsOn) {
-              onSetSpeed(14.29);
-            } else {
-              const newSpeed = Math.min(7, currentSpeed + 1);
-              onSetSpeed(newSpeed * 14.29);
-            }
-          }}
-          onTouchEnd={(e) => {
-            e.preventDefault();
+            console.log('[FAN] Right arrow clicked, fanIsOn:', fanIsOn, 'currentSpeed:', currentSpeed);
             if (!fanIsOn) {
               onSetSpeed(14.29);
             } else {
@@ -487,24 +474,22 @@ function FanCard({
             }
           }}
           style={{
-            width: 52,
-            height: 52,
+            width: 56,
+            height: 56,
             borderRadius: '50%',
-            border: '2px solid #ddd',
-            background: fanIsOn
-              ? 'linear-gradient(135deg, #fff 0%, #f0f0f0 100%)'
-              : '#f5f5f5',
+            border: '2px solid #ccc',
+            background: '#fff',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            transition: 'all 0.2s ease',
-            WebkitTapHighlightColor: 'transparent',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+            WebkitTapHighlightColor: 'rgba(0,0,0,0.1)',
             touchAction: 'manipulation',
+            userSelect: 'none',
           }}
         >
-          <ChevronRight size={26} color={fanIsOn ? '#333' : '#999'} strokeWidth={2.5} />
+          <ChevronRight size={28} color={fanIsOn ? '#333' : '#999'} strokeWidth={2.5} />
         </button>
       </div>
 
@@ -598,34 +583,33 @@ function FanCard({
         {/* Light Icon/Toggle */}
         <button
           type="button"
+          role="button"
           onClick={(e) => {
             e.preventDefault();
-            light && onToggleLight();
-          }}
-          onTouchEnd={(e) => {
-            e.preventDefault();
+            e.stopPropagation();
+            console.log('[LIGHT] Toggle clicked');
             light && onToggleLight();
           }}
           disabled={!light}
           style={{
-            width: 40,
-            height: 40,
+            width: 44,
+            height: 44,
             borderRadius: '50%',
-            border: lightIsOn ? '2px solid #d4a84b' : '2px solid #ddd',
-            background: lightIsOn ? '#fffbf0' : '#f5f5f5',
+            border: lightIsOn ? '2px solid #d4a84b' : '2px solid #ccc',
+            background: lightIsOn ? '#fffbf0' : '#fff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: light ? 'pointer' : 'default',
             flexShrink: 0,
-            boxShadow: lightIsOn ? '0 0 12px rgba(212, 168, 75, 0.3)' : 'none',
-            transition: 'all 0.2s ease',
-            WebkitTapHighlightColor: 'transparent',
+            boxShadow: lightIsOn ? '0 0 12px rgba(212, 168, 75, 0.3)' : '0 2px 6px rgba(0,0,0,0.1)',
+            touchAction: 'manipulation',
+            userSelect: 'none',
           }}
         >
           <Lightbulb
-            size={18}
-            color={lightIsOn ? '#d4a84b' : '#bbb'}
+            size={20}
+            color={lightIsOn ? '#d4a84b' : '#999'}
             fill={lightIsOn ? '#d4a84b' : 'none'}
             strokeWidth={1.5}
           />
@@ -634,15 +618,11 @@ function FanCard({
         {/* Decrease Brightness */}
         <button
           type="button"
+          role="button"
           onClick={(e) => {
             e.preventDefault();
-            if (light && lightIsOn) {
-              const newBrightness = Math.max(0, brightness - 51);
-              onSetBrightness(newBrightness);
-            }
-          }}
-          onTouchEnd={(e) => {
-            e.preventDefault();
+            e.stopPropagation();
+            console.log('[LIGHT] Decrease clicked');
             if (light && lightIsOn) {
               const newBrightness = Math.max(0, brightness - 51);
               onSetBrightness(newBrightness);
@@ -650,21 +630,22 @@ function FanCard({
           }}
           disabled={!light || !lightIsOn}
           style={{
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             borderRadius: '50%',
-            border: '1px solid #ddd',
+            border: '2px solid #ccc',
             background: '#fff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: (light && lightIsOn) ? 'pointer' : 'default',
             opacity: (light && lightIsOn) ? 1 : 0.4,
-            WebkitTapHighlightColor: 'transparent',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
             touchAction: 'manipulation',
+            userSelect: 'none',
           }}
         >
-          <ChevronLeft size={18} color="#666" strokeWidth={2} />
+          <ChevronLeft size={20} color="#666" strokeWidth={2} />
         </button>
 
         {/* Brightness Display */}
@@ -675,14 +656,14 @@ function FanCard({
           alignItems: 'center',
         }}>
           <div style={{
-            fontSize: 18,
+            fontSize: 20,
             fontWeight: 300,
             color: lightIsOn ? '#333' : '#ccc',
           }}>
             {light ? (lightIsOn ? `${brightnessPercent}%` : 'OFF') : 'N/A'}
           </div>
           <div style={{
-            fontSize: 8,
+            fontSize: 9,
             letterSpacing: '0.15em',
             textTransform: 'uppercase',
             color: '#999',
@@ -694,19 +675,11 @@ function FanCard({
         {/* Increase Brightness */}
         <button
           type="button"
+          role="button"
           onClick={(e) => {
             e.preventDefault();
-            if (light) {
-              if (!lightIsOn) {
-                onSetBrightness(128);
-              } else {
-                const newBrightness = Math.min(255, brightness + 51);
-                onSetBrightness(newBrightness);
-              }
-            }
-          }}
-          onTouchEnd={(e) => {
-            e.preventDefault();
+            e.stopPropagation();
+            console.log('[LIGHT] Increase clicked');
             if (light) {
               if (!lightIsOn) {
                 onSetBrightness(128);
@@ -718,21 +691,22 @@ function FanCard({
           }}
           disabled={!light}
           style={{
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             borderRadius: '50%',
-            border: '1px solid #ddd',
+            border: '2px solid #ccc',
             background: '#fff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: light ? 'pointer' : 'default',
             opacity: light ? 1 : 0.4,
-            WebkitTapHighlightColor: 'transparent',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
             touchAction: 'manipulation',
+            userSelect: 'none',
           }}
         >
-          <ChevronRight size={18} color="#666" strokeWidth={2} />
+          <ChevronRight size={20} color="#666" strokeWidth={2} />
         </button>
       </div>
     </div>
