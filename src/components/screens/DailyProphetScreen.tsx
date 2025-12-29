@@ -352,19 +352,14 @@ function Article({
 
   if (!started) return <div style={{ minHeight: 80 }} />;
 
-  // Calculate wave duration based on text length for organic feel
-  const bodyWaveDuration = Math.max(20000, Math.min(45000, body.length * 80));
-  const headlineWaveDuration = Math.max(8000, headline.length * 120);
-
   return (
     <div style={{ minHeight: 80 }}>
       <div style={{ marginBottom: 8 }}>
         <EphemeralText
           text={headline}
-          phase="wave"
-          waveMode={true}
-          waveDuration={headlineWaveDuration}
-          waveWidth={0.5} // Wider wave for headlines - more text visible
+          phase="present"
+          waveMode={false}
+          formDuration={1200}
           style={{
             fontSize: 16,
             fontWeight: 700,
@@ -378,10 +373,10 @@ function Article({
       <div>
         <EphemeralText
           text={body}
-          phase="wave"
-          waveMode={true}
-          waveDuration={bodyWaveDuration}
-          waveWidth={0.35} // Narrower wave for body - more mysterious
+          phase="present"
+          waveMode={false}
+          formDuration={1500}
+          charDelay={15}
           style={{
             fontSize: 13,
             color: '#333',
@@ -768,10 +763,10 @@ export function DailyProphetScreen() {
         <div style={{ padding: '16px 24px', borderBottom: '2px solid #000', background: 'rgba(255,255,255,0.3)' }}>
           <EphemeralText
             text={articles.headline}
-            phase="wave"
-            waveMode={true}
-            waveDuration={25000}
-            waveWidth={0.6} // Wide wave - headline mostly visible
+            phase="present"
+            waveMode={false}
+            formDuration={1500}
+            charDelay={20}
             style={{
               fontSize: 24,
               fontWeight: 700,
@@ -785,10 +780,10 @@ export function DailyProphetScreen() {
           <div style={{ marginTop: 12, textAlign: 'center' }}>
             <EphemeralText
               text={articles.greeting}
-              phase="wave"
-              waveMode={true}
-              waveDuration={18000}
-              waveWidth={0.5}
+              phase="present"
+              waveMode={false}
+              formDuration={1200}
+              charDelay={25}
               style={{ fontSize: 14, color: '#444', fontStyle: 'italic' }}
             />
           </div>
@@ -800,13 +795,8 @@ export function DailyProphetScreen() {
 
         {/* Left Column */}
         <div style={{ borderRight: '1px solid #ddd', padding: '16px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Weather Article with Image */}
+          {/* Weather Article */}
           <div style={{ background: '#fff', borderRadius: 6, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <img
-              src={getWeatherImageUrl(weather ? (weatherCodeToDescription[weather.weatherCode] || 'clear') : 'default')}
-              alt=""
-              style={{ width: '100%', height: 100, objectFit: 'cover', filter: 'grayscale(1) contrast(1.1)', opacity: 0.85 }}
-            />
             <div style={{ padding: '12px 14px' }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 8, paddingBottom: 4, borderBottom: '2px solid #000', display: 'inline-block' }}>Weather Report</div>
               {articles?.weatherArticle ? (
@@ -849,10 +839,10 @@ export function DailyProphetScreen() {
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 8, color: '#666' }}>Ancient Wisdom</div>
               <EphemeralText
                 text={articles.wisdomCorner}
-                phase="wave"
-                waveMode={true}
-                waveDuration={22000}
-                waveWidth={0.45}
+                phase="present"
+                waveMode={false}
+                formDuration={1500}
+                charDelay={20}
                 style={{ fontSize: 12, fontStyle: 'italic', color: '#555', lineHeight: 1.5 }}
               />
             </div>
@@ -912,10 +902,10 @@ export function DailyProphetScreen() {
             <div style={{ marginTop: 'auto', textAlign: 'center', padding: '12px 0', borderTop: '1px solid #ddd' }}>
               <EphemeralText
                 text={articles.closingThought}
-                phase="wave"
-                waveMode={true}
-                waveDuration={20000}
-                waveWidth={0.4}
+                phase="present"
+                waveMode={false}
+                formDuration={1500}
+                charDelay={20}
                 style={{ fontSize: 13, fontStyle: 'italic', color: '#666' }}
               />
             </div>
@@ -1007,10 +997,10 @@ export function DailyProphetScreen() {
               <div style={{ marginTop: 8 }}>
                 <EphemeralText
                   text={articles.productivityNote}
-                  phase="wave"
-                  waveMode={true}
-                  waveDuration={16000}
-                  waveWidth={0.5}
+                  phase="present"
+                  waveMode={false}
+                  formDuration={1200}
+                  charDelay={15}
                   style={{ fontSize: 10, color: '#666', fontStyle: 'italic' }}
                 />
               </div>

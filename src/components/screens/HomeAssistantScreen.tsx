@@ -488,16 +488,17 @@ function FanCard({
         </button>
       </div>
 
-      {/* Speed dots */}
-      <div style={{ display: 'flex', gap: 3, marginBottom: 2 }}>
+      {/* Speed dots - progressively larger */}
+      <div style={{ display: 'flex', gap: 2, marginBottom: 2, alignItems: 'flex-end' }}>
         {[1, 2, 3, 4, 5, 6, 7].map((s) => (
           <div
             key={s}
             style={{
-              width: 4,
-              height: 4,
+              width: 2 + s,
+              height: 2 + s,
               borderRadius: '50%',
               background: fanIsOn && currentSpeed >= s ? '#333' : '#ddd',
+              transition: 'background 0.15s ease',
             }}
           />
         ))}
