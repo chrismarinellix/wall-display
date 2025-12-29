@@ -244,7 +244,7 @@ export function BriefingTestScreen() {
           gap: 12,
         }}
       >
-        {items.map((item, i) => (
+        {items.map((_, i) => (
           <div
             key={i}
             style={{
