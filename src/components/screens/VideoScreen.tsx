@@ -5,10 +5,10 @@ export function VideoScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState(Date.now());
   const [cameraEntityId, setCameraEntityId] = useState<string | null>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const refreshIntervalRef = useRef<number | null>(null);
 
   const haUrl = import.meta.env.VITE_HOME_ASSISTANT_URL;
   const haToken = import.meta.env.VITE_HOME_ASSISTANT_TOKEN;
@@ -21,36 +21,86 @@ export function VideoScreen() {
       const response = await fetch(`${haUrl}/api/states`, {
         headers: { Authorization: `Bearer ${haToken}` },
       });
-      if (!response.ok) return;
+      if (!response.ok) {
+        console.log('[VideoScreen] Failed to fetch states:', response.status);
+        return;
+      }
 
       const entities = await response.json();
-      const camera = entities.find((e: { entity_id: string }) =>
-        e.entity_id.startsWith('camera.') &&
-        (e.entity_id.includes('reolink') || e.entity_id.includes('rlc') || e.entity_id.includes('backyard'))
-      );
+      const cameras = entities.filter((e: { entity_id: string }) => e.entity_id.startsWith('camera.'));
+      console.log('[VideoScreen] Found cameras:', cameras.map((c: { entity_id: string }) => c.entity_id));
+
+      const camera = cameras.find((e: { entity_id: string }) =>
+        e.entity_id.includes('reolink') || e.entity_id.includes('rlc') || e.entity_id.includes('fluent')
+      ) || cameras[0];
 
       if (camera) {
+        console.log('[VideoScreen] Using camera:', camera.entity_id);
         setCameraEntityId(camera.entity_id);
+      } else {
+        console.log('[VideoScreen] No camera found in', cameras.length, 'entities');
       }
     } catch (e) {
-      console.error('Failed to find camera:', e);
+      console.error('[VideoScreen] Failed to find camera:', e);
     }
   }, [haUrl, haToken]);
+
+  // Fetch camera image with auth header and convert to blob URL
+  const fetchCameraImage = useCallback(async () => {
+    if (!haUrl || !haToken || !cameraEntityId) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch(`${haUrl}/api/camera_proxy/${cameraEntityId}`, {
+        headers: { Authorization: `Bearer ${haToken}` },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+
+      // Revoke old URL to prevent memory leak
+      if (imageUrl) {
+        URL.revokeObjectURL(imageUrl);
+      }
+
+      setImageUrl(url);
+      setError(null);
+    } catch (e) {
+      console.error('[VideoScreen] Failed to fetch image:', e);
+      setError('Failed to load camera feed');
+    } finally {
+      setLoading(false);
+    }
+  }, [haUrl, haToken, cameraEntityId, imageUrl]);
 
   useEffect(() => {
     findCamera();
   }, [findCamera]);
 
-  // Get camera snapshot URL via Home Assistant proxy
-  const getSnapshotUrl = () => {
-    if (!haUrl || !haToken || !cameraEntityId) return null;
-    return `${haUrl}/api/camera_proxy/${cameraEntityId}?token=${haToken}&t=${Date.now()}`;
-  };
+  // Start fetching images once camera is found
+  useEffect(() => {
+    if (!cameraEntityId) return;
 
-  const refreshImage = () => {
-    setLastRefresh(Date.now());
-    setLoading(true);
-  };
+    // Initial fetch
+    fetchCameraImage();
+
+    // Auto-refresh every 2 seconds
+    refreshIntervalRef.current = window.setInterval(fetchCameraImage, 2000);
+
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+      // Clean up blob URL
+      if (imageUrl) {
+        URL.revokeObjectURL(imageUrl);
+      }
+    };
+  }, [cameraEntityId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
@@ -69,14 +119,6 @@ export function VideoScreen() {
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
-
-  // Auto-refresh every 2 seconds for near-live view
-  useEffect(() => {
-    const interval = setInterval(refreshImage, 2000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const snapshotUrl = getSnapshotUrl();
 
   if (!haUrl || !haToken) {
     return (
@@ -158,7 +200,7 @@ export function VideoScreen() {
         justifyContent: 'center',
         position: 'relative',
       }}>
-        {loading && (
+        {loading && !imageUrl && (
           <div style={{
             position: 'absolute',
             display: 'flex',
@@ -170,7 +212,7 @@ export function VideoScreen() {
           </div>
         )}
 
-        {error ? (
+        {error && !imageUrl ? (
           <div style={{
             display: 'flex',
             flexDirection: 'column',
@@ -181,7 +223,7 @@ export function VideoScreen() {
             <AlertCircle size={32} />
             <span style={{ fontSize: 12 }}>{error}</span>
             <button
-              onClick={refreshImage}
+              onClick={fetchCameraImage}
               style={{
                 padding: '8px 16px',
                 background: '#333',
@@ -198,29 +240,17 @@ export function VideoScreen() {
               Retry
             </button>
           </div>
-        ) : (
+        ) : imageUrl ? (
           <img
-            ref={imgRef}
-            key={lastRefresh}
-            src={snapshotUrl || ''}
+            src={imageUrl}
             alt="Camera Feed"
             style={{
               maxWidth: '100%',
               maxHeight: '100%',
               objectFit: 'contain',
-              opacity: loading ? 0.3 : 1,
-              transition: 'opacity 0.2s ease',
-            }}
-            onLoad={() => {
-              setLoading(false);
-              setError(null);
-            }}
-            onError={() => {
-              setLoading(false);
-              setError('Failed to load camera feed');
             }}
           />
-        )}
+        ) : null}
       </div>
 
       {/* Controls overlay */}
@@ -232,7 +262,7 @@ export function VideoScreen() {
         gap: 8,
       }}>
         <button
-          onClick={refreshImage}
+          onClick={fetchCameraImage}
           style={{
             width: 40,
             height: 40,
@@ -282,7 +312,7 @@ export function VideoScreen() {
         fontWeight: 500,
         letterSpacing: '0.05em',
       }}>
-        Backyard Camera
+        {cameraEntityId.replace('camera.', '').replace(/_/g, ' ')}
       </div>
 
       <style>{`
