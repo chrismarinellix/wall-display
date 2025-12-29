@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Video, RefreshCw, AlertCircle, Maximize2, Minimize2 } from 'lucide-react';
 
 export function VideoScreen() {
@@ -6,18 +6,44 @@ export function VideoScreen() {
   const [loading, setLoading] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(Date.now());
+  const [cameraEntityId, setCameraEntityId] = useState<string | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const haUrl = import.meta.env.VITE_HOME_ASSISTANT_URL;
   const haToken = import.meta.env.VITE_HOME_ASSISTANT_TOKEN;
 
-  // Camera entity ID from Reolink integration
-  const cameraEntityId = 'camera.rlc_823a_camera_clear';
+  // Find camera entity on mount
+  const findCamera = useCallback(async () => {
+    if (!haUrl || !haToken) return;
+
+    try {
+      const response = await fetch(`${haUrl}/api/states`, {
+        headers: { Authorization: `Bearer ${haToken}` },
+      });
+      if (!response.ok) return;
+
+      const entities = await response.json();
+      const camera = entities.find((e: { entity_id: string }) =>
+        e.entity_id.startsWith('camera.') &&
+        (e.entity_id.includes('reolink') || e.entity_id.includes('rlc') || e.entity_id.includes('backyard'))
+      );
+
+      if (camera) {
+        setCameraEntityId(camera.entity_id);
+      }
+    } catch (e) {
+      console.error('Failed to find camera:', e);
+    }
+  }, [haUrl, haToken]);
+
+  useEffect(() => {
+    findCamera();
+  }, [findCamera]);
 
   // Get camera snapshot URL via Home Assistant proxy
   const getSnapshotUrl = () => {
-    if (!haUrl || !haToken) return null;
+    if (!haUrl || !haToken || !cameraEntityId) return null;
     return `${haUrl}/api/camera_proxy/${cameraEntityId}?token=${haToken}&t=${Date.now()}`;
   };
 
@@ -66,6 +92,48 @@ export function VideoScreen() {
       }}>
         <AlertCircle size={32} />
         <span style={{ fontSize: 14 }}>Home Assistant not configured</span>
+      </div>
+    );
+  }
+
+  if (!cameraEntityId) {
+    return (
+      <div style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#1a1a1a',
+        color: '#888',
+        gap: 16,
+        padding: 24,
+        textAlign: 'center',
+      }}>
+        <Video size={48} color="#555" />
+        <span style={{ fontSize: 16, fontWeight: 500 }}>No Camera Found</span>
+        <span style={{ fontSize: 12, color: '#666', maxWidth: 300 }}>
+          Add your Reolink camera in Home Assistant:
+          <br />Settings → Devices & Services → Add Integration → Reolink
+        </span>
+        <button
+          onClick={() => findCamera()}
+          style={{
+            marginTop: 8,
+            padding: '8px 16px',
+            background: '#333',
+            border: 'none',
+            borderRadius: 6,
+            color: '#fff',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
+        >
+          <RefreshCw size={14} />
+          Retry
+        </button>
       </div>
     );
   }
