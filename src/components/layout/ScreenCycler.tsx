@@ -14,6 +14,7 @@ const screenLabels: Record<ScreenType, string> = {
   moments: 'History',
   summary: 'Brief',
   setup: 'Setup',
+  video: 'Camera',
 };
 
 export function ScreenCycler() {
