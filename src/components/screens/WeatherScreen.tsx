@@ -1,7 +1,131 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { format } from 'date-fns';
 import { Sun, Cloud, CloudRain, CloudSnow, Wind } from 'lucide-react';
 import { useWeather } from '../../hooks/useWeather';
+
+// Dynamic temperature display with weather-based effects
+function DynamicTemperature({
+  temp,
+  weatherCode,
+  style = {},
+}: {
+  temp: number;
+  weatherCode: number;
+  style?: React.CSSProperties;
+}) {
+  const [time, setTime] = useState(0);
+  const animationRef = useRef<number | null>(null);
+
+  // Determine weather effect type
+  const effectType = useMemo(() => {
+    // Windy conditions (weather codes with wind)
+    if (weatherCode >= 51 && weatherCode <= 57) return 'windy'; // Drizzle with wind
+    if (weatherCode >= 80 && weatherCode <= 82) return 'windy'; // Rain showers
+
+    // Hot (temp > 30°C)
+    if (temp >= 30) return 'hot';
+
+    // Cold (temp < 5°C)
+    if (temp <= 5) return 'cold';
+
+    // Rainy
+    if (weatherCode >= 61 && weatherCode <= 67) return 'rainy';
+    if (weatherCode >= 95 && weatherCode <= 99) return 'rainy'; // Thunderstorm
+
+    // Snowy
+    if (weatherCode >= 71 && weatherCode <= 77) return 'snowy';
+    if (weatherCode >= 85 && weatherCode <= 86) return 'snowy';
+
+    return 'normal';
+  }, [temp, weatherCode]);
+
+  // Animation loop for dynamic effects
+  useEffect(() => {
+    if (effectType === 'normal') return;
+
+    const animate = () => {
+      setTime(performance.now());
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+  }, [effectType]);
+
+  const text = `${Math.round(temp)}°`;
+  const t = time / 1000; // seconds
+
+  // Generate character-level effects
+  const renderChars = () => {
+    return text.split('').map((char, i) => {
+      let charStyle: React.CSSProperties = {
+        display: 'inline-block',
+        transition: 'none',
+      };
+
+      switch (effectType) {
+        case 'windy': {
+          // Characters blown by wind - wobble and tilt
+          const wobble = Math.sin(t * 3 + i * 0.8) * 8;
+          const tilt = Math.sin(t * 2 + i * 1.2) * 15;
+          const drift = Math.sin(t * 1.5 + i * 0.5) * 5;
+          charStyle.transform = `translateX(${wobble}px) translateY(${drift}px) rotate(${tilt}deg)`;
+          charStyle.opacity = 0.85 + Math.sin(t * 4 + i) * 0.15;
+          break;
+        }
+        case 'hot': {
+          // Melting effect - wavy, dripping downward
+          const wave = Math.sin(t * 2 + i * 0.5) * 3;
+          const drip = Math.sin(t * 1.5 + i * 0.3) * 4 + 2;
+          const stretch = 1 + Math.sin(t + i * 0.4) * 0.05;
+          charStyle.transform = `translateX(${wave}px) translateY(${drip}px) scaleY(${stretch})`;
+          charStyle.filter = `blur(${Math.sin(t * 2 + i) * 0.5}px)`;
+          charStyle.opacity = 0.9;
+          break;
+        }
+        case 'cold': {
+          // Shivering/frosted effect
+          const shiver = Math.sin(t * 15 + i * 2) * 2;
+          const shake = Math.cos(t * 12 + i * 1.5) * 1;
+          charStyle.transform = `translateX(${shiver}px) translateY(${shake}px)`;
+          charStyle.textShadow = '0 0 10px rgba(100, 180, 255, 0.5), 0 0 20px rgba(100, 180, 255, 0.3)';
+          break;
+        }
+        case 'rainy': {
+          // Slight drip and blur
+          const drip = Math.sin(t * 2 + i * 0.4) * 3;
+          charStyle.transform = `translateY(${drip}px)`;
+          charStyle.opacity = 0.85 + Math.sin(t * 3 + i) * 0.1;
+          charStyle.textShadow = '0 2px 4px rgba(0, 100, 200, 0.3)';
+          break;
+        }
+        case 'snowy': {
+          // Gentle floating/snowfall effect
+          const float = Math.sin(t * 0.8 + i * 0.6) * 4;
+          const drift = Math.cos(t * 0.5 + i * 0.8) * 3;
+          charStyle.transform = `translateX(${drift}px) translateY(${float}px)`;
+          charStyle.textShadow = '0 0 15px rgba(255, 255, 255, 0.8)';
+          charStyle.opacity = 0.95;
+          break;
+        }
+      }
+
+      return (
+        <span key={i} style={charStyle}>
+          {char}
+        </span>
+      );
+    });
+  };
+
+  return (
+    <div style={{ display: 'inline-flex', ...style }}>
+      {effectType === 'normal' ? text : renderChars()}
+    </div>
+  );
+}
 
 // Responsive styles
 const weatherStyles: Record<string, React.CSSProperties> = {
@@ -97,9 +221,12 @@ export function WeatherScreen() {
             <WeatherIcon code={current.weatherCode} size={isMobile ? 36 : 48} />
           </div>
 
-          {/* Temperature - BIG */}
+          {/* Temperature - BIG with weather effects */}
           <div className="value" style={weatherStyles.temperature}>
-            {current.temperature}°
+            <DynamicTemperature
+              temp={current.temperature}
+              weatherCode={current.weatherCode}
+            />
           </div>
 
           {/* Hi/Lo */}
