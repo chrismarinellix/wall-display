@@ -131,40 +131,31 @@ function getWeatherImageUrl(condition: string): string {
 }
 
 // Magical Prophet Text - fog/smoke reveal like the Daily Prophet from Harry Potter
-// Characters emerge from ethereal mist with magical ink-seeping effect
+// Text emerges from mist, then STAYS visible and readable
 function MagicalText({
   text,
   style = {},
-  revealDuration = 40000, // Full cycle duration
-  mistDensity = 0.6, // How much of text is in mist at once
+  revealDuration = 8000, // How long the reveal takes (not a cycle!)
 }: {
   text: string;
   style?: React.CSSProperties;
   revealDuration?: number;
-  mistDensity?: number;
 }) {
   const [time, setTime] = useState(0);
+  const [isRevealed, setIsRevealed] = useState(false);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
 
   // Generate unique properties for each character
   const charProps = useMemo(() =>
     text.split('').map((_, i) => ({
-      // Staggered reveal timing - characters reveal in waves
-      revealOffset: (i / text.length) + (Math.random() * 0.15 - 0.075),
-      // Fog movement
+      // When this character starts revealing (0-1 of reveal duration)
+      revealStart: (i / text.length) * 0.7, // Stagger across 70% of duration
+      // Random variation
+      randomDelay: Math.random() * 0.1,
+      // Fog movement during reveal
       fogPhase: Math.random() * Math.PI * 2,
-      fogSpeed: 0.5 + Math.random() * 0.5,
-      fogAmplitude: 3 + Math.random() * 4,
-      // Ink seep effect
-      inkDelay: Math.random() * 0.3,
-      inkSpeed: 0.8 + Math.random() * 0.4,
-      // Subtle glow
-      glowPhase: Math.random() * Math.PI * 2,
-      glowSpeed: 0.3 + Math.random() * 0.3,
-      // Vertical drift
-      driftPhase: Math.random() * Math.PI * 2,
-      driftAmount: 1 + Math.random() * 2,
+      fogAmplitude: 4 + Math.random() * 6,
     })), [text]
   );
 
@@ -175,74 +166,62 @@ function MagicalText({
     const animate = (timestamp: number) => {
       const elapsed = timestamp - startTimeRef.current;
       setTime(elapsed);
-      animationRef.current = requestAnimationFrame(animate);
+
+      // Stop animating once fully revealed
+      if (elapsed < revealDuration + 1000) {
+        animationRef.current = requestAnimationFrame(animate);
+      } else {
+        setIsRevealed(true);
+      }
     };
 
     animationRef.current = requestAnimationFrame(animate);
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, []);
+  }, [revealDuration]);
 
-  // Calculate reveal wave position (0 to 1, cycling)
-  const cycleProgress = (time / revealDuration) % 1;
-  const wavePosition = cycleProgress * (1 + mistDensity * 2) - mistDensity;
+  // If fully revealed, just show static text (no animation overhead)
+  if (isRevealed) {
+    return <span style={{ display: 'inline', ...style }}>{text}</span>;
+  }
+
+  const progress = Math.min(1, time / revealDuration);
 
   return (
     <span style={{ display: 'inline', ...style }}>
       {text.split('').map((char, i) => {
         const props = charProps[i];
-        const charPosition = props.revealOffset;
+        const charStart = props.revealStart + props.randomDelay;
 
-        // Calculate how "revealed" this character is (0 = mist, 1 = solid)
-        const distanceFromWave = charPosition - wavePosition;
-        const revealAmount = Math.max(0, Math.min(1,
-          distanceFromWave < 0
-            ? 1 + distanceFromWave / mistDensity // Fading back to mist
-            : distanceFromWave < mistDensity
-              ? 1 - distanceFromWave / mistDensity // Revealed
-              : 0 // Still in mist
-        ));
+        // How revealed is this character? (0 = fog, 1 = solid)
+        const charProgress = Math.max(0, Math.min(1, (progress - charStart) / 0.3));
 
-        // Smooth easing for magical feel
-        const easeReveal = revealAmount * revealAmount * (3 - 2 * revealAmount);
+        // Smooth easing
+        const easeReveal = charProgress * charProgress * (3 - 2 * charProgress);
 
-        // Fog/mist movement
+        // Fog movement (only while revealing)
         const fogTime = time / 1000;
-        const fogX = Math.sin(fogTime * props.fogSpeed + props.fogPhase) * props.fogAmplitude * (1 - easeReveal);
-        const fogY = Math.cos(fogTime * props.fogSpeed * 0.7 + props.fogPhase) * (props.fogAmplitude * 0.5) * (1 - easeReveal);
+        const fogX = Math.sin(fogTime * 2 + props.fogPhase) * props.fogAmplitude * (1 - easeReveal);
+        const fogY = Math.cos(fogTime * 1.5 + props.fogPhase) * (props.fogAmplitude * 0.5) * (1 - easeReveal);
 
-        // Subtle vertical drift when revealed
-        const driftY = Math.sin(fogTime * 0.5 + props.driftPhase) * props.driftAmount * 0.3 * easeReveal;
+        // Blur clears as text reveals
+        const blurAmount = (1 - easeReveal) * 6;
 
-        // Ink opacity - seeps in from edges
-        const inkOpacity = Math.pow(easeReveal, props.inkSpeed);
-
-        // Subtle glow pulse when revealed
-        const glowAmount = easeReveal > 0.5
-          ? (0.5 + Math.sin(fogTime * props.glowSpeed + props.glowPhase) * 0.15) * easeReveal
-          : 0;
-
-        // Blur for fog effect
-        const blurAmount = (1 - easeReveal) * 4;
-
-        // Scale - slightly larger when in mist
-        const scale = 0.95 + easeReveal * 0.05 + (1 - easeReveal) * 0.1;
+        // Opacity goes from very faint to solid
+        const opacity = 0.05 + easeReveal * 0.95;
 
         return (
           <span
             key={i}
             style={{
               display: 'inline-block',
-              opacity: Math.max(0.03, inkOpacity), // Always slightly visible in mist
-              transform: `translate(${fogX}px, ${fogY + driftY}px) scale(${scale})`,
-              filter: `blur(${blurAmount}px)`,
-              textShadow: glowAmount > 0
-                ? `0 0 ${8 * glowAmount}px rgba(0,0,0,${glowAmount * 0.3}), 0 0 ${2}px rgba(0,0,0,${glowAmount * 0.5})`
-                : 'none',
+              opacity,
+              transform: easeReveal < 1 ? `translate(${fogX}px, ${fogY}px)` : 'none',
+              filter: blurAmount > 0.1 ? `blur(${blurAmount}px)` : 'none',
               transition: 'none',
               whiteSpace: char === ' ' ? 'pre' : 'normal',
-              willChange: 'transform, opacity, filter',
+              willChange: easeReveal < 1 ? 'transform, opacity, filter' : 'auto',
             }}
           >
             {char === ' ' ? '\u00A0' : char}
@@ -293,9 +272,9 @@ function Article({
 
   if (!started) return <div style={{ minHeight: 80 }} />;
 
-  // Fast, impressive timing - keeps audience amazed
-  const headlineDuration = Math.max(8000, Math.min(15000, headline.length * 100));
-  const bodyDuration = Math.max(15000, Math.min(25000, body.length * 35));
+  // Fast reveal - headline in 3-5 sec, body in 5-10 sec
+  const headlineDuration = Math.max(3000, Math.min(5000, headline.length * 50));
+  const bodyDuration = Math.max(5000, Math.min(10000, body.length * 20));
 
   return (
     <div style={{ minHeight: 80 }}>
@@ -303,7 +282,6 @@ function Article({
         <MagicalText
           text={headline}
           revealDuration={headlineDuration}
-          mistDensity={0.5}
           style={{
             fontSize: 16,
             fontWeight: 700,
@@ -318,7 +296,6 @@ function Article({
         <MagicalText
           text={body}
           revealDuration={bodyDuration}
-          mistDensity={0.4}
           style={{
             fontSize: 13,
             color: '#333',
@@ -706,8 +683,7 @@ export function DailyProphetScreen() {
           <MagicalText
             text={articles.headline}
             revealDuration={12000}
-            mistDensity={0.5}
-            style={{
+                        style={{
               fontSize: 24,
               fontWeight: 700,
               color: '#000',
@@ -721,8 +697,7 @@ export function DailyProphetScreen() {
             <MagicalText
               text={articles.greeting}
               revealDuration={18000}
-              mistDensity={0.45}
-              style={{ fontSize: 14, color: '#444', fontStyle: 'italic' }}
+                            style={{ fontSize: 14, color: '#444', fontStyle: 'italic' }}
             />
           </div>
         </div>
@@ -776,8 +751,7 @@ export function DailyProphetScreen() {
               <MagicalText
                 text={articles.wisdomCorner}
                 revealDuration={15000}
-                mistDensity={0.45}
-                style={{ fontSize: 12, fontStyle: 'italic', color: '#555', lineHeight: 1.5 }}
+                                style={{ fontSize: 12, fontStyle: 'italic', color: '#555', lineHeight: 1.5 }}
               />
             </div>
           )}
@@ -864,8 +838,7 @@ export function DailyProphetScreen() {
                         <MagicalText
                           text={event.description}
                           revealDuration={20000}
-                          mistDensity={0.5}
-                          style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5, fontStyle: 'italic' }}
+                                                    style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5, fontStyle: 'italic' }}
                         />
                       )}
                     </div>
@@ -911,8 +884,7 @@ export function DailyProphetScreen() {
               <MagicalText
                 text={articles.closingThought}
                 revealDuration={12000}
-                mistDensity={0.5}
-                style={{ fontSize: 13, fontStyle: 'italic', color: '#666' }}
+                                style={{ fontSize: 13, fontStyle: 'italic', color: '#666' }}
               />
             </div>
           )}
@@ -1004,8 +976,7 @@ export function DailyProphetScreen() {
                 <MagicalText
                   text={articles.productivityNote}
                   revealDuration={10000}
-                  mistDensity={0.4}
-                  style={{ fontSize: 10, color: '#666', fontStyle: 'italic' }}
+                                    style={{ fontSize: 10, color: '#666', fontStyle: 'italic' }}
                 />
               </div>
             )}

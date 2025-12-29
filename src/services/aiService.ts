@@ -255,35 +255,41 @@ ${data.countdown ? `COUNTDOWN: ${data.countdown.daysUntil} days until ${data.cou
 
 ${data.proverb ? `WISDOM: "${data.proverb.meaning}" (${data.proverb.romaji})` : ''}
 
-Generate JSON with these fields. Write like a REAL magical Victorian newspaper - rich, flowing prose with dramatic flair.
-CRITICAL: Each article body MUST be 100-150 words of flowing, eloquent prose. Write LONG, DETAILED paragraphs. Do NOT write short sentences.
+Generate a JSON response. Write like a REAL magical Victorian newspaper with RICH, FLOWING prose.
+
+CRITICAL REQUIREMENTS - YOU MUST FOLLOW THESE:
+- Each article body MUST be AT LEAST 80-120 words. Count your words!
+- Write in LONG, flowing sentences with multiple clauses
+- Use vivid imagery, metaphors, and poetic descriptions
+- NO short sentences. NO bullet points. NO lists.
+- Every body field must be a SUBSTANTIAL PARAGRAPH
 
 {
-  "headline": "Main headline for the day (dramatic, Victorian newspaper style, 8-12 words)",
-  "greeting": "Warm, flowing greeting for ${data.userName} (80-100 words - describe the morning atmosphere, weather mood, and paint a picture of the day ahead)",
+  "headline": "Dramatic Victorian headline (8-12 words)",
+  "greeting": "Warm greeting for ${data.userName} (50-70 words, describe the day's character)",
   "weatherArticle": {
-    "headline": "Weather headline (dramatic, poetic)",
-    "body": "LONG weather report (100-150 words). Paint a vivid picture of the sky, the quality of light, the feel of the air. Describe how the weather will unfold through the day. Include atmospheric details - the way clouds move, how the temperature will shift, what the evening will bring. Make it feel like poetry.",
-    "advice": "Practical advice based on weather (2-3 sentences)"
+    "headline": "Poetic weather headline",
+    "body": "80-120 words MINIMUM. Paint the sky, describe the light quality, the air's feel, how weather unfolds through the day. Use sensory details - colors, textures, temperatures. Write it like poetry.",
+    "advice": "2-3 sentences of practical wisdom"
   },
   "dayArticle": {
-    "headline": "Headline about today's schedule (make it grand)",
-    "body": "LONG summary of the day ahead (100-150 words). Describe each major commitment with gravitas. Paint the narrative of the day - morning duties, afternoon endeavors, evening possibilities. Connect the tasks to larger purposes."
+    "headline": "Grand headline about today's agenda",
+    "body": "80-120 words MINIMUM. Describe each commitment with Victorian gravitas. Paint the day's narrative arc from morning duties through evening. Connect tasks to larger life purposes."
   },
   "marketsArticle": {
-    "headline": "Markets headline (dramatic)",
-    "body": "LONG market summary (100-150 words). Describe the financial currents with Victorian gravitas - the movements of each asset, the broader trends, what fortunes are being made or lost."
+    "headline": "Dramatic financial headline",
+    "body": "80-120 words MINIMUM. Describe market movements with gravitas - the rise and fall of fortunes, the whispers of traders, the broader economic currents shaping wealth."
   },
   "historyArticle": {
-    "headline": "History headline (fascinating, dramatic)",
-    "body": "LONG historical article (100-150 words). Transport the reader to that moment in time. Describe the scene, the people involved, the tension or triumph. Explain why this moment echoed through history and still matters today."
+    "headline": "Fascinating historical headline",
+    "body": "80-120 words MINIMUM. Transport the reader to that moment. Describe the scene, the key figures, the tension or triumph. Explain why this moment still echoes through time."
   },
-  "wisdomCorner": "Present the proverb with deep reflection (60-80 words, connect ancient wisdom to modern life)",
-  "productivityNote": "Encouraging note about focus progress (40-60 words, specific and warm)",
-  "closingThought": "Memorable closing thought (30-40 words, ties themes together poetically)"
+  "wisdomCorner": "60-80 words reflecting on the proverb, connecting ancient wisdom to modern life",
+  "productivityNote": "40-50 words of warm encouragement about focus progress",
+  "closingThought": "25-35 words tying the day's themes together poetically"
 }
 
-Respond ONLY with valid JSON.`;
+Respond ONLY with valid JSON, no markdown.`;
 
   try {
     const response = await fetch(GROQ_API_URL, {
@@ -293,10 +299,10 @@ Respond ONLY with valid JSON.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'llama-3.3-70b-versatile', // More capable model for longer content
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.85,
-        max_tokens: 2500, // Longer articles
+        temperature: 0.8,
+        max_tokens: 4000, // Much more room for long articles
       }),
     });
 
