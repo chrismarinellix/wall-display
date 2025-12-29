@@ -9,7 +9,8 @@ export type ScreenType =
   | 'homeassistant'
   | 'moments'
   | 'summary'
-  | 'setup';
+  | 'setup'
+  | 'video';
 
 export interface RssFeed {
   url: string;

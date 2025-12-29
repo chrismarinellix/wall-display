@@ -13,6 +13,7 @@ import { HomeAssistantScreen } from '../screens/HomeAssistantScreen';
 import { MomentsScreen } from '../screens/MomentsScreen';
 import { SummaryScreen } from '../screens/SummaryScreen';
 import { SetupScreen } from '../screens/SetupScreen';
+import { VideoScreen } from '../screens/VideoScreen';
 import { ScreenType } from '../../types/settings';
 import {
   Cloud,
@@ -27,6 +28,7 @@ import {
   Image,
   LayoutGrid,
   Settings,
+  Video,
 } from 'lucide-react';
 
 const screens: Record<ScreenType, React.ComponentType> = {
@@ -41,6 +43,7 @@ const screens: Record<ScreenType, React.ComponentType> = {
   moments: MomentsScreen,
   summary: SummaryScreen,
   setup: SetupScreen,
+  video: VideoScreen,
 };
 
 const screenInfo: Record<ScreenType, { title: string; shortTitle: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }> = {
@@ -55,7 +58,11 @@ const screenInfo: Record<ScreenType, { title: string; shortTitle: string; Icon: 
   moments: { title: 'Moments', shortTitle: 'History', Icon: Image },
   summary: { title: 'Summary', shortTitle: 'Brief', Icon: LayoutGrid },
   setup: { title: 'Setup', shortTitle: 'Setup', Icon: Settings },
+  video: { title: 'Camera', shortTitle: 'Cam', Icon: Video },
 };
+
+// Screens that should NOT be in the auto-cycle (accessed via dedicated icon)
+const nonCycleScreens: ScreenType[] = ['video'];
 
 export function ScreenContainer() {
   const { currentScreen, currentIndex, totalScreens, nextScreen, prevScreen, goToScreen, isPaused } = useScreen();
@@ -197,7 +204,61 @@ export function ScreenContainer() {
             <Pause size={11} strokeWidth={2} color="#bbb" />
           </div>
         )}
-        {activeScreens.map((screen) => {
+        {activeScreens.filter(s => !nonCycleScreens.includes(s)).map((screen) => {
+          const info = screenInfo[screen];
+          const isActive = screen === currentScreen;
+          const isHovered = screen === hoveredScreen;
+          const IconComponent = info.Icon;
+
+          return (
+            <button
+              key={screen}
+              onClick={() => goToScreen(screen)}
+              onMouseEnter={() => setHoveredScreen(screen)}
+              onMouseLeave={() => setHoveredScreen(null)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+                padding: isActive || (navExpanded && isHovered) ? '6px 10px' : '6px',
+                background: isActive ? 'rgba(0, 0, 0, 0.1)' : isHovered ? 'rgba(0, 0, 0, 0.05)' : 'transparent',
+                border: 'none',
+                borderRadius: 10,
+                cursor: 'pointer',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                color: isActive ? '#000' : '#222',
+                minWidth: 30,
+                height: 30,
+              }}
+              aria-label={info.title}
+            >
+              <IconComponent size={14} strokeWidth={isActive ? 2.5 : 1.5} />
+              {(isActive || (navExpanded && isHovered)) && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 500,
+                    letterSpacing: '0.01em',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    maxWidth: isActive || isHovered ? 60 : 0,
+                    opacity: isActive || isHovered ? 1 : 0,
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                >
+                  {info.shortTitle}
+                </span>
+              )}
+            </button>
+          );
+        })}
+
+        {/* Separator */}
+        <div style={{ width: 1, height: 20, background: 'rgba(0,0,0,0.1)', margin: '0 4px' }} />
+
+        {/* Non-cycle screens (Video) - always visible */}
+        {nonCycleScreens.map((screen) => {
           const info = screenInfo[screen];
           const isActive = screen === currentScreen;
           const isHovered = screen === hoveredScreen;

@@ -11,12 +11,16 @@ interface ScreenContextType {
   goToScreen: (screen: ScreenType) => void;
   isPaused: boolean;
   setIsPaused: (paused: boolean) => void;
+  isNonCycleScreen: boolean;
 }
 
 const ScreenContext = createContext<ScreenContextType | null>(null);
 
 // Auto-cycle through screens every 1 minute
 const CYCLE_INTERVAL = 60000;
+
+// Screens that don't participate in auto-cycle
+const NON_CYCLE_SCREENS: ScreenType[] = ['video'];
 
 export function ScreenProvider({ children }: { children: ReactNode }) {
   const { settings } = useSettings();
@@ -25,15 +29,20 @@ export function ScreenProvider({ children }: { children: ReactNode }) {
     const screenCount = settings.screenOrder.length;
     return Math.floor(Math.random() * screenCount);
   });
+  const [nonCycleScreen, setNonCycleScreen] = useState<ScreenType | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const cycleTimerRef = useRef<number | null>(null);
 
   const screens = settings.screenOrder;
-  const currentScreen = screens[currentIndex];
+  const currentScreen = nonCycleScreen || screens[currentIndex];
+  const isNonCycleScreen = nonCycleScreen !== null;
 
   // Go to a random different screen
   const goToRandomScreen = useCallback(() => {
     if (screens.length <= 1) return;
+
+    // Don't auto-cycle when on a non-cycle screen
+    if (nonCycleScreen) return;
 
     setCurrentIndex(prev => {
       // Pick a random index that's different from current
@@ -43,7 +52,7 @@ export function ScreenProvider({ children }: { children: ReactNode }) {
       } while (newIndex === prev && screens.length > 1);
       return newIndex;
     });
-  }, [screens.length]);
+  }, [screens.length, nonCycleScreen]);
 
   // Reset the cycle timer (called after manual navigation)
   const resetCycleTimer = useCallback(() => {
@@ -57,18 +66,26 @@ export function ScreenProvider({ children }: { children: ReactNode }) {
   }, [goToRandomScreen]);
 
   const nextScreen = useCallback(() => {
+    setNonCycleScreen(null); // Return to cycle
     setCurrentIndex(prev => (prev + 1) % screens.length);
     resetCycleTimer();
   }, [screens.length, resetCycleTimer]);
 
   const prevScreen = useCallback(() => {
+    setNonCycleScreen(null); // Return to cycle
     setCurrentIndex(prev => (prev - 1 + screens.length) % screens.length);
     resetCycleTimer();
   }, [screens.length, resetCycleTimer]);
 
   const goToScreen = useCallback((screen: ScreenType) => {
-    const index = screens.indexOf(screen);
-    if (index !== -1) setCurrentIndex(index);
+    // Check if it's a non-cycle screen
+    if (NON_CYCLE_SCREENS.includes(screen)) {
+      setNonCycleScreen(screen);
+    } else {
+      setNonCycleScreen(null); // Return to normal cycle
+      const index = screens.indexOf(screen);
+      if (index !== -1) setCurrentIndex(index);
+    }
     resetCycleTimer();
   }, [screens, resetCycleTimer]);
 
@@ -116,6 +133,7 @@ export function ScreenProvider({ children }: { children: ReactNode }) {
       goToScreen,
       isPaused,
       setIsPaused,
+      isNonCycleScreen,
     }}>
       {children}
     </ScreenContext.Provider>
