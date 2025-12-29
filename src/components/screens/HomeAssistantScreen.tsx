@@ -90,10 +90,10 @@ function ThermostatCard({
   };
 
   const getActionIcon = () => {
-    if (isHeating) return <Flame size={28} color="#e05a33" />;
-    if (isCooling) return <Snowflake size={28} color="#2d8fd5" />;
-    if (isOff) return <Power size={28} color="#999" />;
-    return <Thermometer size={28} color="#666" />;
+    if (isHeating) return <Flame size={20} color="#e05a33" />;
+    if (isCooling) return <Snowflake size={20} color="#2d8fd5" />;
+    if (isOff) return <Power size={20} color="#999" />;
+    return <Thermometer size={20} color="#666" />;
   };
 
   return (
@@ -101,27 +101,24 @@ function ThermostatCard({
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      gap: 12,
-      padding: '24px 20px',
-      flex: 1,
-      minWidth: 200,
-      maxWidth: 260,
+      gap: 6,
+      padding: '12px 8px',
       background: '#fff',
-      borderRadius: 12,
+      borderRadius: 10,
       border: '1px solid #e5e5e5',
     }}>
       {/* Title with Humidity */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
+        gap: 4,
         width: '100%',
         justifyContent: 'center',
       }}>
         <span style={{
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: 600,
-          letterSpacing: '0.2em',
+          letterSpacing: '0.15em',
           textTransform: 'uppercase',
           color: '#666',
         }}>
@@ -131,12 +128,12 @@ function ThermostatCard({
           <span style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 3,
-            fontSize: 11,
+            gap: 2,
+            fontSize: 9,
             color: '#666',
             background: '#f5f5f5',
-            padding: '2px 8px',
-            borderRadius: 4,
+            padding: '1px 4px',
+            borderRadius: 3,
           }}>
             {humidity}%
           </span>
@@ -146,18 +143,18 @@ function ThermostatCard({
       {/* Thermostat Circle */}
       <div
         style={{
-          width: 80,
-          height: 80,
+          width: 48,
+          height: 48,
           borderRadius: '50%',
           background: isOff
             ? '#f5f5f5'
             : `linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%)`,
-          border: `3px solid ${getActionColor()}`,
+          border: `2px solid ${getActionColor()}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           boxShadow: (isHeating || isCooling)
-            ? `0 0 20px ${getActionColor()}22`
+            ? `0 0 12px ${getActionColor()}22`
             : 'none',
           transition: 'all 0.4s ease',
         }}
@@ -167,7 +164,7 @@ function ThermostatCard({
 
       {/* Current Temperature */}
       <div style={{
-        fontSize: 36,
+        fontSize: 24,
         fontWeight: 300,
         color: '#333',
         letterSpacing: '-0.02em',
@@ -179,19 +176,19 @@ function ThermostatCard({
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 16,
+        gap: 8,
       }}>
         <button
           onClick={() => onSetTemp(targetTemp - 1)}
           disabled={isOff}
           style={{
-            width: 36,
-            height: 36,
+            width: 28,
+            height: 28,
             borderRadius: '50%',
             border: '1px solid #ddd',
             background: '#fff',
             color: isOff ? '#ccc' : '#333',
-            fontSize: 20,
+            fontSize: 16,
             cursor: isOff ? 'default' : 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -205,8 +202,8 @@ function ThermostatCard({
           flexDirection: 'column',
           alignItems: 'center',
         }}>
-          <span style={{ fontSize: 10, color: '#999', letterSpacing: '0.1em' }}>TARGET</span>
-          <span style={{ fontSize: 22, color: isOff ? '#ccc' : '#333', fontWeight: 300 }}>
+          <span style={{ fontSize: 7, color: '#999', letterSpacing: '0.1em' }}>TARGET</span>
+          <span style={{ fontSize: 16, color: isOff ? '#ccc' : '#333', fontWeight: 300 }}>
             {targetTemp.toFixed(0)}°
           </span>
         </div>
@@ -214,13 +211,13 @@ function ThermostatCard({
           onClick={() => onSetTemp(targetTemp + 1)}
           disabled={isOff}
           style={{
-            width: 36,
-            height: 36,
+            width: 28,
+            height: 28,
             borderRadius: '50%',
             border: '1px solid #ddd',
             background: '#fff',
             color: isOff ? '#ccc' : '#333',
-            fontSize: 20,
+            fontSize: 16,
             cursor: isOff ? 'default' : 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -231,11 +228,10 @@ function ThermostatCard({
         </button>
       </div>
 
-      {/* Mode Buttons */}
+      {/* Mode Buttons - compact icons only */}
       <div style={{
         display: 'flex',
-        gap: 6,
-        marginTop: 4,
+        gap: 4,
       }}>
         {['off', 'heat', 'cool'].map((m) => (
           <button
@@ -244,8 +240,10 @@ function ThermostatCard({
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 4,
-              padding: '6px 12px',
+              justifyContent: 'center',
+              width: 28,
+              height: 28,
+              padding: 0,
               background: mode === m ? (m === 'heat' ? '#fef3f0' : m === 'cool' ? '#f0f7fe' : '#f5f5f5') : '#fff',
               border: mode === m
                 ? `1px solid ${m === 'heat' ? '#e05a33' : m === 'cool' ? '#2d8fd5' : '#ccc'}`
@@ -255,27 +253,21 @@ function ThermostatCard({
               color: mode === m
                 ? (m === 'heat' ? '#e05a33' : m === 'cool' ? '#2d8fd5' : '#666')
                 : '#999',
-              fontSize: 10,
-              fontWeight: 500,
-              letterSpacing: '0.05em',
-              textTransform: 'uppercase',
             }}
           >
             {m === 'heat' && <Flame size={12} />}
             {m === 'cool' && <Snowflake size={12} />}
             {m === 'off' && <Power size={12} />}
-            {m}
           </button>
         ))}
       </div>
 
       {/* Status */}
       <div style={{
-        fontSize: 10,
+        fontSize: 8,
         color: getActionColor(),
         letterSpacing: '0.1em',
         textTransform: 'uppercase',
-        marginTop: 4,
         fontWeight: 500,
       }}>
         {hvacAction === 'idle' ? (isOff ? 'OFF' : 'IDLE') : hvacAction.toUpperCase()}
@@ -320,39 +312,36 @@ function FanCard({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 12,
-        padding: '24px 20px',
-        flex: 1,
-        minWidth: 200,
-        maxWidth: 260,
+        gap: 6,
+        padding: '12px 8px',
         background: '#f8f8f8',
-        borderRadius: 12,
+        borderRadius: 10,
         border: '1px solid #e0e0e0',
         opacity: 0.6,
       }}>
         <span style={{
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: 600,
-          letterSpacing: '0.2em',
+          letterSpacing: '0.15em',
           textTransform: 'uppercase',
           color: '#999',
         }}>
           {name}
         </span>
         <div style={{
-          width: 80,
-          height: 80,
+          width: 48,
+          height: 48,
           borderRadius: '50%',
           background: '#eee',
-          border: '3px solid #ddd',
+          border: '2px solid #ddd',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-          <Fan size={32} color="#bbb" strokeWidth={1.5} />
+          <Fan size={20} color="#bbb" strokeWidth={1.5} />
         </div>
         <div style={{
-          fontSize: 12,
+          fontSize: 10,
           fontWeight: 500,
           color: '#999',
           letterSpacing: '0.1em',
@@ -361,7 +350,7 @@ function FanCard({
           Offline
         </div>
         <div style={{
-          fontSize: 9,
+          fontSize: 8,
           color: '#aaa',
         }}>
           Check power switch
@@ -375,27 +364,24 @@ function FanCard({
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      gap: 12,
-      padding: '24px 20px',
-      flex: 1,
-      minWidth: 200,
-      maxWidth: 260,
+      gap: 6,
+      padding: '12px 8px',
       background: '#fff',
-      borderRadius: 12,
+      borderRadius: 10,
       border: '1px solid #e5e5e5',
     }}>
       {/* Title with Temperature */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
+        gap: 4,
         width: '100%',
         justifyContent: 'center',
       }}>
         <span style={{
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: 600,
-          letterSpacing: '0.2em',
+          letterSpacing: '0.15em',
           textTransform: 'uppercase',
           color: '#666',
         }}>
@@ -404,15 +390,15 @@ function FanCard({
         <span style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 3,
-          fontSize: 11,
+          gap: 2,
+          fontSize: 9,
           color: temp !== null ? '#666' : '#ccc',
           background: '#f5f5f5',
-          padding: '2px 8px',
-          borderRadius: 4,
+          padding: '1px 4px',
+          borderRadius: 3,
         }}>
-          <Thermometer size={10} />
-          {temp !== null ? `${temp.toFixed(1)}°` : '--'}
+          <Thermometer size={8} />
+          {temp !== null ? `${temp.toFixed(0)}°` : '--'}
         </span>
       </div>
 
@@ -424,24 +410,24 @@ function FanCard({
         }}
         role="button"
         style={{
-          width: 80,
-          height: 80,
+          width: 48,
+          height: 48,
           borderRadius: '50%',
           background: fanIsOn
             ? 'linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%)'
             : '#f5f5f5',
-          border: fanIsOn ? '3px solid #333' : '3px solid #ddd',
+          border: fanIsOn ? '2px solid #333' : '2px solid #ddd',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',
           boxShadow: fanIsOn
-            ? '0 0 20px rgba(0,0,0,0.08)'
+            ? '0 0 12px rgba(0,0,0,0.08)'
             : 'none',
         }}
       >
         <Fan
-          size={28}
+          size={20}
           color={fanIsOn ? '#333' : '#ccc'}
           strokeWidth={1.5}
           style={{
@@ -454,7 +440,7 @@ function FanCard({
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 12,
+        gap: 6,
       }}>
         {/* Left Arrow - Decrease */}
         <button
@@ -463,7 +449,6 @@ function FanCard({
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('[FAN] Left arrow clicked, currentSpeed:', currentSpeed);
             const newSpeed = Math.max(0, currentSpeed - 1);
             if (newSpeed === 0) {
               onToggleFan();
@@ -472,22 +457,22 @@ function FanCard({
             }
           }}
           style={{
-            width: 56,
-            height: 56,
+            width: 36,
+            height: 36,
             borderRadius: '50%',
-            border: '2px solid #ccc',
+            border: '1.5px solid #ccc',
             background: '#fff',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
             WebkitTapHighlightColor: 'rgba(0,0,0,0.1)',
             touchAction: 'manipulation',
             userSelect: 'none',
           }}
         >
-          <ChevronLeft size={28} color={fanIsOn ? '#333' : '#999'} strokeWidth={2.5} />
+          <ChevronLeft size={18} color={fanIsOn ? '#333' : '#999'} strokeWidth={2} />
         </button>
 
         {/* Speed Display */}
@@ -495,10 +480,10 @@ function FanCard({
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          minWidth: 60,
+          minWidth: 32,
         }}>
           <div style={{
-            fontSize: 32,
+            fontSize: 22,
             fontWeight: 300,
             color: fanIsOn ? '#333' : '#ccc',
             lineHeight: 1,
@@ -506,11 +491,11 @@ function FanCard({
             {fanIsOn ? currentSpeed : '—'}
           </div>
           <div style={{
-            fontSize: 9,
-            letterSpacing: '0.15em',
+            fontSize: 7,
+            letterSpacing: '0.1em',
             textTransform: 'uppercase',
             color: '#999',
-            marginTop: 4,
+            marginTop: 2,
           }}>
             {fanIsOn ? 'SPEED' : 'OFF'}
           </div>
@@ -523,7 +508,6 @@ function FanCard({
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('[FAN] Right arrow clicked, fanIsOn:', fanIsOn, 'currentSpeed:', currentSpeed);
             if (!fanIsOn) {
               onSetSpeed(14.29);
             } else {
@@ -532,37 +516,36 @@ function FanCard({
             }
           }}
           style={{
-            width: 56,
-            height: 56,
+            width: 36,
+            height: 36,
             borderRadius: '50%',
-            border: '2px solid #ccc',
+            border: '1.5px solid #ccc',
             background: '#fff',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
             WebkitTapHighlightColor: 'rgba(0,0,0,0.1)',
             touchAction: 'manipulation',
             userSelect: 'none',
           }}
         >
-          <ChevronRight size={28} color={fanIsOn ? '#333' : '#999'} strokeWidth={2.5} />
+          <ChevronRight size={18} color={fanIsOn ? '#333' : '#999'} strokeWidth={2} />
         </button>
       </div>
 
       {/* Speed indicator dots */}
       <div style={{
         display: 'flex',
-        gap: 6,
-        marginTop: 4,
+        gap: 3,
       }}>
         {[1, 2, 3, 4, 5, 6, 7].map((speed) => (
           <div
             key={speed}
             style={{
-              width: 6,
-              height: 6,
+              width: 4,
+              height: 4,
               borderRadius: '50%',
               background: fanIsOn && currentSpeed >= speed
                 ? '#333'
@@ -573,11 +556,10 @@ function FanCard({
         ))}
       </div>
 
-      {/* Feature toggles */}
+      {/* Feature toggles - compact */}
       <div style={{
         display: 'flex',
-        gap: 8,
-        marginTop: 4,
+        gap: 4,
       }}>
         <button
           onClick={() => whoosh && onToggleWhoosh()}
@@ -585,22 +567,21 @@ function FanCard({
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 4,
-            padding: '6px 10px',
+            gap: 2,
+            padding: '3px 6px',
             background: whooshOn ? '#f0f0f0' : '#fff',
             border: whooshOn ? '1px solid #999' : '1px solid #e5e5e5',
-            borderRadius: 6,
+            borderRadius: 4,
             cursor: whoosh ? 'pointer' : 'default',
             color: whooshOn ? '#333' : '#999',
-            fontSize: 9,
+            fontSize: 7,
             fontWeight: 500,
-            letterSpacing: '0.05em',
+            letterSpacing: '0.03em',
             opacity: whoosh ? 1 : 0.4,
           }}
-          title="Whoosh mode - natural breeze effect"
         >
-          <Wind size={12} />
-          WHOOSH
+          <Wind size={9} />
+          W
         </button>
         <button
           onClick={() => ecoMode && onToggleEco()}
@@ -608,65 +589,62 @@ function FanCard({
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 4,
-            padding: '6px 10px',
+            gap: 2,
+            padding: '3px 6px',
             background: ecoOn ? '#f0f8f0' : '#fff',
             border: ecoOn ? '1px solid #5a8a5a' : '1px solid #e5e5e5',
-            borderRadius: 6,
+            borderRadius: 4,
             cursor: ecoMode ? 'pointer' : 'default',
             color: ecoOn ? '#5a8a5a' : '#999',
-            fontSize: 9,
+            fontSize: 7,
             fontWeight: 500,
-            letterSpacing: '0.05em',
+            letterSpacing: '0.03em',
             opacity: ecoMode ? 1 : 0.4,
           }}
-          title="Eco mode - energy saving"
         >
-          <Leaf size={12} />
-          ECO
+          <Leaf size={9} />
+          E
         </button>
       </div>
 
-      {/* Light Control */}
+      {/* Light Control - compact row */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 12,
+        gap: 6,
         width: '100%',
-        marginTop: 12,
-        padding: '12px 0',
+        marginTop: 4,
+        paddingTop: 6,
         borderTop: '1px solid #eee',
         opacity: light ? 1 : 0.4,
       }}>
         {/* Light Icon/Toggle */}
         <button
           type="button"
-          role="button"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('[LIGHT] Toggle clicked');
             light && onToggleLight();
           }}
           disabled={!light}
           style={{
-            width: 44,
-            height: 44,
+            width: 28,
+            height: 28,
             borderRadius: '50%',
-            border: lightIsOn ? '2px solid #d4a84b' : '2px solid #ccc',
+            border: lightIsOn ? '1.5px solid #d4a84b' : '1.5px solid #ccc',
             background: lightIsOn ? '#fffbf0' : '#fff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: light ? 'pointer' : 'default',
             flexShrink: 0,
-            boxShadow: lightIsOn ? '0 0 12px rgba(212, 168, 75, 0.3)' : '0 2px 6px rgba(0,0,0,0.1)',
+            boxShadow: lightIsOn ? '0 0 8px rgba(212, 168, 75, 0.3)' : 'none',
             touchAction: 'manipulation',
             userSelect: 'none',
           }}
         >
           <Lightbulb
-            size={20}
+            size={14}
             color={lightIsOn ? '#d4a84b' : '#999'}
             fill={lightIsOn ? '#d4a84b' : 'none'}
             strokeWidth={1.5}
@@ -676,11 +654,9 @@ function FanCard({
         {/* Decrease Brightness */}
         <button
           type="button"
-          role="button"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('[LIGHT] Decrease clicked');
             if (light && lightIsOn) {
               const newBrightness = Math.max(0, brightness - 51);
               onSetBrightness(newBrightness);
@@ -688,22 +664,21 @@ function FanCard({
           }}
           disabled={!light || !lightIsOn}
           style={{
-            width: 40,
-            height: 40,
+            width: 24,
+            height: 24,
             borderRadius: '50%',
-            border: '2px solid #ccc',
+            border: '1px solid #ccc',
             background: '#fff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: (light && lightIsOn) ? 'pointer' : 'default',
             opacity: (light && lightIsOn) ? 1 : 0.4,
-            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
             touchAction: 'manipulation',
             userSelect: 'none',
           }}
         >
-          <ChevronLeft size={20} color="#666" strokeWidth={2} />
+          <ChevronLeft size={12} color="#666" strokeWidth={2} />
         </button>
 
         {/* Brightness Display */}
@@ -714,30 +689,20 @@ function FanCard({
           alignItems: 'center',
         }}>
           <div style={{
-            fontSize: 20,
+            fontSize: 12,
             fontWeight: 300,
             color: lightIsOn ? '#333' : '#ccc',
           }}>
             {light ? (lightIsOn ? `${brightnessPercent}%` : 'OFF') : 'N/A'}
-          </div>
-          <div style={{
-            fontSize: 9,
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
-            color: '#999',
-          }}>
-            LIGHT
           </div>
         </div>
 
         {/* Increase Brightness */}
         <button
           type="button"
-          role="button"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('[LIGHT] Increase clicked');
             if (light) {
               if (!lightIsOn) {
                 onSetBrightness(128);
@@ -749,22 +714,21 @@ function FanCard({
           }}
           disabled={!light}
           style={{
-            width: 40,
-            height: 40,
+            width: 24,
+            height: 24,
             borderRadius: '50%',
-            border: '2px solid #ccc',
+            border: '1px solid #ccc',
             background: '#fff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: light ? 'pointer' : 'default',
             opacity: light ? 1 : 0.4,
-            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
             touchAction: 'manipulation',
             userSelect: 'none',
           }}
         >
-          <ChevronRight size={20} color="#666" strokeWidth={2} />
+          <ChevronRight size={12} color="#666" strokeWidth={2} />
         </button>
       </div>
     </div>
@@ -946,20 +910,37 @@ export function HomeAssistantScreen() {
       background: '#faf9f6',
       display: 'flex',
       flexDirection: 'column',
-      overflow: 'hidden',
+      overflow: 'auto',
     }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .devices-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 8px;
+          padding: 8px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        @media (min-width: 600px) {
+          .devices-grid {
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            padding: 16px;
+          }
+        }
+        @media (min-width: 900px) {
+          .devices-grid {
+            grid-template-columns: repeat(auto-fit, minmax(220px, 260px));
+            gap: 20px;
+            padding: 24px;
+            justify-content: center;
+          }
+        }
+      `}</style>
 
       {/* Devices Grid */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 24,
-        gap: 20,
-      }}>
+      <div className="devices-grid">
         {/* Thermostats */}
         {thermostats.map((climate) => (
           <ThermostatCard
