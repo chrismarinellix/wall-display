@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Fan, Lightbulb, AlertCircle, Thermometer, Wind, Leaf, Flame, Snowflake, Power } from 'lucide-react';
+import { Fan, Lightbulb, AlertCircle, Thermometer, Wind, Leaf, Flame, Snowflake, Power, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface FanEntity {
   entity_id: string;
@@ -389,44 +389,121 @@ function FanCard({
         />
       </div>
 
-      {/* Speed Label */}
-      <div style={{
-        fontSize: 18,
-        fontWeight: 300,
-        color: fanIsOn ? '#333' : '#ccc',
-        letterSpacing: '0.05em',
-      }}>
-        {fanIsOn ? `Speed ${currentSpeed}` : 'Off'}
-      </div>
-
-      {/* Speed Bars */}
+      {/* Speed Controls with Arrows */}
       <div style={{
         display: 'flex',
-        alignItems: 'flex-end',
-        gap: 5,
-        height: 36,
+        alignItems: 'center',
+        gap: 12,
       }}>
-        {[1, 2, 3, 4, 5, 6, 7].map((speed) => {
-          const isActive = fanIsOn && currentSpeed >= speed;
-          const height = 8 + speed * 4;
-          return (
-            <button
-              key={speed}
-              onClick={() => onSetSpeed(speed * 14.29)}
-              style={{
-                width: 8,
-                height,
-                borderRadius: 4,
-                border: 'none',
-                background: isActive
-                  ? 'linear-gradient(180deg, #666 0%, #333 100%)'
-                  : '#e5e5e5',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-            />
-          );
-        })}
+        {/* Left Arrow - Decrease */}
+        <button
+          onClick={() => {
+            const newSpeed = Math.max(0, currentSpeed - 1);
+            if (newSpeed === 0) {
+              onToggleFan();
+            } else {
+              onSetSpeed(newSpeed * 14.29);
+            }
+          }}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: '50%',
+            border: 'none',
+            background: fanIsOn
+              ? 'linear-gradient(135deg, #f8f8f8 0%, #e8e8e8 100%)'
+              : '#f0f0f0',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: fanIsOn
+              ? '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)'
+              : 'none',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <ChevronLeft size={22} color={fanIsOn ? '#333' : '#bbb'} strokeWidth={2.5} />
+        </button>
+
+        {/* Speed Display */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          minWidth: 60,
+        }}>
+          <div style={{
+            fontSize: 32,
+            fontWeight: 300,
+            color: fanIsOn ? '#333' : '#ccc',
+            lineHeight: 1,
+          }}>
+            {fanIsOn ? currentSpeed : '—'}
+          </div>
+          <div style={{
+            fontSize: 9,
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            color: '#999',
+            marginTop: 4,
+          }}>
+            {fanIsOn ? 'SPEED' : 'OFF'}
+          </div>
+        </div>
+
+        {/* Right Arrow - Increase */}
+        <button
+          onClick={() => {
+            if (!fanIsOn) {
+              onSetSpeed(14.29);
+            } else {
+              const newSpeed = Math.min(7, currentSpeed + 1);
+              onSetSpeed(newSpeed * 14.29);
+            }
+          }}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: '50%',
+            border: 'none',
+            background: fanIsOn
+              ? 'linear-gradient(135deg, #f8f8f8 0%, #e8e8e8 100%)'
+              : '#f0f0f0',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: fanIsOn
+              ? '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)'
+              : 'none',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <ChevronRight size={22} color={fanIsOn ? '#333' : '#bbb'} strokeWidth={2.5} />
+        </button>
+      </div>
+
+      {/* Speed indicator dots */}
+      <div style={{
+        display: 'flex',
+        gap: 6,
+        marginTop: 4,
+      }}>
+        {[1, 2, 3, 4, 5, 6, 7].map((speed) => (
+          <div
+            key={speed}
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: fanIsOn && currentSpeed >= speed
+                ? '#333'
+                : '#ddd',
+              transition: 'all 0.2s ease',
+            }}
+          />
+        ))}
       </div>
 
       {/* Feature toggles */}
@@ -632,18 +709,22 @@ export function HomeAssistantScreen() {
 
   const callService = async (domain: string, service: string, entityId: string, data?: object) => {
     if (!haUrl || !haToken) return;
+    const payload = { entity_id: entityId, ...data };
+    console.log(`[HA] Calling ${domain}.${service}`, payload);
     try {
       const response = await fetch(`${haUrl}/api/services/${domain}/${service}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${haToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entity_id: entityId, ...data }),
+        body: JSON.stringify(payload),
       });
       if (!response.ok) {
-        console.error(`Service call failed: ${response.status}`);
+        console.error(`[HA] Service call failed: ${response.status}`, await response.text());
+      } else {
+        console.log(`[HA] Service call success: ${domain}.${service}`);
       }
       setTimeout(fetchEntities, 500);
     } catch (e) {
-      console.error('Service call error:', e);
+      console.error('[HA] Service call error:', e);
     }
   };
 
