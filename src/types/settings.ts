@@ -33,13 +33,13 @@ export interface Settings {
 }
 
 export const defaultSettings: Settings = {
-  cycleInterval: 0, // Disabled - manually navigate between screens
+  cycleInterval: 180000, // 3 minutes between screens
   refreshInterval: 300000,
   latitude: -37.8136,  // Melbourne
   longitude: 144.9631, // Melbourne
   temperatureUnit: 'celsius',
   timeFormat: '24h',
-  screenOrder: ['summary', 'weather', 'calendar', 'pomodoro', 'countdown', 'moments', 'homeassistant', 'stocks', 'quotes', 'japanese'], // All screens available, Daily Prophet as default
+  screenOrder: ['summary', 'moments'], // Cycle between Daily Prophet and History - most visually appealing
   // Default crypto and stocks
   stockSymbols: ['AAPL', 'GOOGL', 'MSFT'],
   cryptoSymbols: ['bitcoin', 'ethereum', 'solana'],

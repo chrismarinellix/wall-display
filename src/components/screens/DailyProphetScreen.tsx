@@ -101,12 +101,12 @@ function EphemeralText({
   );
 }
 
-// Article component with ephemeral lifecycle
+// Article component with ephemeral lifecycle - SLOW and contemplative
 function Article({
   headline,
   body,
   byline,
-  cycleTime = 25000,
+  cycleTime = 45000, // Much slower - 45 seconds per cycle
   startDelay = 0,
   headlineStyle = {},
   bodyStyle = {},
@@ -135,9 +135,9 @@ function Article({
   useEffect(() => {
     if (!started) return;
 
-    const formTime = 3000;
-    const presentTime = cycleTime - 6000;
-    const fadeTime = 3000;
+    const formTime = 5000; // 5 seconds to form (was 3)
+    const presentTime = cycleTime - 12000; // Longer presence
+    const fadeTime = 7000; // 7 seconds to fade (was 3)
 
     // Phase transitions
     const presentTimer = setTimeout(() => setPhase('present'), formTime);
@@ -165,9 +165,9 @@ function Article({
         <EphemeralText
           text={headline}
           phase={phase}
-          charDelay={25}
-          formDuration={600}
-          fadeDuration={800}
+          charDelay={40} // Slower character reveal
+          formDuration={1200} // Slower form
+          fadeDuration={2000} // Much slower fade
           style={{
             fontSize: 16,
             fontWeight: 700,
@@ -182,9 +182,9 @@ function Article({
         <EphemeralText
           text={body}
           phase={phase}
-          charDelay={15}
-          formDuration={500}
-          fadeDuration={1000}
+          charDelay={25} // Slower
+          formDuration={1000}
+          fadeDuration={2500} // Much slower dissolve
           overlapFade={phase === 'fading'}
           style={{
             fontSize: 13,
@@ -196,7 +196,7 @@ function Article({
         />
       </div>
       {byline && phase !== 'gone' && (
-        <div style={{ marginTop: 6, opacity: phase === 'fading' ? 0.3 : 0.6, transition: 'opacity 1s' }}>
+        <div style={{ marginTop: 6, opacity: phase === 'fading' ? 0.3 : 0.6, transition: 'opacity 2s' }}>
           <span style={{ fontSize: 10, fontStyle: 'italic', color: '#666' }}>{byline}</span>
         </div>
       )}
@@ -204,30 +204,55 @@ function Article({
   );
 }
 
-// Animated habit item
+// Prophet-style animated habit with cycling strikethrough
 function AnimatedHabit({
   habit,
   onToggle,
   animationDelay = 0,
+  showStrikeAnimation = false,
 }: {
   habit: DailyHabit;
   onToggle: () => void;
   animationDelay?: number;
+  showStrikeAnimation?: boolean;
 }) {
   const [isAnimating, setIsAnimating] = useState(false);
+  const [strikePhase, setStrikePhase] = useState<'none' | 'striking' | 'struck' | 'unstriking'>('none');
   const prevCompleted = useRef(habit.completed);
 
+  // Handle completion toggle animation
   useEffect(() => {
     if (prevCompleted.current !== habit.completed) {
       setIsAnimating(true);
-      const timer = setTimeout(() => setIsAnimating(false), 600);
+      setStrikePhase(habit.completed ? 'striking' : 'unstriking');
+      const timer = setTimeout(() => {
+        setIsAnimating(false);
+        setStrikePhase(habit.completed ? 'struck' : 'none');
+      }, 1200);
       prevCompleted.current = habit.completed;
       return () => clearTimeout(timer);
     }
   }, [habit.completed]);
 
+  // Periodic strikethrough re-animation for completed habits (Prophet magic)
+  useEffect(() => {
+    if (!habit.completed || !showStrikeAnimation) return;
+
+    // Re-animate strikethrough periodically
+    const reAnimate = () => {
+      setStrikePhase('unstriking');
+      setTimeout(() => {
+        setStrikePhase('striking');
+        setTimeout(() => setStrikePhase('struck'), 1500);
+      }, 800);
+    };
+
+    const timer = setInterval(reAnimate, 15000 + Math.random() * 10000); // Random 15-25s
+    return () => clearInterval(timer);
+  }, [habit.completed, showStrikeAnimation]);
+
   const getIcon = () => {
-    const iconProps = { size: 14, strokeWidth: 1.5 };
+    const iconProps = { size: 14, strokeWidth: 1.5, color: '#444' };
     switch (habit.icon) {
       case 'dumbbell': return <Dumbbell {...iconProps} />;
       case 'bike': return <Bike {...iconProps} />;
@@ -239,46 +264,71 @@ function AnimatedHabit({
     }
   };
 
+  // B&W Prophet styling
   return (
     <div
       onClick={onToggle}
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
-        padding: '8px 10px',
-        background: habit.completed ? '#f0f5f0' : '#fafafa',
-        border: habit.completed ? '1px solid #c4d4c4' : '1px solid #eee',
-        borderRadius: 4,
+        gap: 10,
+        padding: '10px 12px',
+        background: habit.completed ? 'rgba(0,0,0,0.03)' : 'transparent',
+        border: '1px solid #ddd',
+        borderRadius: 0, // Sharp corners for newspaper feel
         cursor: 'pointer',
-        animation: isAnimating ? 'habitPulse 0.6s ease' : `fadeSlideIn 0.5s ease ${animationDelay}ms both`,
-        transform: habit.completed ? 'scale(1)' : 'scale(1)',
-        transition: 'all 0.3s ease',
+        animation: isAnimating ? 'prophetPulse 1.2s ease' : `prophetSlideIn 0.8s ease ${animationDelay}ms both`,
+        transition: 'all 0.4s ease',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
+      {/* Checkbox - B&W style */}
       <div style={{
-        width: 18,
-        height: 18,
-        borderRadius: 4,
-        border: habit.completed ? '2px solid #5a8a5a' : '2px solid #ccc',
-        background: habit.completed ? '#5a8a5a' : '#fff',
+        width: 16,
+        height: 16,
+        border: `2px solid ${habit.completed ? '#222' : '#999'}`,
+        background: habit.completed ? '#222' : 'transparent',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        transition: 'all 0.3s ease',
+        transition: 'all 0.4s ease',
+        flexShrink: 0,
       }}>
-        {habit.completed && <Check size={12} color="#fff" strokeWidth={3} />}
+        {habit.completed && <Check size={10} color="#fff" strokeWidth={3} />}
       </div>
-      <span style={{ color: habit.completed ? '#5a8a5a' : '#666' }}>{getIcon()}</span>
+
+      {/* Icon */}
+      <span style={{ opacity: habit.completed ? 0.5 : 0.8, transition: 'opacity 0.4s' }}>
+        {getIcon()}
+      </span>
+
+      {/* Habit name with animated strikethrough */}
       <span style={{
         flex: 1,
-        fontSize: 12,
-        color: habit.completed ? '#888' : '#333',
-        textDecoration: habit.completed ? 'line-through' : 'none',
-        fontFamily: 'Georgia, serif',
-        transition: 'all 0.3s ease',
+        fontSize: 13,
+        color: habit.completed ? '#666' : '#222',
+        fontFamily: '"Playfair Display", Georgia, serif',
+        fontWeight: 500,
+        letterSpacing: '0.02em',
+        position: 'relative',
+        transition: 'color 0.4s ease',
       }}>
         {habit.name}
+        {/* Animated strikethrough line */}
+        {habit.completed && (
+          <span style={{
+            position: 'absolute',
+            left: 0,
+            top: '50%',
+            height: '1.5px',
+            background: '#444',
+            width: strikePhase === 'striking' || strikePhase === 'struck' ? '100%' : '0%',
+            transition: strikePhase === 'striking' ? 'width 1.2s cubic-bezier(0.4, 0, 0.2, 1)' :
+                       strikePhase === 'unstriking' ? 'width 0.6s ease-out' : 'none',
+            transformOrigin: 'left',
+          }} />
+        )}
       </span>
     </div>
   );
@@ -466,17 +516,24 @@ export function DailyProphetScreen() {
       <style>{`
         @keyframes inkForm {
           0% { opacity: 0; transform: translate(var(--tx), var(--ty)) rotate(var(--tr)) scale(0.8); filter: blur(3px); }
-          50% { opacity: 0.7; filter: blur(1px); }
+          40% { opacity: 0.5; filter: blur(2px); }
+          70% { opacity: 0.85; filter: blur(0.5px); }
           100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); filter: blur(0); }
         }
         @keyframes sandDissolve {
           0% { opacity: 1; transform: translate(0, 0) rotate(0deg); filter: blur(0); }
-          30% { opacity: 0.6; }
-          100% { opacity: 0; transform: translate(var(--scatter), calc(var(--ty) * 2)) rotate(calc(var(--tr) * 3)); filter: blur(4px); }
+          20% { opacity: 0.8; filter: blur(0.5px); }
+          50% { opacity: 0.4; filter: blur(1px); }
+          100% { opacity: 0; transform: translate(var(--scatter), calc(var(--ty) * 3)) rotate(calc(var(--tr) * 4)); filter: blur(6px); }
         }
-        @keyframes habitPulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); box-shadow: 0 0 20px rgba(90, 138, 90, 0.3); }
+        @keyframes prophetPulse {
+          0%, 100% { transform: scale(1); background: rgba(0,0,0,0.03); }
+          50% { transform: scale(1.02); background: rgba(0,0,0,0.08); box-shadow: 0 0 15px rgba(0, 0, 0, 0.1); }
+        }
+        @keyframes prophetSlideIn {
+          0% { opacity: 0; transform: translateX(-20px); }
+          60% { opacity: 0.7; }
+          100% { opacity: 1; transform: translateX(0); }
         }
         @keyframes fadeSlideIn {
           from { opacity: 0; transform: translateY(10px); }
@@ -485,6 +542,12 @@ export function DailyProphetScreen() {
         @keyframes shimmer {
           0% { background-position: -200% 0; }
           100% { background-position: 200% 0; }
+        }
+        @keyframes habitReorder {
+          0% { transform: translateY(0); opacity: 1; }
+          30% { transform: translateY(-5px); opacity: 0.7; }
+          60% { transform: translateY(5px); opacity: 0.7; }
+          100% { transform: translateY(0); opacity: 1; }
         }
       `}</style>
 
@@ -539,13 +602,13 @@ export function DailyProphetScreen() {
           {/* Weather Article */}
           {articles?.weatherArticle && (
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 8, paddingBottom: 4, borderBottom: '2px solid #000', display: 'inline-block' }}>Weather</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 8, paddingBottom: 4, borderBottom: '2px solid #000', display: 'inline-block' }}>Weather Report</div>
               <Article
                 headline={articles.weatherArticle.headline}
                 body={articles.weatherArticle.body}
                 byline={articles.weatherArticle.advice}
-                cycleTime={30000}
-                startDelay={1000}
+                cycleTime={90000} // 90 seconds - much slower
+                startDelay={2000}
               />
             </div>
           )}
@@ -553,12 +616,12 @@ export function DailyProphetScreen() {
           {/* Markets Article */}
           {articles?.marketsArticle && (
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 8, paddingBottom: 4, borderBottom: '2px solid #000', display: 'inline-block' }}>Markets</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 8, paddingBottom: 4, borderBottom: '2px solid #000', display: 'inline-block' }}>Financial Markets</div>
               <Article
                 headline={articles.marketsArticle.headline}
                 body={articles.marketsArticle.body}
-                cycleTime={35000}
-                startDelay={4000}
+                cycleTime={75000} // 75 seconds
+                startDelay={15000} // Starts much later
               />
             </div>
           )}
@@ -585,7 +648,7 @@ export function DailyProphetScreen() {
               <img
                 src={getImageUrl(historicalMoment.keywords)}
                 alt=""
-                style={{ width: '100%', height: 180, objectFit: 'cover', filter: 'sepia(0.1)' }}
+                style={{ width: '100%', height: 180, objectFit: 'cover', filter: 'grayscale(1) contrast(1.1)', opacity: 0.9 }}
               />
               <div style={{ padding: '14px 16px' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 6, color: '#888' }}>This Day in History</div>
@@ -593,10 +656,10 @@ export function DailyProphetScreen() {
                   <Article
                     headline={articles.historyArticle.headline}
                     body={articles.historyArticle.body}
-                    cycleTime={40000}
-                    startDelay={2000}
+                    cycleTime={120000} // 2 minutes - history deserves time
+                    startDelay={5000}
                     headlineStyle={{ fontSize: 18 }}
-                    bodyStyle={{ fontSize: 13 }}
+                    bodyStyle={{ fontSize: 13, lineHeight: 1.7 }}
                   />
                 ) : (
                   <>
@@ -614,13 +677,13 @@ export function DailyProphetScreen() {
 
           {/* Day Article */}
           {articles?.dayArticle && (
-            <div style={{ padding: '12px', background: 'rgba(0,0,0,0.02)', borderRadius: 4 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 8, paddingBottom: 4, borderBottom: '1px solid #ccc', display: 'inline-block' }}>Today's Agenda</div>
+            <div style={{ padding: '14px', background: 'rgba(0,0,0,0.02)', border: '1px solid #ddd' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 10, paddingBottom: 4, borderBottom: '2px solid #000', display: 'inline-block' }}>Today's Agenda</div>
               <Article
                 headline={articles.dayArticle.headline}
                 body={articles.dayArticle.body}
-                cycleTime={45000}
-                startDelay={3000}
+                cycleTime={100000} // 100 seconds
+                startDelay={8000}
               />
             </div>
           )}

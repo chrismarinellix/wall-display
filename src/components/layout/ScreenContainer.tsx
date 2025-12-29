@@ -210,6 +210,8 @@ export function ScreenContainer() {
           const isHovered = screen === hoveredScreen;
           const IconComponent = info.Icon;
 
+          {
+          const showLabel = isActive || (navExpanded && isHovered);
           return (
             <button
               key={screen}
@@ -220,13 +222,14 @@ export function ScreenContainer() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 5,
-                padding: isActive || (navExpanded && isHovered) ? '6px 10px' : '6px',
+                gap: showLabel ? 5 : 0,
+                padding: '6px',
+                paddingRight: showLabel ? 10 : 6,
                 background: isActive ? 'rgba(0, 0, 0, 0.1)' : isHovered ? 'rgba(0, 0, 0, 0.05)' : 'transparent',
                 border: 'none',
                 borderRadius: 10,
                 cursor: 'pointer',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 color: isActive ? '#000' : '#222',
                 minWidth: 30,
                 height: 30,
@@ -234,24 +237,24 @@ export function ScreenContainer() {
               aria-label={info.title}
             >
               <IconComponent size={14} strokeWidth={isActive ? 2.5 : 1.5} />
-              {(isActive || (navExpanded && isHovered)) && (
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 500,
-                    letterSpacing: '0.01em',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    maxWidth: isActive || isHovered ? 60 : 0,
-                    opacity: isActive || isHovered ? 1 : 0,
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                  }}
-                >
-                  {info.shortTitle}
-                </span>
-              )}
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 500,
+                  letterSpacing: '0.01em',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  width: showLabel ? 'auto' : 0,
+                  maxWidth: showLabel ? 60 : 0,
+                  opacity: showLabel ? 1 : 0,
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+              >
+                {info.shortTitle}
+              </span>
             </button>
           );
+        }
         })}
 
         {/* Separator */}
@@ -264,6 +267,8 @@ export function ScreenContainer() {
           const isHovered = screen === hoveredScreen;
           const IconComponent = info.Icon;
 
+          {
+          const showLabel = isActive || (navExpanded && isHovered);
           return (
             <button
               key={screen}
@@ -274,13 +279,14 @@ export function ScreenContainer() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 5,
-                padding: isActive || (navExpanded && isHovered) ? '6px 10px' : '6px',
+                gap: showLabel ? 5 : 0,
+                padding: '6px',
+                paddingRight: showLabel ? 10 : 6,
                 background: isActive ? 'rgba(0, 0, 0, 0.1)' : isHovered ? 'rgba(0, 0, 0, 0.05)' : 'transparent',
                 border: 'none',
                 borderRadius: 10,
                 cursor: 'pointer',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 color: isActive ? '#000' : '#222',
                 minWidth: 30,
                 height: 30,
@@ -288,24 +294,24 @@ export function ScreenContainer() {
               aria-label={info.title}
             >
               <IconComponent size={14} strokeWidth={isActive ? 2.5 : 1.5} />
-              {(isActive || (navExpanded && isHovered)) && (
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 500,
-                    letterSpacing: '0.01em',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    maxWidth: isActive || isHovered ? 60 : 0,
-                    opacity: isActive || isHovered ? 1 : 0,
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                  }}
-                >
-                  {info.shortTitle}
-                </span>
-              )}
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 500,
+                  letterSpacing: '0.01em',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  width: showLabel ? 'auto' : 0,
+                  maxWidth: showLabel ? 60 : 0,
+                  opacity: showLabel ? 1 : 0,
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+              >
+                {info.shortTitle}
+              </span>
             </button>
           );
+        }
         })}
       </div>
 

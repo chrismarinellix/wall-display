@@ -255,30 +255,30 @@ ${data.countdown ? `COUNTDOWN: ${data.countdown.daysUntil} days until ${data.cou
 
 ${data.proverb ? `WISDOM: "${data.proverb.meaning}" (${data.proverb.romaji})` : ''}
 
-Generate JSON with these fields. Make it feel like a real newspaper - engaging headlines, vivid writing:
+Generate JSON with these fields. Make it feel like a REAL Victorian newspaper - engaging headlines, LONG vivid writing, dramatic flair:
 {
-  "headline": "Main headline for the day (dramatic, attention-grabbing, references key info)",
-  "greeting": "Warm personal greeting for ${data.userName} (2-3 sentences, reference time of day, maybe the weather or an upcoming event)",
+  "headline": "Main headline for the day (dramatic, attention-grabbing, Victorian newspaper style)",
+  "greeting": "Warm personal greeting for ${data.userName} (3-4 sentences, reference time of day, weather, and hint at the day ahead)",
   "weatherArticle": {
-    "headline": "Weather headline (creative, newspaper style)",
-    "body": "Weather report as a short article (3-4 sentences, vivid language)",
-    "advice": "Practical advice based on weather (1 sentence)"
+    "headline": "Weather headline (dramatic, Victorian newspaper style)",
+    "body": "LONG weather report as a proper article (6-8 sentences, vivid Victorian language, describe the sky, the air, what to expect, include tomorrow's forecast)",
+    "advice": "Practical advice based on weather (2 sentences)"
   },
   "dayArticle": {
-    "headline": "Headline about today's schedule/tasks (make it sound important)",
-    "body": "Summary of what's ahead today (3-4 sentences, prioritize urgent items, mention habits)"
+    "headline": "Headline about today's schedule/tasks (make it sound monumentally important)",
+    "body": "LONG summary of what's ahead today (6-8 sentences, prioritize urgent items, describe each major event, mention habits and their importance)"
   },
   "marketsArticle": {
     "headline": "Markets headline (dramatic if big moves)",
-    "body": "Brief market summary (2-3 sentences)"
+    "body": "Market summary with Victorian flair (4-5 sentences, describe the financial currents)"
   },
   "historyArticle": {
-    "headline": "History headline (make it fascinating)",
-    "body": "Expanded article about the historical event (4-5 sentences, add context and significance)"
+    "headline": "History headline (make it fascinating and dramatic)",
+    "body": "LONG expanded article about the historical event (8-10 sentences, add rich context, significance, why it matters today, paint a vivid picture of the moment)"
   },
-  "wisdomCorner": "Present the proverb meaningfully with brief reflection (2 sentences)",
-  "productivityNote": "Encouraging note about focus/habits progress (1-2 sentences)",
-  "closingThought": "Motivational closing thought that ties together the day's themes (1 sentence)"
+  "wisdomCorner": "Present the proverb meaningfully with thoughtful reflection (3-4 sentences, connect to today)",
+  "productivityNote": "Encouraging note about focus/habits progress (2-3 sentences, specific praise)",
+  "closingThought": "Motivational closing thought that ties together the day's themes (2 sentences, memorable)"
 }
 
 Respond ONLY with valid JSON.`;
@@ -293,8 +293,8 @@ Respond ONLY with valid JSON.`;
       body: JSON.stringify({
         model: 'llama-3.1-8b-instant',
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.8,
-        max_tokens: 1200,
+        temperature: 0.85,
+        max_tokens: 2500, // Longer articles
       }),
     });
 
