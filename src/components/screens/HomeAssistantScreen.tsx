@@ -302,6 +302,7 @@ function FanCard({
   onToggleEco: () => void;
 }) {
   const { fan, light, temperature, whoosh, ecoMode, name } = data;
+  const isUnavailable = fan.state === 'unavailable';
   const fanIsOn = fan.state === 'on';
   const lightIsOn = light?.state === 'on';
   const fanSpeed = fan.attributes.percentage || 0;
@@ -311,6 +312,63 @@ function FanCard({
   const temp = temperature?.state ? parseFloat(temperature.state) : null;
   const whooshOn = whoosh?.state === 'on';
   const ecoOn = ecoMode?.state === 'on';
+
+  // Show unavailable/offline state
+  if (isUnavailable) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 12,
+        padding: '24px 20px',
+        flex: 1,
+        minWidth: 200,
+        maxWidth: 260,
+        background: '#f8f8f8',
+        borderRadius: 12,
+        border: '1px solid #e0e0e0',
+        opacity: 0.6,
+      }}>
+        <span style={{
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: '0.2em',
+          textTransform: 'uppercase',
+          color: '#999',
+        }}>
+          {name}
+        </span>
+        <div style={{
+          width: 80,
+          height: 80,
+          borderRadius: '50%',
+          background: '#eee',
+          border: '3px solid #ddd',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <Fan size={32} color="#bbb" strokeWidth={1.5} />
+        </div>
+        <div style={{
+          fontSize: 12,
+          fontWeight: 500,
+          color: '#999',
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+        }}>
+          Offline
+        </div>
+        <div style={{
+          fontSize: 9,
+          color: '#aaa',
+        }}>
+          Check power switch
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{
