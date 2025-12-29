@@ -101,82 +101,71 @@ function ThermostatCard({
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      gap: 6,
-      padding: '12px 8px',
-      background: '#fff',
-      borderRadius: 10,
-      border: '1px solid #e5e5e5',
+      gap: 4,
+      padding: '10px 6px 8px',
+      background: isOff ? '#fafafa' : '#fff',
+      borderRadius: 8,
+      border: isOff ? '1px solid #eee' : '1px solid #ddd',
+      transition: 'all 0.2s ease',
     }}>
-      {/* Title with Humidity */}
+      {/* Header: Name + Humidity */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 4,
+        justifyContent: 'space-between',
         width: '100%',
-        justifyContent: 'center',
+        paddingBottom: 4,
+        borderBottom: '1px solid #f0f0f0',
       }}>
         <span style={{
-          fontSize: 9,
+          fontSize: 10,
           fontWeight: 600,
-          letterSpacing: '0.15em',
+          letterSpacing: '0.05em',
           textTransform: 'uppercase',
-          color: '#666',
+          color: isOff ? '#888' : '#333',
         }}>
           {name}
         </span>
         {humidity !== undefined && (
-          <span style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            fontSize: 9,
-            color: '#666',
-            background: '#f5f5f5',
-            padding: '1px 4px',
-            borderRadius: 3,
-          }}>
+          <span style={{ fontSize: 10, color: '#888' }}>
             {humidity}%
           </span>
         )}
       </div>
 
-      {/* Thermostat Circle */}
-      <div
-        style={{
-          width: 48,
-          height: 48,
-          borderRadius: '50%',
-          background: isOff
-            ? '#f5f5f5'
-            : `linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%)`,
-          border: `2px solid ${getActionColor()}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: (isHeating || isCooling)
-            ? `0 0 12px ${getActionColor()}22`
-            : 'none',
-          transition: 'all 0.4s ease',
-        }}
-      >
-        {getActionIcon()}
-      </div>
-
-      {/* Current Temperature */}
-      <div style={{
-        fontSize: 24,
-        fontWeight: 300,
-        color: '#333',
-        letterSpacing: '-0.02em',
-      }}>
-        {currentTemp.toFixed(0)}°
-      </div>
-
-      {/* Target Temperature Controls */}
+      {/* Current Temp + Icon */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         gap: 8,
+        padding: '4px 0',
+      }}>
+        <div style={{
+          width: 36,
+          height: 36,
+          borderRadius: '50%',
+          background: isOff ? '#eee' : '#f0f0f0',
+          border: `2px solid ${getActionColor()}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          {getActionIcon()}
+        </div>
+        <div style={{
+          fontSize: 28,
+          fontWeight: 300,
+          color: isOff ? '#aaa' : '#333',
+        }}>
+          {currentTemp.toFixed(0)}°
+        </div>
+      </div>
+
+      {/* Target Controls */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
       }}>
         <button
           onClick={() => onSetTemp(targetTemp - 1)}
@@ -188,24 +177,18 @@ function ThermostatCard({
             border: '1px solid #ddd',
             background: '#fff',
             color: isOff ? '#ccc' : '#333',
-            fontSize: 16,
+            fontSize: 14,
             cursor: isOff ? 'default' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}
-        >
-          −
-        </button>
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}>
-          <span style={{ fontSize: 7, color: '#999', letterSpacing: '0.1em' }}>TARGET</span>
-          <span style={{ fontSize: 16, color: isOff ? '#ccc' : '#333', fontWeight: 300 }}>
+        >−</button>
+        <div style={{ textAlign: 'center', minWidth: 36 }}>
+          <div style={{ fontSize: 7, color: '#999', letterSpacing: '0.1em' }}>SET</div>
+          <div style={{ fontSize: 14, color: isOff ? '#ccc' : '#333', fontWeight: 500 }}>
             {targetTemp.toFixed(0)}°
-          </span>
+          </div>
         </div>
         <button
           onClick={() => onSetTemp(targetTemp + 1)}
@@ -217,47 +200,40 @@ function ThermostatCard({
             border: '1px solid #ddd',
             background: '#fff',
             color: isOff ? '#ccc' : '#333',
-            fontSize: 16,
+            fontSize: 14,
             cursor: isOff ? 'default' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}
-        >
-          +
-        </button>
+        >+</button>
       </div>
 
-      {/* Mode Buttons - compact icons only */}
-      <div style={{
-        display: 'flex',
-        gap: 4,
-      }}>
+      {/* Mode Buttons */}
+      <div style={{ display: 'flex', gap: 4 }}>
         {['off', 'heat', 'cool'].map((m) => (
           <button
             key={m}
             onClick={() => onSetMode(m)}
             style={{
+              width: 26,
+              height: 26,
+              padding: 0,
+              background: mode === m ? (m === 'heat' ? '#fef3f0' : m === 'cool' ? '#f0f7fe' : '#f0f0f0') : '#fff',
+              border: mode === m
+                ? `1px solid ${m === 'heat' ? '#e05a33' : m === 'cool' ? '#2d8fd5' : '#999'}`
+                : '1px solid #ddd',
+              borderRadius: 4,
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 28,
-              height: 28,
-              padding: 0,
-              background: mode === m ? (m === 'heat' ? '#fef3f0' : m === 'cool' ? '#f0f7fe' : '#f5f5f5') : '#fff',
-              border: mode === m
-                ? `1px solid ${m === 'heat' ? '#e05a33' : m === 'cool' ? '#2d8fd5' : '#ccc'}`
-                : '1px solid #e5e5e5',
-              borderRadius: 6,
-              cursor: 'pointer',
-              color: mode === m
-                ? (m === 'heat' ? '#e05a33' : m === 'cool' ? '#2d8fd5' : '#666')
-                : '#999',
+              color: mode === m ? (m === 'heat' ? '#e05a33' : m === 'cool' ? '#2d8fd5' : '#666') : '#aaa',
             }}
           >
-            {m === 'heat' && <Flame size={12} />}
-            {m === 'cool' && <Snowflake size={12} />}
-            {m === 'off' && <Power size={12} />}
+            {m === 'heat' && <Flame size={11} />}
+            {m === 'cool' && <Snowflake size={11} />}
+            {m === 'off' && <Power size={11} />}
           </button>
         ))}
       </div>
@@ -266,7 +242,7 @@ function ThermostatCard({
       <div style={{
         fontSize: 8,
         color: getActionColor(),
-        letterSpacing: '0.1em',
+        letterSpacing: '0.08em',
         textTransform: 'uppercase',
         fontWeight: 500,
       }}>
@@ -364,88 +340,54 @@ function FanCard({
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      gap: 6,
-      padding: '12px 8px',
-      background: '#fff',
-      borderRadius: 10,
-      border: '1px solid #e5e5e5',
+      gap: 4,
+      padding: '10px 6px 8px',
+      background: fanIsOn ? '#fff' : '#fafafa',
+      borderRadius: 8,
+      border: fanIsOn ? '1px solid #ddd' : '1px solid #eee',
+      transition: 'all 0.2s ease',
     }}>
-      {/* Title with Temperature */}
+      {/* Header: Name + Temp */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 4,
+        justifyContent: 'space-between',
         width: '100%',
-        justifyContent: 'center',
+        paddingBottom: 4,
+        borderBottom: '1px solid #f0f0f0',
       }}>
         <span style={{
-          fontSize: 9,
+          fontSize: 10,
           fontWeight: 600,
-          letterSpacing: '0.15em',
+          letterSpacing: '0.05em',
           textTransform: 'uppercase',
-          color: '#666',
+          color: fanIsOn ? '#333' : '#888',
         }}>
           {name}
         </span>
-        <span style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2,
-          fontSize: 9,
-          color: temp !== null ? '#666' : '#ccc',
-          background: '#f5f5f5',
-          padding: '1px 4px',
-          borderRadius: 3,
-        }}>
-          <Thermometer size={8} />
-          {temp !== null ? `${temp.toFixed(0)}°` : '--'}
-        </span>
+        {temp !== null && (
+          <span style={{
+            fontSize: 10,
+            color: '#888',
+            fontWeight: 500,
+          }}>
+            {temp.toFixed(0)}°
+          </span>
+        )}
       </div>
 
-      {/* Fan Icon */}
-      <div
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleFan();
-        }}
-        role="button"
-        style={{
-          width: 48,
-          height: 48,
-          borderRadius: '50%',
-          background: fanIsOn
-            ? 'linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%)'
-            : '#f5f5f5',
-          border: fanIsOn ? '2px solid #333' : '2px solid #ddd',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          boxShadow: fanIsOn
-            ? '0 0 12px rgba(0,0,0,0.08)'
-            : 'none',
-        }}
-      >
-        <Fan
-          size={20}
-          color={fanIsOn ? '#333' : '#ccc'}
-          strokeWidth={1.5}
-          style={{
-            animation: fanIsOn ? `spin ${Math.max(0.3, 2.5 - currentSpeed * 0.3)}s linear infinite` : 'none',
-          }}
-        />
-      </div>
-
-      {/* Speed Controls with Arrows */}
+      {/* Fan + Speed Controls Row */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 6,
+        gap: 8,
+        width: '100%',
+        justifyContent: 'center',
+        padding: '4px 0',
       }}>
-        {/* Left Arrow - Decrease */}
+        {/* Left Arrow */}
         <button
           type="button"
-          role="button"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -457,54 +399,68 @@ function FanCard({
             }
           }}
           style={{
-            width: 36,
-            height: 36,
+            width: 32,
+            height: 32,
             borderRadius: '50%',
-            border: '1.5px solid #ccc',
+            border: '1px solid #ddd',
             background: '#fff',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-            WebkitTapHighlightColor: 'rgba(0,0,0,0.1)',
             touchAction: 'manipulation',
-            userSelect: 'none',
           }}
         >
-          <ChevronLeft size={18} color={fanIsOn ? '#333' : '#999'} strokeWidth={2} />
+          <ChevronLeft size={16} color={fanIsOn ? '#333' : '#aaa'} strokeWidth={2} />
         </button>
 
-        {/* Speed Display */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          minWidth: 32,
-        }}>
+        {/* Fan Icon + Speed */}
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFan();
+          }}
+          role="button"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            cursor: 'pointer',
+            minWidth: 50,
+          }}
+        >
           <div style={{
-            fontSize: 22,
-            fontWeight: 300,
-            color: fanIsOn ? '#333' : '#ccc',
-            lineHeight: 1,
+            width: 40,
+            height: 40,
+            borderRadius: '50%',
+            background: fanIsOn ? '#f0f0f0' : '#eee',
+            border: fanIsOn ? '2px solid #333' : '2px solid #ccc',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 2,
           }}>
-            {fanIsOn ? currentSpeed : '—'}
+            <Fan
+              size={18}
+              color={fanIsOn ? '#333' : '#bbb'}
+              strokeWidth={1.5}
+              style={{
+                animation: fanIsOn ? `spin ${Math.max(0.3, 2.5 - currentSpeed * 0.3)}s linear infinite` : 'none',
+              }}
+            />
           </div>
-          <div style={{
-            fontSize: 7,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            color: '#999',
-            marginTop: 2,
+          <span style={{
+            fontSize: 14,
+            fontWeight: 500,
+            color: fanIsOn ? '#333' : '#aaa',
           }}>
-            {fanIsOn ? 'SPEED' : 'OFF'}
-          </div>
+            {fanIsOn ? currentSpeed : '–'}
+          </span>
         </div>
 
-        {/* Right Arrow - Increase */}
+        {/* Right Arrow */}
         <button
           type="button"
-          role="button"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -516,221 +472,170 @@ function FanCard({
             }
           }}
           style={{
-            width: 36,
-            height: 36,
+            width: 32,
+            height: 32,
             borderRadius: '50%',
-            border: '1.5px solid #ccc',
+            border: '1px solid #ddd',
             background: '#fff',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-            WebkitTapHighlightColor: 'rgba(0,0,0,0.1)',
             touchAction: 'manipulation',
-            userSelect: 'none',
           }}
         >
-          <ChevronRight size={18} color={fanIsOn ? '#333' : '#999'} strokeWidth={2} />
+          <ChevronRight size={16} color={fanIsOn ? '#333' : '#aaa'} strokeWidth={2} />
         </button>
       </div>
 
-      {/* Speed indicator dots */}
-      <div style={{
-        display: 'flex',
-        gap: 3,
-      }}>
-        {[1, 2, 3, 4, 5, 6, 7].map((speed) => (
+      {/* Speed dots */}
+      <div style={{ display: 'flex', gap: 3, marginBottom: 2 }}>
+        {[1, 2, 3, 4, 5, 6, 7].map((s) => (
           <div
-            key={speed}
+            key={s}
             style={{
               width: 4,
               height: 4,
               borderRadius: '50%',
-              background: fanIsOn && currentSpeed >= speed
-                ? '#333'
-                : '#ddd',
-              transition: 'all 0.2s ease',
+              background: fanIsOn && currentSpeed >= s ? '#333' : '#ddd',
             }}
           />
         ))}
       </div>
 
-      {/* Feature toggles - compact */}
-      <div style={{
-        display: 'flex',
-        gap: 4,
-      }}>
-        <button
-          onClick={() => whoosh && onToggleWhoosh()}
-          disabled={!whoosh}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            padding: '3px 6px',
-            background: whooshOn ? '#f0f0f0' : '#fff',
-            border: whooshOn ? '1px solid #999' : '1px solid #e5e5e5',
-            borderRadius: 4,
-            cursor: whoosh ? 'pointer' : 'default',
-            color: whooshOn ? '#333' : '#999',
-            fontSize: 7,
-            fontWeight: 500,
-            letterSpacing: '0.03em',
-            opacity: whoosh ? 1 : 0.4,
-          }}
-        >
-          <Wind size={9} />
-          W
-        </button>
-        <button
-          onClick={() => ecoMode && onToggleEco()}
-          disabled={!ecoMode}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            padding: '3px 6px',
-            background: ecoOn ? '#f0f8f0' : '#fff',
-            border: ecoOn ? '1px solid #5a8a5a' : '1px solid #e5e5e5',
-            borderRadius: 4,
-            cursor: ecoMode ? 'pointer' : 'default',
-            color: ecoOn ? '#5a8a5a' : '#999',
-            fontSize: 7,
-            fontWeight: 500,
-            letterSpacing: '0.03em',
-            opacity: ecoMode ? 1 : 0.4,
-          }}
-        >
-          <Leaf size={9} />
-          E
-        </button>
-      </div>
-
-      {/* Light Control - compact row */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        width: '100%',
-        marginTop: 4,
-        paddingTop: 6,
-        borderTop: '1px solid #eee',
-        opacity: light ? 1 : 0.4,
-      }}>
-        {/* Light Icon/Toggle */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            light && onToggleLight();
-          }}
-          disabled={!light}
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: '50%',
-            border: lightIsOn ? '1.5px solid #d4a84b' : '1.5px solid #ccc',
-            background: lightIsOn ? '#fffbf0' : '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: light ? 'pointer' : 'default',
-            flexShrink: 0,
-            boxShadow: lightIsOn ? '0 0 8px rgba(212, 168, 75, 0.3)' : 'none',
-            touchAction: 'manipulation',
-            userSelect: 'none',
-          }}
-        >
-          <Lightbulb
-            size={14}
-            color={lightIsOn ? '#d4a84b' : '#999'}
-            fill={lightIsOn ? '#d4a84b' : 'none'}
-            strokeWidth={1.5}
-          />
-        </button>
-
-        {/* Decrease Brightness */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (light && lightIsOn) {
-              const newBrightness = Math.max(0, brightness - 51);
-              onSetBrightness(newBrightness);
-            }
-          }}
-          disabled={!light || !lightIsOn}
-          style={{
-            width: 24,
-            height: 24,
-            borderRadius: '50%',
-            border: '1px solid #ccc',
-            background: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: (light && lightIsOn) ? 'pointer' : 'default',
-            opacity: (light && lightIsOn) ? 1 : 0.4,
-            touchAction: 'manipulation',
-            userSelect: 'none',
-          }}
-        >
-          <ChevronLeft size={12} color="#666" strokeWidth={2} />
-        </button>
-
-        {/* Brightness Display */}
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}>
-          <div style={{
-            fontSize: 12,
-            fontWeight: 300,
-            color: lightIsOn ? '#333' : '#ccc',
-          }}>
-            {light ? (lightIsOn ? `${brightnessPercent}%` : 'OFF') : 'N/A'}
-          </div>
+      {/* Whoosh + Eco toggles */}
+      {(whoosh || ecoMode) && (
+        <div style={{ display: 'flex', gap: 4 }}>
+          {whoosh && (
+            <button
+              onClick={() => onToggleWhoosh()}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                padding: '2px 5px',
+                background: whooshOn ? '#eee' : '#fff',
+                border: whooshOn ? '1px solid #888' : '1px solid #ddd',
+                borderRadius: 3,
+                cursor: 'pointer',
+                color: whooshOn ? '#333' : '#999',
+                fontSize: 8,
+              }}
+            >
+              <Wind size={8} /> W
+            </button>
+          )}
+          {ecoMode && (
+            <button
+              onClick={() => onToggleEco()}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                padding: '2px 5px',
+                background: ecoOn ? '#e8f5e8' : '#fff',
+                border: ecoOn ? '1px solid #5a8a5a' : '1px solid #ddd',
+                borderRadius: 3,
+                cursor: 'pointer',
+                color: ecoOn ? '#5a8a5a' : '#999',
+                fontSize: 8,
+              }}
+            >
+              <Leaf size={8} /> E
+            </button>
+          )}
         </div>
+      )}
 
-        {/* Increase Brightness */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (light) {
+      {/* Light Control */}
+      {light && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          width: '100%',
+          marginTop: 2,
+          paddingTop: 4,
+          borderTop: '1px solid #eee',
+        }}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleLight();
+            }}
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: '50%',
+              border: lightIsOn ? '1px solid #d4a84b' : '1px solid #ccc',
+              background: lightIsOn ? '#fffbf0' : '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              boxShadow: lightIsOn ? '0 0 6px rgba(212,168,75,0.3)' : 'none',
+            }}
+          >
+            <Lightbulb size={12} color={lightIsOn ? '#d4a84b' : '#aaa'} fill={lightIsOn ? '#d4a84b' : 'none'} />
+          </button>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (lightIsOn) onSetBrightness(Math.max(0, brightness - 51));
+            }}
+            disabled={!lightIsOn}
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: '50%',
+              border: '1px solid #ddd',
+              background: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: lightIsOn ? 'pointer' : 'default',
+              opacity: lightIsOn ? 1 : 0.4,
+            }}
+          >
+            <ChevronLeft size={10} color="#666" />
+          </button>
+
+          <span style={{
+            flex: 1,
+            textAlign: 'center',
+            fontSize: 11,
+            color: lightIsOn ? '#333' : '#aaa',
+          }}>
+            {lightIsOn ? `${brightnessPercent}%` : 'Off'}
+          </span>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
               if (!lightIsOn) {
                 onSetBrightness(128);
               } else {
-                const newBrightness = Math.min(255, brightness + 51);
-                onSetBrightness(newBrightness);
+                onSetBrightness(Math.min(255, brightness + 51));
               }
-            }
-          }}
-          disabled={!light}
-          style={{
-            width: 24,
-            height: 24,
-            borderRadius: '50%',
-            border: '1px solid #ccc',
-            background: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: light ? 'pointer' : 'default',
-            opacity: light ? 1 : 0.4,
-            touchAction: 'manipulation',
-            userSelect: 'none',
-          }}
-        >
-          <ChevronRight size={12} color="#666" strokeWidth={2} />
-        </button>
-      </div>
+            }}
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: '50%',
+              border: '1px solid #ddd',
+              background: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+            }}
+          >
+            <ChevronRight size={10} color="#666" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -904,6 +809,8 @@ export function HomeAssistantScreen() {
     );
   }
 
+  const totalDevices = thermostats.length + fansWithExtras.length;
+
   return (
     <div style={{
       height: '100%',
@@ -911,36 +818,59 @@ export function HomeAssistantScreen() {
       display: 'flex',
       flexDirection: 'column',
       overflow: 'auto',
+      WebkitOverflowScrolling: 'touch',
     }}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+
         .devices-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 8px;
-          padding: 8px;
+          gap: 6px;
+          padding: 6px;
           width: 100%;
           box-sizing: border-box;
+          flex: 1;
+          align-content: start;
         }
-        @media (min-width: 600px) {
-          .devices-grid {
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 16px;
-            padding: 16px;
+
+        /* 3 columns for 5+ devices on mobile landscape or small tablets */
+        @media (min-width: 480px) and (max-width: 767px) {
+          .devices-grid.many-devices {
+            grid-template-columns: repeat(3, 1fr);
           }
         }
-        @media (min-width: 900px) {
+
+        /* Tablets */
+        @media (min-width: 768px) {
           .devices-grid {
-            grid-template-columns: repeat(auto-fit, minmax(220px, 260px));
-            gap: 20px;
-            padding: 24px;
-            justify-content: center;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 12px;
+          }
+        }
+
+        /* Large tablets / small desktops */
+        @media (min-width: 1024px) {
+          .devices-grid {
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            padding: 16px;
+            max-width: 1200px;
+            margin: 0 auto;
+          }
+        }
+
+        /* Large screens */
+        @media (min-width: 1400px) {
+          .devices-grid {
+            grid-template-columns: repeat(5, 1fr);
           }
         }
       `}</style>
 
       {/* Devices Grid */}
-      <div className="devices-grid">
+      <div className={`devices-grid ${totalDevices >= 5 ? 'many-devices' : ''}`}>
         {/* Thermostats */}
         {thermostats.map((climate) => (
           <ThermostatCard
