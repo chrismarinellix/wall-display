@@ -255,26 +255,28 @@ ${data.countdown ? `COUNTDOWN: ${data.countdown.daysUntil} days until ${data.cou
 
 ${data.proverb ? `WISDOM: "${data.proverb.meaning}" (${data.proverb.romaji})` : ''}
 
-Generate JSON with these fields. Make it feel like a REAL Victorian newspaper - engaging headlines, LONG vivid writing, dramatic flair:
+Generate JSON with these fields. Make it feel like a REAL Victorian newspaper - engaging headlines, vivid writing, dramatic flair.
+IMPORTANT: Every article body must be EXACTLY 6-7 sentences long. No exceptions. Count your sentences.
+
 {
   "headline": "Main headline for the day (dramatic, attention-grabbing, Victorian newspaper style)",
   "greeting": "Warm personal greeting for ${data.userName} (3-4 sentences, reference time of day, weather, and hint at the day ahead)",
   "weatherArticle": {
     "headline": "Weather headline (dramatic, Victorian newspaper style)",
-    "body": "LONG weather report as a proper article (6-8 sentences, vivid Victorian language, describe the sky, the air, what to expect, include tomorrow's forecast)",
+    "body": "Weather report article - EXACTLY 6-7 SENTENCES. Vivid Victorian language, describe the sky, the air, what to expect, include tomorrow's forecast.",
     "advice": "Practical advice based on weather (2 sentences)"
   },
   "dayArticle": {
     "headline": "Headline about today's schedule/tasks (make it sound monumentally important)",
-    "body": "LONG summary of what's ahead today (6-8 sentences, prioritize urgent items, describe each major event, mention habits and their importance)"
+    "body": "Summary of what's ahead today - EXACTLY 6-7 SENTENCES. Prioritize urgent items, describe major events, mention habits."
   },
   "marketsArticle": {
     "headline": "Markets headline (dramatic if big moves)",
-    "body": "Market summary with Victorian flair (4-5 sentences, describe the financial currents)"
+    "body": "Market summary with Victorian flair - EXACTLY 6-7 SENTENCES. Describe the financial currents, each asset's movement."
   },
   "historyArticle": {
     "headline": "History headline (make it fascinating and dramatic)",
-    "body": "LONG expanded article about the historical event (8-10 sentences, add rich context, significance, why it matters today, paint a vivid picture of the moment)"
+    "body": "Expanded article about the historical event - EXACTLY 6-7 SENTENCES. Rich context, significance, why it matters today."
   },
   "wisdomCorner": "Present the proverb meaningfully with thoughtful reflection (3-4 sentences, connect to today)",
   "productivityNote": "Encouraging note about focus/habits progress (2-3 sentences, specific praise)",

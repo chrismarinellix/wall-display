@@ -15,15 +15,50 @@ interface CountdownEvent {
   title: string;
   targetDate: string;
   color: string;
+  description?: string;
+  importance?: 'low' | 'medium' | 'high';
+  category?: 'birthday' | 'holiday' | 'travel' | 'work' | 'personal' | 'anniversary' | 'other';
 }
 
 function fromSupabase(e: SupabaseCountdownEvent): CountdownEvent {
-  return { id: e.id, title: e.title, targetDate: e.target_date, color: e.color };
+  return {
+    id: e.id,
+    title: e.title,
+    targetDate: e.target_date,
+    color: e.color,
+    description: e.description,
+    importance: e.importance,
+    category: e.category,
+  };
 }
 
 function toSupabase(e: CountdownEvent): SupabaseCountdownEvent {
-  return { id: e.id, title: e.title, target_date: e.targetDate, color: e.color };
+  return {
+    id: e.id,
+    title: e.title,
+    target_date: e.targetDate,
+    color: e.color,
+    description: e.description,
+    importance: e.importance,
+    category: e.category,
+  };
 }
+
+const CATEGORIES = [
+  { value: 'birthday', label: 'Birthday', emoji: '🎂' },
+  { value: 'holiday', label: 'Holiday', emoji: '🎄' },
+  { value: 'travel', label: 'Travel', emoji: '✈️' },
+  { value: 'work', label: 'Work', emoji: '💼' },
+  { value: 'personal', label: 'Personal', emoji: '⭐' },
+  { value: 'anniversary', label: 'Anniversary', emoji: '💕' },
+  { value: 'other', label: 'Other', emoji: '📅' },
+] as const;
+
+const IMPORTANCE_LEVELS = [
+  { value: 'low', label: 'Low', color: '#888' },
+  { value: 'medium', label: 'Medium', color: '#f59e0b' },
+  { value: 'high', label: 'High', color: '#ef4444' },
+] as const;
 
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899'];
 
@@ -80,19 +115,22 @@ async function generateCountdownInsight(
 ): Promise<string> {
   if (!apiKey) return '';
 
-  const eventType = getEventType(event.title);
+  const eventType = event.category || getEventType(event.title);
   const targetDate = new Date(event.targetDate);
   const zodiac = eventType === 'birthday' ? getZodiac(targetDate) : null;
 
-  const prompt = `Generate a single short, fun sentence (max 15 words) about this upcoming event:
+  const prompt = `Generate a single short, engaging sentence (max 20 words) about this upcoming event:
 Event: ${event.title}
 Days until: ${daysLeft}
 Date: ${format(targetDate, 'MMMM d')}
-Type: ${eventType}
+Category: ${eventType}
+Importance: ${event.importance || 'medium'}
+${event.description ? `Details: ${event.description}` : ''}
 ${zodiac ? `Zodiac: ${zodiac.name}` : ''}
 
-Be creative and relevant to the event type. For birthdays, maybe reference the zodiac or age milestone.
-For holidays, reference traditions. For travel, build excitement.
+Be creative and use the details provided. ${event.description ? 'IMPORTANT: Reference the specific details in your response!' : ''}
+For birthdays, maybe reference the zodiac or age milestone.
+For holidays, reference traditions. For travel, build excitement about the destination.
 Respond with just the sentence, no quotes or extra text.`;
 
   try {
@@ -480,6 +518,9 @@ export function CountdownScreen() {
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('12:00');
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
+  const [newDescription, setNewDescription] = useState('');
+  const [newCategory, setNewCategory] = useState<CountdownEvent['category']>('other');
+  const [newImportance, setNewImportance] = useState<CountdownEvent['importance']>('medium');
   const [insights, setInsights] = useState<{ [id: string]: string }>({});
 
   const groqApiKey = import.meta.env.VITE_GROQ_API_KEY || '';
@@ -546,6 +587,9 @@ export function CountdownScreen() {
       title: newTitle.trim(),
       targetDate: targetDate.toISOString(),
       color: selectedColor,
+      description: newDescription.trim() || undefined,
+      category: newCategory,
+      importance: newImportance,
     };
 
     setEvents(prev => [...prev, event].sort((a, b) =>
@@ -553,9 +597,16 @@ export function CountdownScreen() {
     ));
     await addCountdown(toSupabase(event));
 
+    resetForm();
+  };
+
+  const resetForm = () => {
     setNewTitle('');
     setNewDate('');
     setNewTime('12:00');
+    setNewDescription('');
+    setNewCategory('other');
+    setNewImportance('medium');
     setShowAddForm(false);
     setEditingEvent(null);
   };
@@ -568,6 +619,9 @@ export function CountdownScreen() {
       title: newTitle.trim(),
       targetDate: targetDate.toISOString(),
       color: selectedColor,
+      description: newDescription.trim() || undefined,
+      category: newCategory,
+      importance: newImportance,
     };
 
     setEvents(prev => prev.map(e =>
@@ -580,13 +634,12 @@ export function CountdownScreen() {
       title: updates.title,
       target_date: updates.targetDate,
       color: updates.color,
+      description: updates.description,
+      category: updates.category,
+      importance: updates.importance,
     });
 
-    setNewTitle('');
-    setNewDate('');
-    setNewTime('12:00');
-    setShowAddForm(false);
-    setEditingEvent(null);
+    resetForm();
   };
 
   const handleRemoveEvent = async (id: string) => {
@@ -600,15 +653,10 @@ export function CountdownScreen() {
     setNewDate(format(new Date(event.targetDate), 'yyyy-MM-dd'));
     setNewTime(format(new Date(event.targetDate), 'HH:mm'));
     setSelectedColor(event.color);
+    setNewDescription(event.description || '');
+    setNewCategory(event.category || 'other');
+    setNewImportance(event.importance || 'medium');
     setShowAddForm(true);
-  };
-
-  const closeForm = () => {
-    setShowAddForm(false);
-    setEditingEvent(null);
-    setNewTitle('');
-    setNewDate('');
-    setNewTime('12:00');
   };
 
   return (
@@ -668,7 +716,7 @@ export function CountdownScreen() {
             justifyContent: 'center',
             zIndex: 1000,
           }}
-          onClick={closeForm}
+          onClick={resetForm}
         >
           <div
             style={{
@@ -751,7 +799,7 @@ export function CountdownScreen() {
 
             <div style={{ display: 'flex', gap: 10 }}>
               <button
-                onClick={closeForm}
+                onClick={resetForm}
                 style={{
                   flex: 1,
                   padding: '12px',

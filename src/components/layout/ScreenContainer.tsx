@@ -137,7 +137,8 @@ export function ScreenContainer() {
     }
   };
 
-  const activeScreens = settings.screenOrder.slice(0, totalScreens);
+  // Use all screens from settings - don't slice by totalScreens (which may be stale)
+  const activeScreens = settings.screenOrder;
 
   return (
     <div

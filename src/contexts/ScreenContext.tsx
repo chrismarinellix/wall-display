@@ -16,54 +16,52 @@ interface ScreenContextType {
 
 const ScreenContext = createContext<ScreenContextType | null>(null);
 
-// Auto-cycle through screens every 1 minute
-const CYCLE_INTERVAL = 60000;
-
-// Screens that don't participate in auto-cycle
+// Screens that don't participate in auto-cycle (accessed via dedicated icon)
 const NON_CYCLE_SCREENS: ScreenType[] = ['video'];
+
+// How many screens to auto-cycle between (first N screens in screenOrder)
+const AUTO_CYCLE_COUNT = 2;
 
 export function ScreenProvider({ children }: { children: ReactNode }) {
   const { settings } = useSettings();
-  const [currentIndex, setCurrentIndex] = useState(() => {
-    // Start on a random screen
-    const screenCount = settings.screenOrder.length;
-    return Math.floor(Math.random() * screenCount);
-  });
+  const [currentIndex, setCurrentIndex] = useState(0); // Start on first screen (Prophet)
   const [nonCycleScreen, setNonCycleScreen] = useState<ScreenType | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const cycleTimerRef = useRef<number | null>(null);
 
   const screens = settings.screenOrder;
+  const cycleInterval = settings.cycleInterval || 180000; // Use settings, default 3 min
   const currentScreen = nonCycleScreen || screens[currentIndex];
   const isNonCycleScreen = nonCycleScreen !== null;
 
-  // Go to a random different screen
-  const goToRandomScreen = useCallback(() => {
-    if (screens.length <= 1) return;
+  // Auto-cycle between first N screens only (Prophet & History)
+  const goToNextCycleScreen = useCallback(() => {
+    // Don't auto-cycle when on a non-cycle screen or paused
+    if (nonCycleScreen || isPaused) return;
 
-    // Don't auto-cycle when on a non-cycle screen
-    if (nonCycleScreen) return;
+    // Only cycle if cycle interval is enabled
+    if (cycleInterval <= 0) return;
 
     setCurrentIndex(prev => {
-      // Pick a random index that's different from current
-      let newIndex;
-      do {
-        newIndex = Math.floor(Math.random() * screens.length);
-      } while (newIndex === prev && screens.length > 1);
-      return newIndex;
+      // Only cycle between first AUTO_CYCLE_COUNT screens
+      const maxCycleIndex = Math.min(AUTO_CYCLE_COUNT, screens.length) - 1;
+      if (prev >= maxCycleIndex) return 0;
+      return prev + 1;
     });
-  }, [screens.length, nonCycleScreen]);
+  }, [screens.length, nonCycleScreen, isPaused, cycleInterval]);
 
   // Reset the cycle timer (called after manual navigation)
   const resetCycleTimer = useCallback(() => {
     if (cycleTimerRef.current) {
       clearInterval(cycleTimerRef.current);
     }
-    // Start new cycle timer
-    cycleTimerRef.current = window.setInterval(() => {
-      goToRandomScreen();
-    }, CYCLE_INTERVAL);
-  }, [goToRandomScreen]);
+    // Only start cycle timer if interval is enabled
+    if (cycleInterval > 0) {
+      cycleTimerRef.current = window.setInterval(() => {
+        goToNextCycleScreen();
+      }, cycleInterval);
+    }
+  }, [goToNextCycleScreen, cycleInterval]);
 
   const nextScreen = useCallback(() => {
     setNonCycleScreen(null); // Return to cycle
@@ -91,17 +89,19 @@ export function ScreenProvider({ children }: { children: ReactNode }) {
 
   // Auto-cycle timer
   useEffect(() => {
-    // Start the cycle timer
-    cycleTimerRef.current = window.setInterval(() => {
-      goToRandomScreen();
-    }, CYCLE_INTERVAL);
+    // Only start cycle timer if interval is enabled
+    if (cycleInterval > 0) {
+      cycleTimerRef.current = window.setInterval(() => {
+        goToNextCycleScreen();
+      }, cycleInterval);
+    }
 
     return () => {
       if (cycleTimerRef.current) {
         clearInterval(cycleTimerRef.current);
       }
     };
-  }, [goToRandomScreen]);
+  }, [goToNextCycleScreen, cycleInterval]);
 
   // Keyboard navigation
   useEffect(() => {

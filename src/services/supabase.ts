@@ -144,6 +144,9 @@ export interface CountdownEvent {
   title: string;
   target_date: string; // ISO string
   color: string;
+  description?: string; // Rich description for AI to create engaging content
+  importance?: 'low' | 'medium' | 'high'; // How significant is this event
+  category?: 'birthday' | 'holiday' | 'travel' | 'work' | 'personal' | 'anniversary' | 'other';
   created_at?: string;
 }
 
@@ -206,6 +209,9 @@ export async function addCountdown(event: CountdownEvent): Promise<void> {
         title: event.title,
         target_date: event.target_date,
         color: event.color,
+        description: event.description,
+        importance: event.importance,
+        category: event.category,
       });
 
     if (error) throw error;
@@ -216,7 +222,7 @@ export async function addCountdown(event: CountdownEvent): Promise<void> {
 }
 
 // Update a countdown
-export async function updateCountdown(id: string, updates: Partial<Pick<CountdownEvent, 'title' | 'target_date' | 'color'>>): Promise<void> {
+export async function updateCountdown(id: string, updates: Partial<Pick<CountdownEvent, 'title' | 'target_date' | 'color' | 'description' | 'importance' | 'category'>>): Promise<void> {
   if (!supabase) {
     console.log('Supabase not configured, using localStorage');
     const stored = localStorage.getItem('countdown-events');

@@ -16,20 +16,102 @@ const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const ELEVENLABS_API_KEY = import.meta.env.VITE_ELEVENLABS_API_KEY;
 const CUSTOM_VOICE_ID = import.meta.env.VITE_ELEVENLABS_VOICE_ID;
 
-// Extended image mapping for history
+// Extended image mapping for history - keywords from moments.ts
 const imageMap: Record<string, string> = {
+  // Space exploration
   'space,astronaut': '1446776811953-b23d57bd21aa',
   'moon,space': '1522030299830-16b8d3d049fe',
   'earth,space': '1614730321146-b6fa6a46bcb4',
   'mars,space': '1614728894747-a83421e2b9c9',
+  'mars,rover': '1614728894747-a83421e2b9c9',
+  'mars,helicopter': '1614728894747-a83421e2b9c9',
   'telescope,stars': '1462331940025-496dfbfc7564',
+  'telescope,galaxy': '1462331940025-496dfbfc7564',
+  'space,station': '1446776811953-b23d57bd21aa',
+  'space,stars': '1462331940025-496dfbfc7564',
+  'shuttle,space': '1457364887197-9e4d43c9a91d',
+  'rocket,space': '1457364887197-9e4d43c9a91d',
+  'moon,rocket': '1522030299830-16b8d3d049fe',
+  'pluto,space': '1462331940025-496dfbfc7564',
+  'blackhole,space': '1462331940025-496dfbfc7564',
+  'waves,space': '1462331940025-496dfbfc7564',
+  // Science & medicine
   'medicine,science': '1532187863486-abf9dbad1b69',
+  'medicine,victory': '1532187863486-abf9dbad1b69',
   'dna,science': '1607619056574-7b8d3ee536b2',
+  'dna,genome': '1607619056574-7b8d3ee536b2',
+  'vaccine,medicine': '1532187863486-abf9dbad1b69',
+  'heart,medicine': '1532187863486-abf9dbad1b69',
+  'baby,science': '1532187863486-abf9dbad1b69',
+  'sheep,science': '1607619056574-7b8d3ee536b2',
+  'particle,physics': '1507413245164-6160d8298b31',
+  'protein,ai': '1607619056574-7b8d3ee536b2',
+  // Technology
   'technology,innovation': '1518770660439-4636190af475',
+  'internet,technology': '1518770660439-4636190af475',
+  'computer,technology': '1518770660439-4636190af475',
+  'phone,technology': '1518770660439-4636190af475',
+  'radio,invention': '1518770660439-4636190af475',
+  'flight,aviation': '1436491865332-7a61a109cc05',
+  'plane,aviation': '1436491865332-7a61a109cc05',
+  'train,locomotive': '1474487548417-781cb71495f3',
+  'automobile,invention': '1474487548417-781cb71495f3',
+  // Civil rights & social
+  'freedom,justice': '1569163139394-de4e4f43e4e3',
+  'vote,women': '1569163139394-de4e4f43e4e3',
+  'vote,rights': '1569163139394-de4e4f43e4e3',
+  'vote,freedom': '1569163139394-de4e4f43e4e3',
+  'rights,peace': '1569163139394-de4e4f43e4e3',
+  'rights,justice': '1569163139394-de4e4f43e4e3',
+  'school,justice': '1569163139394-de4e4f43e4e3',
+  'bus,rights': '1569163139394-de4e4f43e4e3',
+  'speech,dream': '1569163139394-de4e4f43e4e3',
+  'pride,rights': '1569163139394-de4e4f43e4e3',
+  'sports,equality': '1569163139394-de4e4f43e4e3',
+  'accessibility,rights': '1569163139394-de4e4f43e4e3',
+  'freedom,mandela': '1569163139394-de4e4f43e4e3',
+  'marriage,love': '1569163139394-de4e4f43e4e3',
+  // History & war
   'history,war': '1569163139394-de4e4f43e4e3',
+  'war,peace': '1569163139394-de4e4f43e4e3',
+  'peace,treaty': '1569163139394-de4e4f43e4e3',
+  'wall,freedom': '1569163139394-de4e4f43e4e3',
+  // Nature & exploration
   'ocean,ship': '1507003211169-0a1dd7228f2d',
+  'ship,exploration': '1507003211169-0a1dd7228f2d',
   'mountain,nature': '1464822759023-fed622ff2c3b',
+  'nature,conservation': '1464822759023-fed622ff2c3b',
+  'everest,mountain': '1464822759023-fed622ff2c3b',
+  'pole,exploration': '1464822759023-fed622ff2c3b',
+  // Cities & architecture
   'city,architecture': '1449824913935-59a10b8d2000',
+  'bridge,engineering': '1449824913935-59a10b8d2000',
+  'tower,architecture': '1449824913935-59a10b8d2000',
+  'canal,engineering': '1449824913935-59a10b8d2000',
+  // Arts & culture
+  'art,painting': '1578662996442-48f60103fc96',
+  'music,performance': '1514320291840-2e0a9bf2a9ae',
+  'film,cinema': '1489599849927-2ee91cede3ba',
+  'book,literature': '1481627834876-b7833e8f5570',
+  'olympics,sports': '1569163139394-de4e4f43e4e3',
+};
+
+// Weather condition to atmospheric image mapping
+const weatherImageMap: Record<string, string> = {
+  'clear': '1501630834273-4b5604d2ee31', // Bright sunny sky
+  'sunny': '1501630834273-4b5604d2ee31',
+  'clouds': '1534088568595-a066f410bcda', // Cloudy atmospheric
+  'cloudy': '1534088568595-a066f410bcda',
+  'overcast': '1499956827185-0d63ee78a910', // Gray overcast
+  'rain': '1515694346937-94d85e41e6f0', // Rain on window
+  'drizzle': '1515694346937-94d85e41e6f0',
+  'storm': '1605727216801-e27a8ae9f22e', // Lightning storm
+  'thunder': '1605727216801-e27a8ae9f22e',
+  'snow': '1491002052546-bf38f186af56', // Snowy scene
+  'fog': '1485236715568-ddc5ee6ca227', // Misty foggy
+  'mist': '1485236715568-ddc5ee6ca227',
+  'wind': '1506905925346-21bda4d32df4', // Windy trees
+  'default': '1504608524841-42fe6f032b4b', // Atmospheric sky
 };
 
 function getImageUrl(keywords: string): string {
@@ -37,60 +119,178 @@ function getImageUrl(keywords: string): string {
   return `https://images.unsplash.com/photo-${id}?w=1200&q=85`;
 }
 
-// Ephemeral text - appears and dissolves like sand mandala
+function getWeatherImageUrl(condition: string): string {
+  const lowerCondition = condition.toLowerCase();
+  // Find matching weather condition
+  for (const [key, id] of Object.entries(weatherImageMap)) {
+    if (lowerCondition.includes(key)) {
+      return `https://images.unsplash.com/photo-${id}?w=800&q=80`;
+    }
+  }
+  return `https://images.unsplash.com/photo-${weatherImageMap.default}?w=800&q=80`;
+}
+
+// Ephemeral text - organic wave animation like sand mandala
+// Characters form and dissolve as a wave passes through, never all at once
 function EphemeralText({
   text,
-  phase, // 'forming' | 'present' | 'fading' | 'gone'
+  phase, // 'forming' | 'present' | 'fading' | 'gone' | 'wave'
   style = {},
   charDelay = 30,
   formDuration = 800,
   fadeDuration = 1200,
-  overlapFade = false, // Start fading before fully formed
+  waveMode = false, // Enable organic wave animation
+  waveDuration = 30000, // How long the wave takes to pass through
+  waveWidth = 0.4, // How much of the text is "active" at once (0-1)
 }: {
   text: string;
-  phase: 'forming' | 'present' | 'fading' | 'gone';
+  phase: 'forming' | 'present' | 'fading' | 'gone' | 'wave';
   style?: React.CSSProperties;
   charDelay?: number;
   formDuration?: number;
   fadeDuration?: number;
-  overlapFade?: boolean;
+  waveMode?: boolean;
+  waveDuration?: number;
+  waveWidth?: number;
 }) {
+  const [wavePosition, setWavePosition] = useState(0);
+  const [isActive, setIsActive] = useState(false);
+  const animationRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number>(0);
+
+  // Generate random offsets for each character
   const offsets = useMemo(() =>
     text.split('').map(() => ({
       x: (Math.random() - 0.5) * 20,
       y: (Math.random() - 0.5) * 10 + 5,
       r: (Math.random() - 0.5) * 8,
-      fadeDelay: Math.random() * 0.5, // Random fade delay for dissolve effect
+      formVariance: 0.7 + Math.random() * 0.6, // Each char forms at slightly different rate
+      fadeVariance: 0.7 + Math.random() * 0.6, // Each char fades at slightly different rate
+      scatter: (Math.random() - 0.5) * 40,
     })), [text]
   );
 
+  // Wave animation loop - creates organic flowing effect
+  useEffect(() => {
+    if (!waveMode || phase === 'gone') {
+      setIsActive(false);
+      return;
+    }
+
+    setIsActive(true);
+    startTimeRef.current = performance.now();
+
+    const animate = (timestamp: number) => {
+      const elapsed = timestamp - startTimeRef.current;
+      // Wave position goes from -waveWidth to 1+waveWidth to ensure full pass
+      const progress = (elapsed / waveDuration) % 1;
+      const fullWaveRange = 1 + waveWidth * 2;
+      const newPosition = -waveWidth + progress * fullWaveRange;
+      setWavePosition(newPosition);
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+  }, [waveMode, phase, waveDuration, waveWidth]);
+
   if (phase === 'gone') return null;
+
+  // Calculate character state based on wave position
+  const getCharState = (charIndex: number): 'hidden' | 'forming' | 'present' | 'fading' => {
+    if (!waveMode || !isActive) {
+      // Fall back to phase-based animation
+      if (phase === 'forming') return 'forming';
+      if (phase === 'fading') return 'fading';
+      return 'present';
+    }
+
+    const charPosition = charIndex / text.length;
+    const offset = offsets[charIndex];
+    const formPoint = charPosition - waveWidth * offset.formVariance;
+    const fadePoint = charPosition + waveWidth * 0.3 * offset.fadeVariance;
+
+    if (wavePosition < formPoint) return 'hidden';
+    if (wavePosition < charPosition) return 'forming';
+    if (wavePosition < fadePoint) return 'present';
+    return 'fading';
+  };
+
+  // Calculate animation progress for smooth transitions
+  const getCharProgress = (charIndex: number, state: string): number => {
+    if (!waveMode || !isActive) return 1;
+
+    const charPosition = charIndex / text.length;
+    const offset = offsets[charIndex];
+
+    if (state === 'forming') {
+      const formStart = charPosition - waveWidth * offset.formVariance;
+      const formEnd = charPosition;
+      return Math.min(1, Math.max(0, (wavePosition - formStart) / (formEnd - formStart)));
+    }
+    if (state === 'fading') {
+      const fadeStart = charPosition;
+      const fadeEnd = charPosition + waveWidth * 0.3 * offset.fadeVariance;
+      return Math.min(1, Math.max(0, (wavePosition - fadeStart) / (fadeEnd - fadeStart)));
+    }
+    return 1;
+  };
 
   return (
     <span style={{ display: 'inline', ...style }}>
       {text.split('').map((char, i) => {
-        const totalFormTime = i * charDelay + formDuration;
-        const charProgress = i / text.length;
+        const state = getCharState(i);
+        const progress = getCharProgress(i, state);
+        const offset = offsets[i];
 
-        // For overlap mode, characters start fading based on their position
-        const shouldFade = phase === 'fading' || (overlapFade && phase === 'forming' && charProgress < 0.3);
+        // Calculate transforms based on state and progress
+        let opacity = 1;
+        let transform = 'translate(0, 0) rotate(0deg) scale(1)';
+        let filter = 'blur(0)';
+
+        if (state === 'hidden') {
+          opacity = 0;
+        } else if (state === 'forming') {
+          // Smooth formation with easing
+          const ease = progress * progress * (3 - 2 * progress); // smoothstep
+          opacity = ease;
+          const invEase = 1 - ease;
+          transform = `translate(${offset.x * invEase}px, ${offset.y * invEase}px) rotate(${offset.r * invEase}deg) scale(${0.8 + ease * 0.2})`;
+          filter = `blur(${3 * invEase}px)`;
+        } else if (state === 'fading') {
+          // Smooth dissolution
+          const ease = progress * progress; // ease-in for dissolve
+          opacity = 1 - ease;
+          transform = `translate(${offset.scatter * ease}px, ${offset.y * 3 * ease}px) rotate(${offset.r * 4 * ease}deg)`;
+          filter = `blur(${6 * ease}px)`;
+        }
+
+        // For non-wave mode, use CSS animations
+        const useAnimation = !waveMode || !isActive;
 
         return (
           <span
             key={i}
             style={{
               display: 'inline-block',
-              animation: shouldFade
-                ? `sandDissolve ${fadeDuration}ms cubic-bezier(0.55, 0.085, 0.68, 0.53) ${offsets[i].fadeDelay * 500}ms forwards`
-                : phase === 'forming' || phase === 'present'
-                  ? `inkForm ${formDuration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94) ${i * charDelay}ms forwards`
-                  : 'none',
-              opacity: phase === 'forming' ? 0 : shouldFade ? 1 : 1,
+              opacity: useAnimation ? (phase === 'forming' ? 0 : 1) : opacity,
+              transform: useAnimation ? undefined : transform,
+              filter: useAnimation ? undefined : filter,
+              transition: useAnimation ? undefined : 'none',
+              animation: useAnimation
+                ? phase === 'fading'
+                  ? `sandDissolve ${fadeDuration}ms cubic-bezier(0.55, 0.085, 0.68, 0.53) ${offset.fadeVariance * 500}ms forwards`
+                  : phase === 'forming' || phase === 'present'
+                    ? `inkForm ${formDuration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94) ${i * charDelay}ms forwards`
+                    : 'none'
+                : 'none',
               whiteSpace: char === ' ' ? 'pre' : 'normal',
-              ['--tx' as string]: `${offsets[i].x}px`,
-              ['--ty' as string]: `${offsets[i].y}px`,
-              ['--tr' as string]: `${offsets[i].r}deg`,
-              ['--scatter' as string]: `${(Math.random() - 0.5) * 40}px`,
+              ['--tx' as string]: `${offset.x}px`,
+              ['--ty' as string]: `${offset.y}px`,
+              ['--tr' as string]: `${offset.r}deg`,
+              ['--scatter' as string]: `${offset.scatter}px`,
             }}
           >
             {char === ' ' ? '\u00A0' : char}
@@ -101,12 +301,12 @@ function EphemeralText({
   );
 }
 
-// Article component with ephemeral lifecycle - SLOW and contemplative
+// Article component with organic wave animation - text flows like water
 function Article({
   headline,
   body,
   byline,
-  cycleTime = 45000, // Much slower - 45 seconds per cycle
+  cycleTime = 60000, // 60 seconds per full wave cycle
   startDelay = 0,
   headlineStyle = {},
   bodyStyle = {},
@@ -121,53 +321,50 @@ function Article({
   bodyStyle?: React.CSSProperties;
   onCycle?: () => void;
 }) {
-  const [phase, setPhase] = useState<'forming' | 'present' | 'fading' | 'gone'>('gone');
   const [started, setStarted] = useState(false);
+  const [bylineOpacity, setBylineOpacity] = useState(0);
+  const cycleCountRef = useRef(0);
 
+  // Delayed start
   useEffect(() => {
     const startTimer = setTimeout(() => {
       setStarted(true);
-      setPhase('forming');
+      // Fade in byline after headline starts
+      setTimeout(() => setBylineOpacity(0.6), 3000);
     }, startDelay);
     return () => clearTimeout(startTimer);
   }, [startDelay]);
 
+  // Cycle callback and byline pulsing
   useEffect(() => {
     if (!started) return;
 
-    const formTime = 5000; // 5 seconds to form (was 3)
-    const presentTime = cycleTime - 12000; // Longer presence
-    const fadeTime = 7000; // 7 seconds to fade (was 3)
+    const cycleTimer = setInterval(() => {
+      cycleCountRef.current++;
+      onCycle?.();
+      // Pulse byline opacity on cycle
+      setBylineOpacity(0.3);
+      setTimeout(() => setBylineOpacity(0.6), 2000);
+    }, cycleTime);
 
-    // Phase transitions
-    const presentTimer = setTimeout(() => setPhase('present'), formTime);
-    const fadeTimer = setTimeout(() => setPhase('fading'), formTime + presentTime);
-    const goneTimer = setTimeout(() => {
-      setPhase('gone');
-      setTimeout(() => {
-        onCycle?.();
-        setPhase('forming');
-      }, 500);
-    }, formTime + presentTime + fadeTime);
-
-    return () => {
-      clearTimeout(presentTimer);
-      clearTimeout(fadeTimer);
-      clearTimeout(goneTimer);
-    };
+    return () => clearInterval(cycleTimer);
   }, [started, cycleTime, onCycle]);
 
-  if (phase === 'gone' && !started) return <div style={{ minHeight: 80 }} />;
+  if (!started) return <div style={{ minHeight: 80 }} />;
+
+  // Calculate wave duration based on text length for organic feel
+  const bodyWaveDuration = Math.max(20000, Math.min(45000, body.length * 80));
+  const headlineWaveDuration = Math.max(8000, headline.length * 120);
 
   return (
     <div style={{ minHeight: 80 }}>
       <div style={{ marginBottom: 8 }}>
         <EphemeralText
           text={headline}
-          phase={phase}
-          charDelay={40} // Slower character reveal
-          formDuration={1200} // Slower form
-          fadeDuration={2000} // Much slower fade
+          phase="wave"
+          waveMode={true}
+          waveDuration={headlineWaveDuration}
+          waveWidth={0.5} // Wider wave for headlines - more text visible
           style={{
             fontSize: 16,
             fontWeight: 700,
@@ -181,11 +378,10 @@ function Article({
       <div>
         <EphemeralText
           text={body}
-          phase={phase}
-          charDelay={25} // Slower
-          formDuration={1000}
-          fadeDuration={2500} // Much slower dissolve
-          overlapFade={phase === 'fading'}
+          phase="wave"
+          waveMode={true}
+          waveDuration={bodyWaveDuration}
+          waveWidth={0.35} // Narrower wave for body - more mysterious
           style={{
             fontSize: 13,
             color: '#333',
@@ -195,8 +391,8 @@ function Article({
           }}
         />
       </div>
-      {byline && phase !== 'gone' && (
-        <div style={{ marginTop: 6, opacity: phase === 'fading' ? 0.3 : 0.6, transition: 'opacity 2s' }}>
+      {byline && (
+        <div style={{ marginTop: 6, opacity: bylineOpacity, transition: 'opacity 2s ease' }}>
           <span style={{ fontSize: 10, fontStyle: 'italic', color: '#666' }}>{byline}</span>
         </div>
       )}
@@ -572,7 +768,10 @@ export function DailyProphetScreen() {
         <div style={{ padding: '16px 24px', borderBottom: '2px solid #000', background: 'rgba(255,255,255,0.3)' }}>
           <EphemeralText
             text={articles.headline}
-            phase="present"
+            phase="wave"
+            waveMode={true}
+            waveDuration={25000}
+            waveWidth={0.6} // Wide wave - headline mostly visible
             style={{
               fontSize: 24,
               fontWeight: 700,
@@ -586,8 +785,10 @@ export function DailyProphetScreen() {
           <div style={{ marginTop: 12, textAlign: 'center' }}>
             <EphemeralText
               text={articles.greeting}
-              phase="present"
-              charDelay={20}
+              phase="wave"
+              waveMode={true}
+              waveDuration={18000}
+              waveWidth={0.5}
               style={{ fontSize: 14, color: '#444', fontStyle: 'italic' }}
             />
           </div>
@@ -599,19 +800,35 @@ export function DailyProphetScreen() {
 
         {/* Left Column */}
         <div style={{ borderRight: '1px solid #ddd', padding: '16px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Weather Article */}
-          {articles?.weatherArticle && (
-            <div>
+          {/* Weather Article with Image */}
+          <div style={{ background: '#fff', borderRadius: 6, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <img
+              src={getWeatherImageUrl(weather ? (weatherCodeToDescription[weather.weatherCode] || 'clear') : 'default')}
+              alt=""
+              style={{ width: '100%', height: 100, objectFit: 'cover', filter: 'grayscale(1) contrast(1.1)', opacity: 0.85 }}
+            />
+            <div style={{ padding: '12px 14px' }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 8, paddingBottom: 4, borderBottom: '2px solid #000', display: 'inline-block' }}>Weather Report</div>
-              <Article
-                headline={articles.weatherArticle.headline}
-                body={articles.weatherArticle.body}
-                byline={articles.weatherArticle.advice}
-                cycleTime={90000} // 90 seconds - much slower
-                startDelay={2000}
-              />
+              {articles?.weatherArticle ? (
+                <Article
+                  headline={articles.weatherArticle.headline}
+                  body={articles.weatherArticle.body}
+                  byline={articles.weatherArticle.advice}
+                  cycleTime={90000}
+                  startDelay={2000}
+                />
+              ) : weather ? (
+                <div style={{ fontSize: 13, color: '#333', lineHeight: 1.6 }}>
+                  Currently {Math.round(weather.temperature)}°C and {weatherCodeToDescription[weather.weatherCode] || 'clear'}.
+                  {weather.humidity && ` Humidity at ${weather.humidity}%.`}
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: '#666', fontStyle: 'italic' }}>
+                  Gathering weather data from our meteorological correspondents...
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Markets Article */}
           {articles?.marketsArticle && (
@@ -632,8 +849,10 @@ export function DailyProphetScreen() {
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 8, color: '#666' }}>Ancient Wisdom</div>
               <EphemeralText
                 text={articles.wisdomCorner}
-                phase="present"
-                charDelay={30}
+                phase="wave"
+                waveMode={true}
+                waveDuration={22000}
+                waveWidth={0.45}
                 style={{ fontSize: 12, fontStyle: 'italic', color: '#555', lineHeight: 1.5 }}
               />
             </div>
@@ -693,8 +912,10 @@ export function DailyProphetScreen() {
             <div style={{ marginTop: 'auto', textAlign: 'center', padding: '12px 0', borderTop: '1px solid #ddd' }}>
               <EphemeralText
                 text={articles.closingThought}
-                phase="present"
-                charDelay={40}
+                phase="wave"
+                waveMode={true}
+                waveDuration={20000}
+                waveWidth={0.4}
                 style={{ fontSize: 13, fontStyle: 'italic', color: '#666' }}
               />
             </div>
@@ -786,8 +1007,10 @@ export function DailyProphetScreen() {
               <div style={{ marginTop: 8 }}>
                 <EphemeralText
                   text={articles.productivityNote}
-                  phase="present"
-                  charDelay={25}
+                  phase="wave"
+                  waveMode={true}
+                  waveDuration={16000}
+                  waveWidth={0.5}
                   style={{ fontSize: 10, color: '#666', fontStyle: 'italic' }}
                 />
               </div>
