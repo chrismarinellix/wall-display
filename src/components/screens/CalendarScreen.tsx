@@ -223,19 +223,21 @@ const styles: Record<string, React.CSSProperties> = {
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
+    touchAction: 'pan-y',
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 'clamp(8px, 2vw, 16px)',
+    marginBottom: 'clamp(6px, 1.5vw, 12px)',
     flexWrap: 'wrap',
     gap: 8,
+    flexShrink: 0,
   },
   monthTitle: {
     fontSize: 'clamp(14px, 4vw, 18px)',
     fontWeight: 500,
-    minWidth: 'clamp(120px, 30vw, 160px)',
+    minWidth: 'clamp(100px, 28vw, 160px)',
     textAlign: 'center',
   },
   weekdayHeader: {
@@ -249,18 +251,19 @@ const styles: Record<string, React.CSSProperties> = {
   calendarGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(7, 1fr)',
+    gridAutoRows: '1fr',
     flex: 1,
     gap: 1,
     background: '#e5e5e5',
   },
   dayCell: {
-    padding: 'clamp(2px, 1vw, 4px)',
-    minHeight: 'clamp(50px, 12vw, 70px)',
-    maxHeight: 'clamp(50px, 12vw, 70px)',
+    padding: 'clamp(2px, 0.8vw, 4px)',
     cursor: 'pointer',
     position: 'relative' as const,
     transition: 'background 0.15s ease',
     overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
   },
   dayNumber: {
     fontSize: 'clamp(10px, 2.5vw, 12px)',
@@ -349,6 +352,10 @@ export function CalendarScreen() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Don't interfere with modal interactions
+    const target = e.target as HTMLElement;
+    if (target.closest('.calendar-modal')) return;
+
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
   }, []);
@@ -362,7 +369,10 @@ export function CalendarScreen() {
     const deltaY = touchEndY - touchStartY.current;
 
     // Only trigger if horizontal swipe is dominant and exceeds threshold
-    if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+    if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      // Stop propagation to prevent parent ScreenContainer from handling
+      e.stopPropagation();
+
       if (deltaX > 0) {
         // Swipe right - previous month
         setCurrentMonth(prev => subMonths(prev, 1));
@@ -539,37 +549,66 @@ export function CalendarScreen() {
       ref={containerRef}
       style={styles.container}
       onTouchStart={handleTouchStart}
+      onTouchMove={() => {
+        // Allow vertical scrolling but track for swipe
+      }}
       onTouchEnd={handleTouchEnd}
     >
       {/* Header */}
       <div style={styles.header}>
-        <div className="flex" style={{ alignItems: 'center', gap: 'clamp(4px, 1.5vw, 8px)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <button
             onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+            style={{
+              background: '#fff',
+              border: '1px solid #ddd',
+              borderRadius: 6,
+              cursor: 'pointer',
+              padding: isMobile ? 8 : 6,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: isMobile ? 36 : 28,
+              minHeight: isMobile ? 36 : 28,
+              touchAction: 'manipulation',
+            }}
           >
-            <ChevronLeft size={isMobile ? 16 : 18} />
+            <ChevronLeft size={isMobile ? 18 : 16} />
           </button>
           <span style={styles.monthTitle}>
             {format(currentMonth, isMobile ? 'MMM yyyy' : 'MMMM yyyy')}
           </span>
           <button
             onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+            style={{
+              background: '#fff',
+              border: '1px solid #ddd',
+              borderRadius: 6,
+              cursor: 'pointer',
+              padding: isMobile ? 8 : 6,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: isMobile ? 36 : 28,
+              minHeight: isMobile ? 36 : 28,
+              touchAction: 'manipulation',
+            }}
           >
-            <ChevronRight size={isMobile ? 16 : 18} />
+            <ChevronRight size={isMobile ? 18 : 16} />
           </button>
         </div>
         <button
           onClick={loadAllEvents}
           style={{
-            background: 'none',
-            border: '1px solid #e5e5e5',
+            background: '#fff',
+            border: '1px solid #ddd',
             cursor: 'pointer',
-            padding: 6,
+            padding: isMobile ? 8 : 6,
             display: 'flex',
             alignItems: 'center',
-            borderRadius: 4,
+            borderRadius: 6,
+            minWidth: isMobile ? 36 : 28,
+            minHeight: isMobile ? 36 : 28,
           }}
         >
           <RefreshCw size={14} className={loading ? 'spin' : ''} />
