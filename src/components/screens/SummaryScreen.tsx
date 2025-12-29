@@ -18,13 +18,13 @@ interface Summary {
   advice: string;
 }
 
-// Dispersion text component - text explodes/coalesces character by character
+// Gentle ink-fade text component - text materializes like ink on parchment
 function DispersionText({
   text,
   isVisible,
   style = {},
-  charDelay = 20,
-  duration = 500,
+  charDelay = 40, // Slower stagger
+  duration = 1200, // Much longer, gentler transition
 }: {
   text: string;
   isVisible: boolean;
@@ -32,11 +32,12 @@ function DispersionText({
   charDelay?: number;
   duration?: number;
 }) {
+  // Subtle, gentle offsets - like ink settling, not exploding
   const offsets = useMemo(() =>
     text.split('').map(() => ({
-      x: (Math.random() - 0.5) * 80,
-      y: (Math.random() - 0.5) * 50,
-      r: (Math.random() - 0.5) * 40,
+      x: (Math.random() - 0.5) * 15, // Very subtle horizontal drift
+      y: (Math.random() - 0.5) * 8 + 3, // Gentle upward float
+      r: (Math.random() - 0.5) * 5, // Barely perceptible rotation
     })), [text]
   );
 
@@ -48,8 +49,8 @@ function DispersionText({
           style={{
             display: 'inline-block',
             animation: isVisible
-              ? `coalesce ${duration}ms cubic-bezier(0.23, 1, 0.32, 1) ${i * charDelay}ms forwards`
-              : `disperse ${duration}ms cubic-bezier(0.55, 0.055, 0.675, 0.19) ${i * charDelay}ms forwards`,
+              ? `inkFadeIn ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94) ${i * charDelay}ms forwards`
+              : `inkFadeOut ${duration}ms cubic-bezier(0.55, 0.085, 0.68, 0.53) ${i * charDelay}ms forwards`,
             opacity: isVisible ? 0 : 1,
             whiteSpace: char === ' ' ? 'pre' : 'normal',
             ['--tx' as string]: `${offsets[i].x}px`,
@@ -76,15 +77,15 @@ function LiveDataSpotlight({
   useEffect(() => {
     if (items.length === 0) return;
 
-    const cycleDuration = 4000;
-    const animDuration = 600;
+    const cycleDuration = 10000; // Show each item for 10 seconds - calm, unhurried
+    const animDuration = 2000; // 2 second gentle transition
 
     const cycle = () => {
       setIsVisible(false);
       setTimeout(() => {
         setCurrentIndex((prev) => (prev + 1) % items.length);
         setIsVisible(true);
-      }, animDuration + 200);
+      }, animDuration + 500); // Pause between items
     };
 
     const timer = setInterval(cycle, cycleDuration);
@@ -105,17 +106,17 @@ function LiveDataSpotlight({
         minHeight: 70,
       }}
     >
-      <div style={{ marginBottom: 4 }}>
+      <div style={{ marginBottom: 6 }}>
         <DispersionText
           text={current.label.toUpperCase()}
           isVisible={isVisible}
-          charDelay={15}
-          duration={400}
+          charDelay={60}
+          duration={1500}
           style={{
             fontSize: 9,
-            fontWeight: 700,
-            letterSpacing: '0.2em',
-            color: '#888',
+            fontWeight: 600,
+            letterSpacing: '0.25em',
+            color: '#999',
             fontFamily: 'system-ui, sans-serif',
           }}
         />
@@ -124,26 +125,27 @@ function LiveDataSpotlight({
         <DispersionText
           text={current.value}
           isVisible={isVisible}
-          charDelay={25}
-          duration={500}
+          charDelay={50}
+          duration={1800}
           style={{
-            fontSize: 22,
-            fontWeight: 400,
-            color: '#000',
+            fontSize: 24,
+            fontWeight: 300,
+            color: '#222',
             fontFamily: 'Georgia, serif',
+            letterSpacing: '-0.01em',
           }}
         />
       </div>
       {current.sublabel && (
-        <div style={{ marginTop: 4 }}>
+        <div style={{ marginTop: 6 }}>
           <DispersionText
             text={current.sublabel}
             isVisible={isVisible}
-            charDelay={20}
-            duration={450}
+            charDelay={45}
+            duration={1400}
             style={{
-              fontSize: 11,
-              color: '#666',
+              fontSize: 12,
+              color: '#777',
               fontStyle: 'italic',
               fontFamily: 'Georgia, serif',
             }}
@@ -151,17 +153,17 @@ function LiveDataSpotlight({
         </div>
       )}
 
-      {/* Progress dots */}
-      <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+      {/* Subtle progress indicator */}
+      <div style={{ display: 'flex', gap: 8, marginTop: 16, opacity: 0.4 }}>
         {items.map((_, i) => (
           <div
             key={i}
             style={{
-              width: i === currentIndex ? 16 : 6,
-              height: 6,
-              borderRadius: 3,
-              background: i === currentIndex ? '#000' : '#ccc',
-              transition: 'all 0.3s ease',
+              width: i === currentIndex ? 20 : 4,
+              height: 4,
+              borderRadius: 2,
+              background: i === currentIndex ? '#666' : '#bbb',
+              transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
             }}
           />
         ))}
@@ -482,38 +484,46 @@ export function SummaryScreen() {
         WebkitOverflowScrolling: 'touch',
       }}
     >
-      {/* CSS Keyframes for dispersion animation */}
+      {/* CSS Keyframes for gentle ink-fade animation */}
       <style>{`
-        @keyframes coalesce {
+        @keyframes inkFadeIn {
           0% {
             opacity: 0;
-            transform: translate(var(--tx), var(--ty)) rotate(var(--tr)) scale(0.5);
-            filter: blur(6px);
+            transform: translate(var(--tx), var(--ty)) rotate(var(--tr));
+            filter: blur(3px);
           }
-          50% {
-            opacity: 0.8;
-            filter: blur(2px);
+          40% {
+            opacity: 0.3;
+            filter: blur(1.5px);
+          }
+          70% {
+            opacity: 0.7;
+            filter: blur(0.5px);
           }
           100% {
             opacity: 1;
-            transform: translate(0, 0) rotate(0deg) scale(1);
+            transform: translate(0, 0) rotate(0deg);
             filter: blur(0);
           }
         }
-        @keyframes disperse {
+        @keyframes inkFadeOut {
           0% {
             opacity: 1;
-            transform: translate(0, 0) rotate(0deg) scale(1);
+            transform: translate(0, 0) rotate(0deg);
             filter: blur(0);
           }
-          50% {
-            opacity: 0.5;
-            filter: blur(2px);
+          30% {
+            opacity: 0.7;
+            filter: blur(0.5px);
+          }
+          60% {
+            opacity: 0.3;
+            filter: blur(1.5px);
           }
           100% {
             opacity: 0;
-            transform: translate(var(--tx), var(--ty)) rotate(var(--tr)) scale(0.3);
-            filter: blur(6px);
+            transform: translate(var(--tx), var(--ty)) rotate(var(--tr));
+            filter: blur(3px);
           }
         }
       `}</style>
