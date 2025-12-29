@@ -1,75 +1,81 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { proverbs } from '../../data/proverbs';
 
-// Magical shimmer text for Japanese characters - ink forming from ethereal mist
-function ShimmeringText({
+// Ink brush stroke reveal - characters appear as if painted with calligraphy brush
+function InkBrushText({
   text,
   style = {},
+  revealDuration = 4000,
 }: {
   text: string;
   style?: React.CSSProperties;
+  revealDuration?: number;
 }) {
-  const [time, setTime] = useState(0);
-  const animationRef = useRef<number | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [isRevealed, setIsRevealed] = useState(false);
   const startTimeRef = useRef<number>(0);
+  const animationRef = useRef<number | null>(null);
 
   // Generate unique properties for each character
   const charProps = useMemo(() =>
-    text.split('').map(() => ({
-      // Phase offsets for varied movement
-      shimmerPhase: Math.random() * Math.PI * 2,
-      shimmerSpeed: 0.3 + Math.random() * 0.4,
-      // Ink flow effect
-      inkPhase: Math.random() * Math.PI * 2,
-      inkFlow: 0.8 + Math.random() * 0.4,
-      // Subtle movement
-      driftX: Math.random() * Math.PI * 2,
-      driftY: Math.random() * Math.PI * 2,
-      driftAmount: 1 + Math.random() * 2,
-      // Glow intensity
-      glowPhase: Math.random() * Math.PI * 2,
-      glowIntensity: 0.5 + Math.random() * 0.5,
+    text.split('').map((_, i) => ({
+      // Staggered reveal - each character starts at different time
+      revealStart: (i / text.length) * 0.8,
+      // Random brush stroke angle
+      brushAngle: -15 + Math.random() * 30,
+      // Ink splatter delay
+      inkDelay: Math.random() * 0.2,
     })), [text]
   );
 
-  // Animation loop
   useEffect(() => {
     startTimeRef.current = performance.now();
 
     const animate = (timestamp: number) => {
       const elapsed = timestamp - startTimeRef.current;
-      setTime(elapsed);
-      animationRef.current = requestAnimationFrame(animate);
+      const p = Math.min(1, elapsed / revealDuration);
+      setProgress(p);
+
+      if (p < 1) {
+        animationRef.current = requestAnimationFrame(animate);
+      } else {
+        setIsRevealed(true);
+      }
     };
 
     animationRef.current = requestAnimationFrame(animate);
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, []);
+  }, [revealDuration, text]);
 
-  const t = time / 1000; // Time in seconds
+  // Once revealed, show static text
+  if (isRevealed) {
+    return <span style={{ display: 'inline', ...style }}>{text}</span>;
+  }
 
   return (
     <span style={{ display: 'inline', ...style }}>
       {text.split('').map((char, i) => {
         const props = charProps[i];
 
-        // Shimmer wave - opacity varies sinusoidally
-        const shimmerWave = Math.sin(t * props.shimmerSpeed + props.shimmerPhase);
-        const opacity = 0.7 + shimmerWave * 0.3;
+        // Character reveal progress (0 = invisible, 1 = fully painted)
+        const charProgress = Math.max(0, Math.min(1,
+          (progress - props.revealStart) / 0.25
+        ));
 
-        // Ink flow - subtle blur oscillation like ink spreading
-        const inkWave = Math.sin(t * 0.5 * props.inkFlow + props.inkPhase);
-        const blur = Math.max(0, inkWave * 0.5);
+        // Brush stroke effect - scale from thin line to full character
+        const scaleY = 0.1 + charProgress * 0.9;
+        const scaleX = charProgress < 0.3 ? 0.5 + charProgress * 1.7 : 1;
 
-        // Subtle drift
-        const driftX = Math.sin(t * 0.3 + props.driftX) * props.driftAmount * 0.3;
-        const driftY = Math.cos(t * 0.25 + props.driftY) * props.driftAmount * 0.3;
+        // Opacity builds up like ink saturating paper
+        const opacity = Math.pow(charProgress, 0.5);
 
-        // Glow pulse
-        const glowWave = Math.sin(t * 0.4 + props.glowPhase);
-        const glowOpacity = 0.1 + glowWave * 0.1 * props.glowIntensity;
+        // Slight rotation as brush lifts
+        const rotation = props.brushAngle * (1 - charProgress);
+
+        // Ink spread blur at start
+        const blur = (1 - charProgress) * 3;
 
         return (
           <span
@@ -77,9 +83,9 @@ function ShimmeringText({
             style={{
               display: 'inline-block',
               opacity,
-              transform: `translate(${driftX}px, ${driftY}px)`,
+              transform: `scaleX(${scaleX}) scaleY(${scaleY}) rotate(${rotation}deg)`,
+              transformOrigin: 'bottom center',
               filter: blur > 0.1 ? `blur(${blur}px)` : 'none',
-              textShadow: `0 0 20px rgba(26, 26, 26, ${glowOpacity}), 0 0 40px rgba(184, 49, 47, ${glowOpacity * 0.3})`,
               transition: 'none',
               willChange: 'transform, opacity, filter',
             }}
@@ -89,6 +95,48 @@ function ShimmeringText({
         );
       })}
     </span>
+  );
+}
+
+// Floating ink drops decoration
+function InkDrops() {
+  const drops = useMemo(() =>
+    Array.from({ length: 8 }, (_, i) => ({
+      x: 10 + Math.random() * 80,
+      y: 10 + Math.random() * 80,
+      size: 3 + Math.random() * 8,
+      delay: i * 0.5,
+      duration: 3 + Math.random() * 2,
+    })), []
+  );
+
+  return (
+    <>
+      <style>{`
+        @keyframes inkDrop {
+          0% { opacity: 0; transform: scale(0); }
+          20% { opacity: 0.3; transform: scale(1); }
+          80% { opacity: 0.3; transform: scale(1); }
+          100% { opacity: 0; transform: scale(1.5); }
+        }
+      `}</style>
+      {drops.map((drop, i) => (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            left: `${drop.x}%`,
+            top: `${drop.y}%`,
+            width: drop.size,
+            height: drop.size,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(26,26,26,0.4) 0%, rgba(26,26,26,0) 70%)',
+            animation: `inkDrop ${drop.duration}s ease-in-out ${drop.delay}s infinite`,
+            pointerEvents: 'none',
+          }}
+        />
+      ))}
+    </>
   );
 }
 
@@ -184,9 +232,12 @@ export function JapaneseScreen() {
         }}
       />
 
+      {/* Floating ink drops */}
+      <InkDrops />
+
       {/* Main content container */}
       <div style={{ position: 'relative', maxWidth: 700 }}>
-        {/* Japanese calligraphy text with magical shimmer */}
+        {/* Japanese calligraphy text with ink brush reveal */}
         <div
           style={{
             fontSize: 80,
@@ -198,7 +249,7 @@ export function JapaneseScreen() {
             color: '#1a1a1a',
           }}
         >
-          <ShimmeringText text={proverbData.proverb.japanese} />
+          <InkBrushText text={proverbData.proverb.japanese} revealDuration={3000} />
         </div>
 
         {/* Romaji pronunciation */}
