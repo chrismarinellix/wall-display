@@ -255,32 +255,32 @@ ${data.countdown ? `COUNTDOWN: ${data.countdown.daysUntil} days until ${data.cou
 
 ${data.proverb ? `WISDOM: "${data.proverb.meaning}" (${data.proverb.romaji})` : ''}
 
-Generate JSON with these fields. Make it feel like a REAL Victorian newspaper - engaging headlines, vivid writing, dramatic flair.
-IMPORTANT: Every article body must be EXACTLY 6-7 sentences long. No exceptions. Count your sentences.
+Generate JSON with these fields. Write like a REAL magical Victorian newspaper - rich, flowing prose with dramatic flair.
+CRITICAL: Each article body MUST be 100-150 words of flowing, eloquent prose. Write LONG, DETAILED paragraphs. Do NOT write short sentences.
 
 {
-  "headline": "Main headline for the day (dramatic, attention-grabbing, Victorian newspaper style)",
-  "greeting": "Warm personal greeting for ${data.userName} (3-4 sentences, reference time of day, weather, and hint at the day ahead)",
+  "headline": "Main headline for the day (dramatic, Victorian newspaper style, 8-12 words)",
+  "greeting": "Warm, flowing greeting for ${data.userName} (80-100 words - describe the morning atmosphere, weather mood, and paint a picture of the day ahead)",
   "weatherArticle": {
-    "headline": "Weather headline (dramatic, Victorian newspaper style)",
-    "body": "Weather report article - EXACTLY 6-7 SENTENCES. Vivid Victorian language, describe the sky, the air, what to expect, include tomorrow's forecast.",
-    "advice": "Practical advice based on weather (2 sentences)"
+    "headline": "Weather headline (dramatic, poetic)",
+    "body": "LONG weather report (100-150 words). Paint a vivid picture of the sky, the quality of light, the feel of the air. Describe how the weather will unfold through the day. Include atmospheric details - the way clouds move, how the temperature will shift, what the evening will bring. Make it feel like poetry.",
+    "advice": "Practical advice based on weather (2-3 sentences)"
   },
   "dayArticle": {
-    "headline": "Headline about today's schedule/tasks (make it sound monumentally important)",
-    "body": "Summary of what's ahead today - EXACTLY 6-7 SENTENCES. Prioritize urgent items, describe major events, mention habits."
+    "headline": "Headline about today's schedule (make it grand)",
+    "body": "LONG summary of the day ahead (100-150 words). Describe each major commitment with gravitas. Paint the narrative of the day - morning duties, afternoon endeavors, evening possibilities. Connect the tasks to larger purposes."
   },
   "marketsArticle": {
-    "headline": "Markets headline (dramatic if big moves)",
-    "body": "Market summary with Victorian flair - EXACTLY 6-7 SENTENCES. Describe the financial currents, each asset's movement."
+    "headline": "Markets headline (dramatic)",
+    "body": "LONG market summary (100-150 words). Describe the financial currents with Victorian gravitas - the movements of each asset, the broader trends, what fortunes are being made or lost."
   },
   "historyArticle": {
-    "headline": "History headline (make it fascinating and dramatic)",
-    "body": "Expanded article about the historical event - EXACTLY 6-7 SENTENCES. Rich context, significance, why it matters today."
+    "headline": "History headline (fascinating, dramatic)",
+    "body": "LONG historical article (100-150 words). Transport the reader to that moment in time. Describe the scene, the people involved, the tension or triumph. Explain why this moment echoed through history and still matters today."
   },
-  "wisdomCorner": "Present the proverb meaningfully with thoughtful reflection (3-4 sentences, connect to today)",
-  "productivityNote": "Encouraging note about focus/habits progress (2-3 sentences, specific praise)",
-  "closingThought": "Motivational closing thought that ties together the day's themes (2 sentences, memorable)"
+  "wisdomCorner": "Present the proverb with deep reflection (60-80 words, connect ancient wisdom to modern life)",
+  "productivityNote": "Encouraging note about focus progress (40-60 words, specific and warm)",
+  "closingThought": "Memorable closing thought (30-40 words, ties themes together poetically)"
 }
 
 Respond ONLY with valid JSON.`;

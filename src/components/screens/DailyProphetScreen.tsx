@@ -130,63 +130,51 @@ function getWeatherImageUrl(condition: string): string {
   return `https://images.unsplash.com/photo-${weatherImageMap.default}?w=800&q=80`;
 }
 
-// Ephemeral text - organic wave animation like sand mandala
-// Characters form and dissolve as a wave passes through, never all at once
-function EphemeralText({
+// Magical Prophet Text - fog/smoke reveal like the Daily Prophet from Harry Potter
+// Characters emerge from ethereal mist with magical ink-seeping effect
+function MagicalText({
   text,
-  phase, // 'forming' | 'present' | 'fading' | 'gone' | 'wave'
   style = {},
-  charDelay = 30,
-  formDuration = 800,
-  fadeDuration = 1200,
-  waveMode = false, // Enable organic wave animation
-  waveDuration = 30000, // How long the wave takes to pass through
-  waveWidth = 0.4, // How much of the text is "active" at once (0-1)
+  revealDuration = 40000, // Full cycle duration
+  mistDensity = 0.6, // How much of text is in mist at once
 }: {
   text: string;
-  phase: 'forming' | 'present' | 'fading' | 'gone' | 'wave';
   style?: React.CSSProperties;
-  charDelay?: number;
-  formDuration?: number;
-  fadeDuration?: number;
-  waveMode?: boolean;
-  waveDuration?: number;
-  waveWidth?: number;
+  revealDuration?: number;
+  mistDensity?: number;
 }) {
-  const [wavePosition, setWavePosition] = useState(0);
-  const [isActive, setIsActive] = useState(false);
+  const [time, setTime] = useState(0);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
 
-  // Generate random offsets for each character
-  const offsets = useMemo(() =>
-    text.split('').map(() => ({
-      x: (Math.random() - 0.5) * 20,
-      y: (Math.random() - 0.5) * 10 + 5,
-      r: (Math.random() - 0.5) * 8,
-      formVariance: 0.7 + Math.random() * 0.6, // Each char forms at slightly different rate
-      fadeVariance: 0.7 + Math.random() * 0.6, // Each char fades at slightly different rate
-      scatter: (Math.random() - 0.5) * 40,
+  // Generate unique properties for each character
+  const charProps = useMemo(() =>
+    text.split('').map((_, i) => ({
+      // Staggered reveal timing - characters reveal in waves
+      revealOffset: (i / text.length) + (Math.random() * 0.15 - 0.075),
+      // Fog movement
+      fogPhase: Math.random() * Math.PI * 2,
+      fogSpeed: 0.5 + Math.random() * 0.5,
+      fogAmplitude: 3 + Math.random() * 4,
+      // Ink seep effect
+      inkDelay: Math.random() * 0.3,
+      inkSpeed: 0.8 + Math.random() * 0.4,
+      // Subtle glow
+      glowPhase: Math.random() * Math.PI * 2,
+      glowSpeed: 0.3 + Math.random() * 0.3,
+      // Vertical drift
+      driftPhase: Math.random() * Math.PI * 2,
+      driftAmount: 1 + Math.random() * 2,
     })), [text]
   );
 
-  // Wave animation loop - creates organic flowing effect
+  // Animation loop
   useEffect(() => {
-    if (!waveMode || phase === 'gone') {
-      setIsActive(false);
-      return;
-    }
-
-    setIsActive(true);
     startTimeRef.current = performance.now();
 
     const animate = (timestamp: number) => {
       const elapsed = timestamp - startTimeRef.current;
-      // Wave position goes from -waveWidth to 1+waveWidth to ensure full pass
-      const progress = (elapsed / waveDuration) % 1;
-      const fullWaveRange = 1 + waveWidth * 2;
-      const newPosition = -waveWidth + progress * fullWaveRange;
-      setWavePosition(newPosition);
+      setTime(elapsed);
       animationRef.current = requestAnimationFrame(animate);
     };
 
@@ -194,103 +182,67 @@ function EphemeralText({
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [waveMode, phase, waveDuration, waveWidth]);
+  }, []);
 
-  if (phase === 'gone') return null;
-
-  // Calculate character state based on wave position
-  const getCharState = (charIndex: number): 'hidden' | 'forming' | 'present' | 'fading' => {
-    if (!waveMode || !isActive) {
-      // Fall back to phase-based animation
-      if (phase === 'forming') return 'forming';
-      if (phase === 'fading') return 'fading';
-      return 'present';
-    }
-
-    const charPosition = charIndex / text.length;
-    const offset = offsets[charIndex];
-    const formPoint = charPosition - waveWidth * offset.formVariance;
-    const fadePoint = charPosition + waveWidth * 0.3 * offset.fadeVariance;
-
-    if (wavePosition < formPoint) return 'hidden';
-    if (wavePosition < charPosition) return 'forming';
-    if (wavePosition < fadePoint) return 'present';
-    return 'fading';
-  };
-
-  // Calculate animation progress for smooth transitions
-  const getCharProgress = (charIndex: number, state: string): number => {
-    if (!waveMode || !isActive) return 1;
-
-    const charPosition = charIndex / text.length;
-    const offset = offsets[charIndex];
-
-    if (state === 'forming') {
-      const formStart = charPosition - waveWidth * offset.formVariance;
-      const formEnd = charPosition;
-      return Math.min(1, Math.max(0, (wavePosition - formStart) / (formEnd - formStart)));
-    }
-    if (state === 'fading') {
-      const fadeStart = charPosition;
-      const fadeEnd = charPosition + waveWidth * 0.3 * offset.fadeVariance;
-      return Math.min(1, Math.max(0, (wavePosition - fadeStart) / (fadeEnd - fadeStart)));
-    }
-    return 1;
-  };
+  // Calculate reveal wave position (0 to 1, cycling)
+  const cycleProgress = (time / revealDuration) % 1;
+  const wavePosition = cycleProgress * (1 + mistDensity * 2) - mistDensity;
 
   return (
     <span style={{ display: 'inline', ...style }}>
       {text.split('').map((char, i) => {
-        const state = getCharState(i);
-        const progress = getCharProgress(i, state);
-        const offset = offsets[i];
+        const props = charProps[i];
+        const charPosition = props.revealOffset;
 
-        // Calculate transforms based on state and progress
-        let opacity = 1;
-        let transform = 'translate(0, 0) rotate(0deg) scale(1)';
-        let filter = 'blur(0)';
+        // Calculate how "revealed" this character is (0 = mist, 1 = solid)
+        const distanceFromWave = charPosition - wavePosition;
+        const revealAmount = Math.max(0, Math.min(1,
+          distanceFromWave < 0
+            ? 1 + distanceFromWave / mistDensity // Fading back to mist
+            : distanceFromWave < mistDensity
+              ? 1 - distanceFromWave / mistDensity // Revealed
+              : 0 // Still in mist
+        ));
 
-        if (state === 'hidden') {
-          opacity = 0;
-        } else if (state === 'forming') {
-          // Smooth formation with easing
-          const ease = progress * progress * (3 - 2 * progress); // smoothstep
-          opacity = ease;
-          const invEase = 1 - ease;
-          transform = `translate(${offset.x * invEase}px, ${offset.y * invEase}px) rotate(${offset.r * invEase}deg) scale(${0.8 + ease * 0.2})`;
-          filter = `blur(${3 * invEase}px)`;
-        } else if (state === 'fading') {
-          // Smooth dissolution
-          const ease = progress * progress; // ease-in for dissolve
-          opacity = 1 - ease;
-          transform = `translate(${offset.scatter * ease}px, ${offset.y * 3 * ease}px) rotate(${offset.r * 4 * ease}deg)`;
-          filter = `blur(${6 * ease}px)`;
-        }
+        // Smooth easing for magical feel
+        const easeReveal = revealAmount * revealAmount * (3 - 2 * revealAmount);
 
-        // For non-wave mode, use CSS animations
-        const useAnimation = !waveMode || !isActive;
+        // Fog/mist movement
+        const fogTime = time / 1000;
+        const fogX = Math.sin(fogTime * props.fogSpeed + props.fogPhase) * props.fogAmplitude * (1 - easeReveal);
+        const fogY = Math.cos(fogTime * props.fogSpeed * 0.7 + props.fogPhase) * (props.fogAmplitude * 0.5) * (1 - easeReveal);
+
+        // Subtle vertical drift when revealed
+        const driftY = Math.sin(fogTime * 0.5 + props.driftPhase) * props.driftAmount * 0.3 * easeReveal;
+
+        // Ink opacity - seeps in from edges
+        const inkOpacity = Math.pow(easeReveal, props.inkSpeed);
+
+        // Subtle glow pulse when revealed
+        const glowAmount = easeReveal > 0.5
+          ? (0.5 + Math.sin(fogTime * props.glowSpeed + props.glowPhase) * 0.15) * easeReveal
+          : 0;
+
+        // Blur for fog effect
+        const blurAmount = (1 - easeReveal) * 4;
+
+        // Scale - slightly larger when in mist
+        const scale = 0.95 + easeReveal * 0.05 + (1 - easeReveal) * 0.1;
 
         return (
           <span
             key={i}
             style={{
               display: 'inline-block',
-              opacity: useAnimation ? (phase === 'forming' ? 0 : 1) : opacity,
-              transform: useAnimation ? undefined : transform,
-              filter: useAnimation ? undefined : filter,
-              transition: useAnimation ? undefined : 'none',
-              animation: useAnimation
-                ? phase === 'fading'
-                  ? `sandDissolve ${fadeDuration}ms cubic-bezier(0.55, 0.085, 0.68, 0.53) ${offset.fadeVariance * 500}ms forwards`
-                  : phase === 'forming' || phase === 'present'
-                    ? `inkForm ${formDuration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94) ${i * charDelay}ms forwards`
-                    : 'none'
+              opacity: Math.max(0.03, inkOpacity), // Always slightly visible in mist
+              transform: `translate(${fogX}px, ${fogY + driftY}px) scale(${scale})`,
+              filter: `blur(${blurAmount}px)`,
+              textShadow: glowAmount > 0
+                ? `0 0 ${8 * glowAmount}px rgba(0,0,0,${glowAmount * 0.3}), 0 0 ${2}px rgba(0,0,0,${glowAmount * 0.5})`
                 : 'none',
+              transition: 'none',
               whiteSpace: char === ' ' ? 'pre' : 'normal',
-              ['--tx' as string]: `${offset.x}px`,
-              ['--ty' as string]: `${offset.y}px`,
-              ['--tr' as string]: `${offset.r}deg`,
-              ['--scatter' as string]: `${offset.scatter}px`,
+              willChange: 'transform, opacity, filter',
             }}
           >
             {char === ' ' ? '\u00A0' : char}
@@ -301,65 +253,57 @@ function EphemeralText({
   );
 }
 
-// Article component with organic wave animation - text flows like water
+// Simpler static text for non-animated contexts
+function StaticText({
+  text,
+  style = {},
+}: {
+  text: string;
+  style?: React.CSSProperties;
+}) {
+  return <span style={style}>{text}</span>;
+}
+
+// Article component with magical fog reveal - mesmerizing and impressive
 function Article({
   headline,
   body,
   byline,
-  cycleTime = 60000, // 60 seconds per full wave cycle
   startDelay = 0,
   headlineStyle = {},
   bodyStyle = {},
-  onCycle,
 }: {
   headline: string;
   body: string;
   byline?: string;
-  cycleTime?: number;
   startDelay?: number;
   headlineStyle?: React.CSSProperties;
   bodyStyle?: React.CSSProperties;
-  onCycle?: () => void;
 }) {
   const [started, setStarted] = useState(false);
   const [bylineOpacity, setBylineOpacity] = useState(0);
-  const cycleCountRef = useRef(0);
 
-  // Delayed start
   useEffect(() => {
     const startTimer = setTimeout(() => {
       setStarted(true);
-      // Fade in byline after headline starts
-      setTimeout(() => setBylineOpacity(0.6), 3000);
+      setTimeout(() => setBylineOpacity(0.6), 2000);
     }, startDelay);
     return () => clearTimeout(startTimer);
   }, [startDelay]);
 
-  // Cycle callback and byline pulsing
-  useEffect(() => {
-    if (!started) return;
-
-    const cycleTimer = setInterval(() => {
-      cycleCountRef.current++;
-      onCycle?.();
-      // Pulse byline opacity on cycle
-      setBylineOpacity(0.3);
-      setTimeout(() => setBylineOpacity(0.6), 2000);
-    }, cycleTime);
-
-    return () => clearInterval(cycleTimer);
-  }, [started, cycleTime, onCycle]);
-
   if (!started) return <div style={{ minHeight: 80 }} />;
+
+  // Fast, impressive timing - keeps audience amazed
+  const headlineDuration = Math.max(8000, Math.min(15000, headline.length * 100));
+  const bodyDuration = Math.max(15000, Math.min(25000, body.length * 35));
 
   return (
     <div style={{ minHeight: 80 }}>
       <div style={{ marginBottom: 8 }}>
-        <EphemeralText
+        <MagicalText
           text={headline}
-          phase="present"
-          waveMode={false}
-          formDuration={1200}
+          revealDuration={headlineDuration}
+          mistDensity={0.5}
           style={{
             fontSize: 16,
             fontWeight: 700,
@@ -371,12 +315,10 @@ function Article({
         />
       </div>
       <div>
-        <EphemeralText
+        <MagicalText
           text={body}
-          phase="present"
-          waveMode={false}
-          formDuration={1500}
-          charDelay={15}
+          revealDuration={bodyDuration}
+          mistDensity={0.4}
           style={{
             fontSize: 13,
             color: '#333',
@@ -761,12 +703,10 @@ export function DailyProphetScreen() {
       {/* Main Headline */}
       {articles && (
         <div style={{ padding: '16px 24px', borderBottom: '2px solid #000', background: 'rgba(255,255,255,0.3)' }}>
-          <EphemeralText
+          <MagicalText
             text={articles.headline}
-            phase="present"
-            waveMode={false}
-            formDuration={1500}
-            charDelay={20}
+            revealDuration={12000}
+            mistDensity={0.5}
             style={{
               fontSize: 24,
               fontWeight: 700,
@@ -778,12 +718,10 @@ export function DailyProphetScreen() {
             }}
           />
           <div style={{ marginTop: 12, textAlign: 'center' }}>
-            <EphemeralText
+            <MagicalText
               text={articles.greeting}
-              phase="present"
-              waveMode={false}
-              formDuration={1200}
-              charDelay={25}
+              revealDuration={18000}
+              mistDensity={0.45}
               style={{ fontSize: 14, color: '#444', fontStyle: 'italic' }}
             />
           </div>
@@ -804,7 +742,6 @@ export function DailyProphetScreen() {
                   headline={articles.weatherArticle.headline}
                   body={articles.weatherArticle.body}
                   byline={articles.weatherArticle.advice}
-                  cycleTime={90000}
                   startDelay={2000}
                 />
               ) : weather ? (
@@ -827,8 +764,7 @@ export function DailyProphetScreen() {
               <Article
                 headline={articles.marketsArticle.headline}
                 body={articles.marketsArticle.body}
-                cycleTime={75000} // 75 seconds
-                startDelay={15000} // Starts much later
+                startDelay={15000}
               />
             </div>
           )}
@@ -837,12 +773,10 @@ export function DailyProphetScreen() {
           {articles?.wisdomCorner && (
             <div style={{ marginTop: 'auto', padding: '12px', background: 'rgba(0,0,0,0.03)', borderRadius: 4 }}>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 8, color: '#666' }}>Ancient Wisdom</div>
-              <EphemeralText
+              <MagicalText
                 text={articles.wisdomCorner}
-                phase="present"
-                waveMode={false}
-                formDuration={1500}
-                charDelay={20}
+                revealDuration={15000}
+                mistDensity={0.45}
                 style={{ fontSize: 12, fontStyle: 'italic', color: '#555', lineHeight: 1.5 }}
               />
             </div>
@@ -865,7 +799,6 @@ export function DailyProphetScreen() {
                   <Article
                     headline={articles.historyArticle.headline}
                     body={articles.historyArticle.body}
-                    cycleTime={120000} // 2 minutes - history deserves time
                     startDelay={5000}
                     headlineStyle={{ fontSize: 18 }}
                     bodyStyle={{ fontSize: 13, lineHeight: 1.7 }}
@@ -884,6 +817,82 @@ export function DailyProphetScreen() {
             </div>
           )}
 
+          {/* Prominent Countdown Section */}
+          {countdowns.length > 0 && (
+            <div style={{ background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)', borderRadius: 8, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
+              <div style={{ padding: '16px 20px' }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 12, color: 'rgba(255,255,255,0.5)' }}>Upcoming Events</div>
+                {/* Primary Countdown */}
+                {(() => {
+                  const event = countdowns[0];
+                  const target = new Date(event.target_date);
+                  const now = new Date();
+                  const days = differenceInDays(target, now);
+                  const hours = differenceInHours(target, now) % 24;
+                  const isPassed = isPast(target);
+
+                  return (
+                    <div style={{ marginBottom: countdowns.length > 1 ? 16 : 0 }}>
+                      {/* Giant countdown number */}
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+                        <span style={{
+                          fontSize: 56,
+                          fontWeight: 200,
+                          color: isPassed ? '#888' : '#fff',
+                          fontFamily: '"Playfair Display", Georgia, serif',
+                          lineHeight: 1,
+                        }}>
+                          {isPassed ? '0' : days}
+                        </span>
+                        <span style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic' }}>
+                          {isPassed ? 'Today!' : days === 1 ? 'day' : 'days'}
+                          {!isPassed && hours > 0 && `, ${hours}h`}
+                        </span>
+                      </div>
+                      {/* Event title */}
+                      <div style={{
+                        fontSize: 18,
+                        fontWeight: 600,
+                        color: '#fff',
+                        fontFamily: '"Playfair Display", Georgia, serif',
+                        marginBottom: 6,
+                      }}>
+                        {event.title}
+                      </div>
+                      {/* Event description */}
+                      {event.description && (
+                        <MagicalText
+                          text={event.description}
+                          revealDuration={20000}
+                          mistDensity={0.5}
+                          style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5, fontStyle: 'italic' }}
+                        />
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Next event preview */}
+                {countdowns.length > 1 && (
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 12 }}>
+                    <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 6, color: 'rgba(255,255,255,0.4)' }}>Up Next</div>
+                    {countdowns.slice(1, 3).map((event, idx) => {
+                      const target = new Date(event.target_date);
+                      const days = differenceInDays(target, new Date());
+                      return (
+                        <div key={event.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: idx < 1 ? 6 : 0 }}>
+                          <span style={{ fontSize: 18, fontWeight: 300, color: 'rgba(255,255,255,0.8)' }}>{days}</span>
+                          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>days</span>
+                          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', flex: 1 }}>— {event.title}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Day Article */}
           {articles?.dayArticle && (
             <div style={{ padding: '14px', background: 'rgba(0,0,0,0.02)', border: '1px solid #ddd' }}>
@@ -891,7 +900,6 @@ export function DailyProphetScreen() {
               <Article
                 headline={articles.dayArticle.headline}
                 body={articles.dayArticle.body}
-                cycleTime={100000} // 100 seconds
                 startDelay={8000}
               />
             </div>
@@ -900,12 +908,10 @@ export function DailyProphetScreen() {
           {/* Closing Thought */}
           {articles?.closingThought && (
             <div style={{ marginTop: 'auto', textAlign: 'center', padding: '12px 0', borderTop: '1px solid #ddd' }}>
-              <EphemeralText
+              <MagicalText
                 text={articles.closingThought}
-                phase="present"
-                waveMode={false}
-                formDuration={1500}
-                charDelay={20}
+                revealDuration={12000}
+                mistDensity={0.5}
                 style={{ fontSize: 13, fontStyle: 'italic', color: '#666' }}
               />
             </div>
@@ -995,12 +1001,10 @@ export function DailyProphetScreen() {
             </div>
             {articles?.productivityNote && (
               <div style={{ marginTop: 8 }}>
-                <EphemeralText
+                <MagicalText
                   text={articles.productivityNote}
-                  phase="present"
-                  waveMode={false}
-                  formDuration={1200}
-                  charDelay={15}
+                  revealDuration={10000}
+                  mistDensity={0.4}
                   style={{ fontSize: 10, color: '#666', fontStyle: 'italic' }}
                 />
               </div>

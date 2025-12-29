@@ -1,5 +1,96 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { proverbs } from '../../data/proverbs';
+
+// Magical shimmer text for Japanese characters - ink forming from ethereal mist
+function ShimmeringText({
+  text,
+  style = {},
+}: {
+  text: string;
+  style?: React.CSSProperties;
+}) {
+  const [time, setTime] = useState(0);
+  const animationRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number>(0);
+
+  // Generate unique properties for each character
+  const charProps = useMemo(() =>
+    text.split('').map(() => ({
+      // Phase offsets for varied movement
+      shimmerPhase: Math.random() * Math.PI * 2,
+      shimmerSpeed: 0.3 + Math.random() * 0.4,
+      // Ink flow effect
+      inkPhase: Math.random() * Math.PI * 2,
+      inkFlow: 0.8 + Math.random() * 0.4,
+      // Subtle movement
+      driftX: Math.random() * Math.PI * 2,
+      driftY: Math.random() * Math.PI * 2,
+      driftAmount: 1 + Math.random() * 2,
+      // Glow intensity
+      glowPhase: Math.random() * Math.PI * 2,
+      glowIntensity: 0.5 + Math.random() * 0.5,
+    })), [text]
+  );
+
+  // Animation loop
+  useEffect(() => {
+    startTimeRef.current = performance.now();
+
+    const animate = (timestamp: number) => {
+      const elapsed = timestamp - startTimeRef.current;
+      setTime(elapsed);
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+  }, []);
+
+  const t = time / 1000; // Time in seconds
+
+  return (
+    <span style={{ display: 'inline', ...style }}>
+      {text.split('').map((char, i) => {
+        const props = charProps[i];
+
+        // Shimmer wave - opacity varies sinusoidally
+        const shimmerWave = Math.sin(t * props.shimmerSpeed + props.shimmerPhase);
+        const opacity = 0.7 + shimmerWave * 0.3;
+
+        // Ink flow - subtle blur oscillation like ink spreading
+        const inkWave = Math.sin(t * 0.5 * props.inkFlow + props.inkPhase);
+        const blur = Math.max(0, inkWave * 0.5);
+
+        // Subtle drift
+        const driftX = Math.sin(t * 0.3 + props.driftX) * props.driftAmount * 0.3;
+        const driftY = Math.cos(t * 0.25 + props.driftY) * props.driftAmount * 0.3;
+
+        // Glow pulse
+        const glowWave = Math.sin(t * 0.4 + props.glowPhase);
+        const glowOpacity = 0.1 + glowWave * 0.1 * props.glowIntensity;
+
+        return (
+          <span
+            key={i}
+            style={{
+              display: 'inline-block',
+              opacity,
+              transform: `translate(${driftX}px, ${driftY}px)`,
+              filter: blur > 0.1 ? `blur(${blur}px)` : 'none',
+              textShadow: `0 0 20px rgba(26, 26, 26, ${glowOpacity}), 0 0 40px rgba(184, 49, 47, ${glowOpacity * 0.3})`,
+              transition: 'none',
+              willChange: 'transform, opacity, filter',
+            }}
+          >
+            {char}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
 function getRandomProverb(excludeIndex?: number) {
   let index;
@@ -95,7 +186,7 @@ export function JapaneseScreen() {
 
       {/* Main content container */}
       <div style={{ position: 'relative', maxWidth: 700 }}>
-        {/* Japanese calligraphy text */}
+        {/* Japanese calligraphy text with magical shimmer */}
         <div
           style={{
             fontSize: 80,
@@ -105,10 +196,9 @@ export function JapaneseScreen() {
             letterSpacing: '0.2em',
             marginBottom: 32,
             color: '#1a1a1a',
-            textShadow: '0 1px 2px rgba(0,0,0,0.05)',
           }}
         >
-          {proverbData.proverb.japanese}
+          <ShimmeringText text={proverbData.proverb.japanese} />
         </div>
 
         {/* Romaji pronunciation */}
