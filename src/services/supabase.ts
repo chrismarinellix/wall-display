@@ -896,3 +896,135 @@ export function subscribeToTodos(callback: (todos: TodoItem[]) => void): (() => 
     supabase.removeChannel(channel);
   };
 }
+
+// ============ BIRTHDAYS & ZODIAC ============
+
+export interface Birthday {
+  name: string;
+  date: string; // Format: MM-DD
+  birthYear: number;
+  relationship?: string;
+}
+
+// Family birthdays
+export const BIRTHDAYS: Birthday[] = [
+  { name: 'Chris', date: '06-04', birthYear: 1970, relationship: 'self' },
+  { name: 'Caroline', date: '08-10', birthYear: 1972, relationship: 'partner' },
+  { name: 'Dad', date: '03-13', birthYear: 1942, relationship: 'father' },
+];
+
+// Zodiac signs with date ranges and traits
+export const ZODIAC_SIGNS: Record<string, {
+  start: string;
+  end: string;
+  element: string;
+  traits: string[];
+  symbol: string;
+}> = {
+  'Aries': { start: '03-21', end: '04-19', element: 'Fire', traits: ['bold', 'ambitious', 'passionate'], symbol: '♈' },
+  'Taurus': { start: '04-20', end: '05-20', element: 'Earth', traits: ['reliable', 'patient', 'devoted'], symbol: '♉' },
+  'Gemini': { start: '05-21', end: '06-20', element: 'Air', traits: ['curious', 'adaptable', 'witty'], symbol: '♊' },
+  'Cancer': { start: '06-21', end: '07-22', element: 'Water', traits: ['intuitive', 'sentimental', 'protective'], symbol: '♋' },
+  'Leo': { start: '07-23', end: '08-22', element: 'Fire', traits: ['dramatic', 'creative', 'passionate'], symbol: '♌' },
+  'Virgo': { start: '08-23', end: '09-22', element: 'Earth', traits: ['analytical', 'practical', 'loyal'], symbol: '♍' },
+  'Libra': { start: '09-23', end: '10-22', element: 'Air', traits: ['diplomatic', 'gracious', 'fair'], symbol: '♎' },
+  'Scorpio': { start: '10-23', end: '11-21', element: 'Water', traits: ['resourceful', 'powerful', 'passionate'], symbol: '♏' },
+  'Sagittarius': { start: '11-22', end: '12-21', element: 'Fire', traits: ['generous', 'idealistic', 'adventurous'], symbol: '♐' },
+  'Capricorn': { start: '12-22', end: '01-19', element: 'Earth', traits: ['responsible', 'disciplined', 'ambitious'], symbol: '♑' },
+  'Aquarius': { start: '01-20', end: '02-18', element: 'Air', traits: ['progressive', 'original', 'independent'], symbol: '♒' },
+  'Pisces': { start: '02-19', end: '03-20', element: 'Water', traits: ['compassionate', 'artistic', 'intuitive'], symbol: '♓' },
+};
+
+// Get zodiac sign for a date
+export function getZodiacSign(monthDay: string): { name: string; symbol: string; element: string; traits: string[] } | null {
+  const [month, day] = monthDay.split('-').map(Number);
+  const checkDate = month * 100 + day; // e.g., 0604 = 604
+
+  for (const [sign, data] of Object.entries(ZODIAC_SIGNS)) {
+    const [startMonth, startDay] = data.start.split('-').map(Number);
+    const [endMonth, endDay] = data.end.split('-').map(Number);
+    const startNum = startMonth * 100 + startDay;
+    const endNum = endMonth * 100 + endDay;
+
+    // Handle Capricorn which spans year boundary
+    if (startNum > endNum) {
+      if (checkDate >= startNum || checkDate <= endNum) {
+        return { name: sign, symbol: data.symbol, element: data.element, traits: data.traits };
+      }
+    } else {
+      if (checkDate >= startNum && checkDate <= endNum) {
+        return { name: sign, symbol: data.symbol, element: data.element, traits: data.traits };
+      }
+    }
+  }
+  return null;
+}
+
+// Get birthday info with zodiac and age
+export function getBirthdayInfo(birthday: Birthday): {
+  name: string;
+  age: number;
+  zodiac: { name: string; symbol: string; element: string; traits: string[] } | null;
+  daysUntilBirthday: number;
+  isBirthdayToday: boolean;
+  isBirthdayThisWeek: boolean;
+  birthYear: number;
+} {
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const [month, day] = birthday.date.split('-').map(Number);
+
+  // Calculate age
+  let age = currentYear - birthday.birthYear;
+  const birthdayThisYear = new Date(currentYear, month - 1, day);
+  if (today < birthdayThisYear) {
+    age--;
+  }
+
+  // Days until next birthday
+  let nextBirthday = new Date(currentYear, month - 1, day);
+  if (nextBirthday < today) {
+    nextBirthday = new Date(currentYear + 1, month - 1, day);
+  }
+  const daysUntilBirthday = Math.ceil((nextBirthday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  // Is birthday today?
+  const todayStr = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const isBirthdayToday = birthday.date === todayStr;
+
+  // Is birthday this week?
+  const isBirthdayThisWeek = daysUntilBirthday <= 7 && daysUntilBirthday > 0;
+
+  return {
+    name: birthday.name,
+    age,
+    zodiac: getZodiacSign(birthday.date),
+    daysUntilBirthday,
+    isBirthdayToday,
+    isBirthdayThisWeek,
+    birthYear: birthday.birthYear,
+  };
+}
+
+// Get all upcoming birthdays
+export function getUpcomingBirthdays(): Array<ReturnType<typeof getBirthdayInfo>> {
+  return BIRTHDAYS
+    .map(getBirthdayInfo)
+    .sort((a, b) => a.daysUntilBirthday - b.daysUntilBirthday);
+}
+
+// Get birthday message for the day
+export function getBirthdayMessage(): string | null {
+  const todayBirthdays = BIRTHDAYS
+    .map(getBirthdayInfo)
+    .filter(b => b.isBirthdayToday);
+
+  if (todayBirthdays.length === 0) return null;
+
+  const messages = todayBirthdays.map(b => {
+    const zodiac = b.zodiac;
+    return `Happy Birthday to ${b.name}! Turning ${b.age} today. ${zodiac ? `A ${zodiac.name} ${zodiac.symbol} with ${zodiac.traits.join(', ')} energy.` : ''}`;
+  });
+
+  return messages.join(' ');
+}

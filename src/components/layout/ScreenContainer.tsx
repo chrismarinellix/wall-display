@@ -11,7 +11,7 @@ import { CalendarScreen } from '../screens/CalendarScreen';
 import { CountdownScreen } from '../screens/CountdownScreen';
 import { HomeAssistantScreen } from '../screens/HomeAssistantScreen';
 import { MomentsScreen } from '../screens/MomentsScreen';
-import { SummaryScreen } from '../screens/SummaryScreen';
+import { DailyProphetScreen } from '../screens/DailyProphetScreen';
 import { SetupScreen } from '../screens/SetupScreen';
 import { VideoScreen } from '../screens/VideoScreen';
 import { ScreenType } from '../../types/settings';
@@ -41,7 +41,7 @@ const screens: Record<ScreenType, React.ComponentType> = {
   countdown: CountdownScreen,
   homeassistant: HomeAssistantScreen,
   moments: MomentsScreen,
-  summary: SummaryScreen,
+  summary: DailyProphetScreen,
   setup: SetupScreen,
   video: VideoScreen,
 };
@@ -56,7 +56,7 @@ const screenInfo: Record<ScreenType, { title: string; shortTitle: string; Icon: 
   countdown: { title: 'Countdown', shortTitle: 'Timer', Icon: Clock },
   homeassistant: { title: 'Home', shortTitle: 'Home', Icon: Home },
   moments: { title: 'Moments', shortTitle: 'History', Icon: Image },
-  summary: { title: 'Summary', shortTitle: 'Brief', Icon: LayoutGrid },
+  summary: { title: 'Daily Prophet', shortTitle: 'Prophet', Icon: LayoutGrid },
   setup: { title: 'Setup', shortTitle: 'Setup', Icon: Settings },
   video: { title: 'Camera', shortTitle: 'Cam', Icon: Video },
 };

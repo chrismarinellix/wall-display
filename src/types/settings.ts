@@ -33,13 +33,13 @@ export interface Settings {
 }
 
 export const defaultSettings: Settings = {
-  cycleInterval: 0, // Disabled - briefing page shows everything
+  cycleInterval: 0, // Disabled - manually navigate between screens
   refreshInterval: 300000,
   latitude: -37.8136,  // Melbourne
   longitude: 144.9631, // Melbourne
   temperatureUnit: 'celsius',
   timeFormat: '24h',
-  screenOrder: ['summary'], // Only briefing page - all info surfaced there
+  screenOrder: ['summary', 'weather', 'calendar', 'pomodoro', 'countdown', 'moments', 'homeassistant', 'stocks', 'quotes', 'japanese'], // All screens available, Daily Prophet as default
   // Default crypto and stocks
   stockSymbols: ['AAPL', 'GOOGL', 'MSFT'],
   cryptoSymbols: ['bitcoin', 'ethereum', 'solana'],
