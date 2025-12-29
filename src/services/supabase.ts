@@ -633,3 +633,266 @@ export async function getWeeklyHabitStats(): Promise<{ date: string; completed: 
     return [];
   }
 }
+
+// ============ TODOS ============
+
+export interface TodoItem {
+  id: string;
+  title: string;
+  completed: boolean;
+  due_date?: string; // ISO date string
+  priority: 'low' | 'medium' | 'high';
+  created_at: string;
+  completed_at?: string;
+}
+
+const TODOS_STORAGE_KEY = 'wall-display-todos';
+
+// Get all todos
+export async function getTodos(): Promise<TodoItem[]> {
+  if (!supabase) {
+    // Fallback to localStorage
+    const stored = localStorage.getItem(TODOS_STORAGE_KEY);
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('todos')
+      .select('*')
+      .order('due_date', { ascending: true, nullsFirst: false })
+      .order('priority', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const todos = (data || []).map(d => ({
+      id: d.id,
+      title: d.title,
+      completed: d.completed,
+      due_date: d.due_date,
+      priority: d.priority || 'medium',
+      created_at: d.created_at,
+      completed_at: d.completed_at,
+    }));
+
+    // Cache to localStorage
+    localStorage.setItem(TODOS_STORAGE_KEY, JSON.stringify(todos));
+    return todos;
+  } catch (e) {
+    console.error('Failed to fetch todos:', e);
+    // Try localStorage fallback
+    const stored = localStorage.getItem(TODOS_STORAGE_KEY);
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }
+}
+
+// Add a new todo
+export async function addTodo(todo: Omit<TodoItem, 'id' | 'created_at'>): Promise<TodoItem | null> {
+  const newTodo: TodoItem = {
+    ...todo,
+    id: crypto.randomUUID(),
+    created_at: new Date().toISOString(),
+  };
+
+  if (!supabase) {
+    // Fallback to localStorage
+    const stored = localStorage.getItem(TODOS_STORAGE_KEY);
+    const todos = stored ? JSON.parse(stored) : [];
+    todos.push(newTodo);
+    localStorage.setItem(TODOS_STORAGE_KEY, JSON.stringify(todos));
+    return newTodo;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('todos')
+      .insert({
+        id: newTodo.id,
+        title: newTodo.title,
+        completed: newTodo.completed,
+        due_date: newTodo.due_date,
+        priority: newTodo.priority,
+        created_at: newTodo.created_at,
+      });
+
+    if (error) throw error;
+
+    // Update localStorage cache
+    const stored = localStorage.getItem(TODOS_STORAGE_KEY);
+    const todos = stored ? JSON.parse(stored) : [];
+    todos.push(newTodo);
+    localStorage.setItem(TODOS_STORAGE_KEY, JSON.stringify(todos));
+
+    return newTodo;
+  } catch (e) {
+    console.error('Failed to add todo:', e);
+    return null;
+  }
+}
+
+// Toggle todo completion
+export async function toggleTodo(id: string): Promise<void> {
+  if (!supabase) {
+    // Fallback to localStorage
+    const stored = localStorage.getItem(TODOS_STORAGE_KEY);
+    if (stored) {
+      const todos = JSON.parse(stored) as TodoItem[];
+      const updated = todos.map(t => {
+        if (t.id === id) {
+          return {
+            ...t,
+            completed: !t.completed,
+            completed_at: !t.completed ? new Date().toISOString() : undefined,
+          };
+        }
+        return t;
+      });
+      localStorage.setItem(TODOS_STORAGE_KEY, JSON.stringify(updated));
+    }
+    return;
+  }
+
+  try {
+    // First get current state
+    const { data: current } = await supabase
+      .from('todos')
+      .select('completed')
+      .eq('id', id)
+      .single();
+
+    const newCompleted = !current?.completed;
+
+    const { error } = await supabase
+      .from('todos')
+      .update({
+        completed: newCompleted,
+        completed_at: newCompleted ? new Date().toISOString() : null,
+      })
+      .eq('id', id);
+
+    if (error) throw error;
+
+    // Update localStorage cache
+    const stored = localStorage.getItem(TODOS_STORAGE_KEY);
+    if (stored) {
+      const todos = JSON.parse(stored) as TodoItem[];
+      const updated = todos.map(t => {
+        if (t.id === id) {
+          return {
+            ...t,
+            completed: newCompleted,
+            completed_at: newCompleted ? new Date().toISOString() : undefined,
+          };
+        }
+        return t;
+      });
+      localStorage.setItem(TODOS_STORAGE_KEY, JSON.stringify(updated));
+    }
+  } catch (e) {
+    console.error('Failed to toggle todo:', e);
+  }
+}
+
+// Update a todo
+export async function updateTodo(id: string, updates: Partial<Omit<TodoItem, 'id' | 'created_at'>>): Promise<void> {
+  if (!supabase) {
+    // Fallback to localStorage
+    const stored = localStorage.getItem(TODOS_STORAGE_KEY);
+    if (stored) {
+      const todos = JSON.parse(stored) as TodoItem[];
+      const updated = todos.map(t => t.id === id ? { ...t, ...updates } : t);
+      localStorage.setItem(TODOS_STORAGE_KEY, JSON.stringify(updated));
+    }
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('todos')
+      .update(updates)
+      .eq('id', id);
+
+    if (error) throw error;
+
+    // Update localStorage cache
+    const stored = localStorage.getItem(TODOS_STORAGE_KEY);
+    if (stored) {
+      const todos = JSON.parse(stored) as TodoItem[];
+      const updated = todos.map(t => t.id === id ? { ...t, ...updates } : t);
+      localStorage.setItem(TODOS_STORAGE_KEY, JSON.stringify(updated));
+    }
+  } catch (e) {
+    console.error('Failed to update todo:', e);
+  }
+}
+
+// Delete a todo
+export async function deleteTodo(id: string): Promise<void> {
+  if (!supabase) {
+    // Fallback to localStorage
+    const stored = localStorage.getItem(TODOS_STORAGE_KEY);
+    if (stored) {
+      const todos = JSON.parse(stored) as TodoItem[];
+      const filtered = todos.filter(t => t.id !== id);
+      localStorage.setItem(TODOS_STORAGE_KEY, JSON.stringify(filtered));
+    }
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('todos')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    // Update localStorage cache
+    const stored = localStorage.getItem(TODOS_STORAGE_KEY);
+    if (stored) {
+      const todos = JSON.parse(stored) as TodoItem[];
+      const filtered = todos.filter(t => t.id !== id);
+      localStorage.setItem(TODOS_STORAGE_KEY, JSON.stringify(filtered));
+    }
+  } catch (e) {
+    console.error('Failed to delete todo:', e);
+  }
+}
+
+// Subscribe to todo changes
+export function subscribeToTodos(callback: (todos: TodoItem[]) => void): (() => void) | null {
+  if (!supabase) {
+    return null;
+  }
+
+  const channel = supabase
+    .channel('todos-changes')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'todos' },
+      async () => {
+        const todos = await getTodos();
+        callback(todos);
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}

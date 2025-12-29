@@ -33,13 +33,13 @@ export interface Settings {
 }
 
 export const defaultSettings: Settings = {
-  cycleInterval: 30000,
+  cycleInterval: 0, // Disabled - briefing page shows everything
   refreshInterval: 300000,
   latitude: -37.8136,  // Melbourne
   longitude: 144.9631, // Melbourne
   temperatureUnit: 'celsius',
   timeFormat: '24h',
-  screenOrder: ['summary', 'calendar', 'countdown', 'weather', 'stocks', 'homeassistant', 'moments', 'quotes', 'japanese', 'pomodoro'],
+  screenOrder: ['summary'], // Only briefing page - all info surfaced there
   // Default crypto and stocks
   stockSymbols: ['AAPL', 'GOOGL', 'MSFT'],
   cryptoSymbols: ['bitcoin', 'ethereum', 'solana'],
