@@ -249,8 +249,9 @@ export function SummaryScreen() {
         display: 'flex',
         flexDirection: 'column',
         background: '#faf9f6',
-        overflow: 'hidden',
+        overflow: 'auto',
         fontFamily: 'Georgia, "Times New Roman", serif',
+        WebkitOverflowScrolling: 'touch',
       }}
     >
       {/* Masthead */}
@@ -320,8 +321,9 @@ export function SummaryScreen() {
         style={{
           flex: 1,
           display: 'grid',
-          gridTemplateColumns: '1fr 2fr 1fr',
-          overflow: 'hidden',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          overflow: 'visible',
+          minHeight: 'min-content',
         }}
       >
         {/* Left Column - Weather & Markets */}

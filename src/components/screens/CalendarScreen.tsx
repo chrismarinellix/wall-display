@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   format,
   startOfMonth,
@@ -255,10 +255,12 @@ const styles: Record<string, React.CSSProperties> = {
   },
   dayCell: {
     padding: 'clamp(2px, 1vw, 4px)',
-    minHeight: 'clamp(40px, 10vw, 60px)',
+    minHeight: 'clamp(50px, 12vw, 70px)',
+    maxHeight: 'clamp(50px, 12vw, 70px)',
     cursor: 'pointer',
     position: 'relative' as const,
     transition: 'background 0.15s ease',
+    overflow: 'hidden',
   },
   dayNumber: {
     fontSize: 'clamp(10px, 2.5vw, 12px)',
@@ -268,9 +270,9 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
   },
   eventTag: {
-    fontSize: 'clamp(7px, 1.8vw, 9px)',
-    padding: 'clamp(1px, 0.5vw, 2px) clamp(2px, 1vw, 4px)',
-    marginBottom: 2,
+    fontSize: 'clamp(6px, 1.5vw, 8px)',
+    padding: 'clamp(1px, 0.3vw, 2px) clamp(2px, 0.8vw, 3px)',
+    marginBottom: 1,
     background: '#000',
     color: '#fff',
     borderRadius: 2,
@@ -281,6 +283,8 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 2,
+    lineHeight: 1.2,
+    maxHeight: 16,
   },
   modal: {
     position: 'fixed' as const,
@@ -338,6 +342,39 @@ export function CalendarScreen() {
   const [newEventTime, setNewEventTime] = useState('');
   const [editingEvent, setEditingEvent] = useState<CalendarEventRecord | null>(null);
   const [draggedEvent, setDraggedEvent] = useState<CalendarEvent | null>(null);
+
+  // Swipe navigation for touch devices
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    const deltaX = touchEndX - touchStartX.current;
+    const deltaY = touchEndY - touchStartY.current;
+
+    // Only trigger if horizontal swipe is dominant and exceeds threshold
+    if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+      if (deltaX > 0) {
+        // Swipe right - previous month
+        setCurrentMonth(prev => subMonths(prev, 1));
+      } else {
+        // Swipe left - next month
+        setCurrentMonth(prev => addMonths(prev, 1));
+      }
+    }
+
+    touchStartX.current = null;
+    touchStartY.current = null;
+  }, []);
 
   const loadGoogleEvents = async () => {
     const monthStart = startOfMonth(currentMonth);
@@ -498,7 +535,12 @@ export function CalendarScreen() {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 600;
 
   return (
-    <div style={styles.container}>
+    <div
+      ref={containerRef}
+      style={styles.container}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Header */}
       <div style={styles.header}>
         <div className="flex" style={{ alignItems: 'center', gap: 'clamp(4px, 1.5vw, 8px)' }}>

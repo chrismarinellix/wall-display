@@ -39,16 +39,16 @@ interface SwitchEntity {
 
 interface ClimateEntity {
   entity_id: string;
-  state: string; // 'off', 'heat', 'cool', 'heat_cool', 'auto'
+  state: string;
   attributes: {
     friendly_name?: string;
     current_temperature?: number;
     current_humidity?: number;
-    temperature?: number; // target temp for heat/cool
+    temperature?: number;
     target_temp_high?: number;
     target_temp_low?: number;
     hvac_modes?: string[];
-    hvac_action?: string; // 'idle', 'heating', 'cooling', 'off'
+    hvac_action?: string;
     min_temp?: number;
     max_temp?: number;
   };
@@ -84,15 +84,15 @@ function ThermostatCard({
   const isOff = mode === 'off';
 
   const getActionColor = () => {
-    if (isHeating) return '#ff6b35';
-    if (isCooling) return '#35a7ff';
-    return '#444';
+    if (isHeating) return '#e05a33';
+    if (isCooling) return '#2d8fd5';
+    return '#999';
   };
 
   const getActionIcon = () => {
-    if (isHeating) return <Flame size={28} color="#ff6b35" />;
-    if (isCooling) return <Snowflake size={28} color="#35a7ff" />;
-    if (isOff) return <Power size={28} color="#444" />;
+    if (isHeating) return <Flame size={28} color="#e05a33" />;
+    if (isCooling) return <Snowflake size={28} color="#2d8fd5" />;
+    if (isOff) return <Power size={28} color="#999" />;
     return <Thermometer size={28} color="#666" />;
   };
 
@@ -102,10 +102,13 @@ function ThermostatCard({
       flexDirection: 'column',
       alignItems: 'center',
       gap: 12,
-      padding: '20px 16px',
+      padding: '24px 20px',
       flex: 1,
-      minWidth: 180,
-      maxWidth: 240,
+      minWidth: 200,
+      maxWidth: 260,
+      background: '#fff',
+      borderRadius: 12,
+      border: '1px solid #e5e5e5',
     }}>
       {/* Title with Humidity */}
       <div style={{
@@ -116,11 +119,11 @@ function ThermostatCard({
         justifyContent: 'center',
       }}>
         <span style={{
-          fontSize: 9,
+          fontSize: 10,
           fontWeight: 600,
-          letterSpacing: '0.25em',
+          letterSpacing: '0.2em',
           textTransform: 'uppercase',
-          color: '#555',
+          color: '#666',
         }}>
           {name}
         </span>
@@ -131,8 +134,8 @@ function ThermostatCard({
             gap: 3,
             fontSize: 11,
             color: '#666',
-            background: '#1a1a1a',
-            padding: '2px 6px',
+            background: '#f5f5f5',
+            padding: '2px 8px',
             borderRadius: 4,
           }}>
             {humidity}%
@@ -143,18 +146,18 @@ function ThermostatCard({
       {/* Thermostat Circle */}
       <div
         style={{
-          width: 72,
-          height: 72,
+          width: 80,
+          height: 80,
           borderRadius: '50%',
           background: isOff
-            ? '#111'
-            : `linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)`,
-          border: `2px solid ${getActionColor()}`,
+            ? '#f5f5f5'
+            : `linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%)`,
+          border: `3px solid ${getActionColor()}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           boxShadow: (isHeating || isCooling)
-            ? `0 0 30px ${getActionColor()}33`
+            ? `0 0 20px ${getActionColor()}22`
             : 'none',
           transition: 'all 0.4s ease',
         }}
@@ -164,9 +167,9 @@ function ThermostatCard({
 
       {/* Current Temperature */}
       <div style={{
-        fontSize: 32,
-        fontWeight: 200,
-        color: '#fff',
+        fontSize: 36,
+        fontWeight: 300,
+        color: '#333',
         letterSpacing: '-0.02em',
       }}>
         {currentTemp.toFixed(0)}°
@@ -182,13 +185,13 @@ function ThermostatCard({
           onClick={() => onSetTemp(targetTemp - 1)}
           disabled={isOff}
           style={{
-            width: 32,
-            height: 32,
+            width: 36,
+            height: 36,
             borderRadius: '50%',
-            border: '1px solid #333',
-            background: '#1a1a1a',
-            color: isOff ? '#333' : '#fff',
-            fontSize: 18,
+            border: '1px solid #ddd',
+            background: '#fff',
+            color: isOff ? '#ccc' : '#333',
+            fontSize: 20,
             cursor: isOff ? 'default' : 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -202,8 +205,8 @@ function ThermostatCard({
           flexDirection: 'column',
           alignItems: 'center',
         }}>
-          <span style={{ fontSize: 10, color: '#666', letterSpacing: '0.1em' }}>TARGET</span>
-          <span style={{ fontSize: 20, color: isOff ? '#444' : '#fff', fontWeight: 300 }}>
+          <span style={{ fontSize: 10, color: '#999', letterSpacing: '0.1em' }}>TARGET</span>
+          <span style={{ fontSize: 22, color: isOff ? '#ccc' : '#333', fontWeight: 300 }}>
             {targetTemp.toFixed(0)}°
           </span>
         </div>
@@ -211,13 +214,13 @@ function ThermostatCard({
           onClick={() => onSetTemp(targetTemp + 1)}
           disabled={isOff}
           style={{
-            width: 32,
-            height: 32,
+            width: 36,
+            height: 36,
             borderRadius: '50%',
-            border: '1px solid #333',
-            background: '#1a1a1a',
-            color: isOff ? '#333' : '#fff',
-            fontSize: 18,
+            border: '1px solid #ddd',
+            background: '#fff',
+            color: isOff ? '#ccc' : '#333',
+            fontSize: 20,
             cursor: isOff ? 'default' : 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -242,25 +245,25 @@ function ThermostatCard({
               display: 'flex',
               alignItems: 'center',
               gap: 4,
-              padding: '4px 10px',
-              background: mode === m ? (m === 'heat' ? '#2a1a1a' : m === 'cool' ? '#1a1a2a' : '#1a1a1a') : '#111',
+              padding: '6px 12px',
+              background: mode === m ? (m === 'heat' ? '#fef3f0' : m === 'cool' ? '#f0f7fe' : '#f5f5f5') : '#fff',
               border: mode === m
-                ? `1px solid ${m === 'heat' ? '#ff6b35' : m === 'cool' ? '#35a7ff' : '#444'}`
-                : '1px solid #222',
+                ? `1px solid ${m === 'heat' ? '#e05a33' : m === 'cool' ? '#2d8fd5' : '#ccc'}`
+                : '1px solid #e5e5e5',
               borderRadius: 6,
               cursor: 'pointer',
               color: mode === m
-                ? (m === 'heat' ? '#ff6b35' : m === 'cool' ? '#35a7ff' : '#888')
-                : '#444',
-              fontSize: 9,
+                ? (m === 'heat' ? '#e05a33' : m === 'cool' ? '#2d8fd5' : '#666')
+                : '#999',
+              fontSize: 10,
               fontWeight: 500,
               letterSpacing: '0.05em',
               textTransform: 'uppercase',
             }}
           >
-            {m === 'heat' && <Flame size={10} />}
-            {m === 'cool' && <Snowflake size={10} />}
-            {m === 'off' && <Power size={10} />}
+            {m === 'heat' && <Flame size={12} />}
+            {m === 'cool' && <Snowflake size={12} />}
+            {m === 'off' && <Power size={12} />}
             {m}
           </button>
         ))}
@@ -268,11 +271,12 @@ function ThermostatCard({
 
       {/* Status */}
       <div style={{
-        fontSize: 9,
+        fontSize: 10,
         color: getActionColor(),
         letterSpacing: '0.1em',
         textTransform: 'uppercase',
         marginTop: 4,
+        fontWeight: 500,
       }}>
         {hvacAction === 'idle' ? (isOff ? 'OFF' : 'IDLE') : hvacAction.toUpperCase()}
       </div>
@@ -314,12 +318,15 @@ function FanCard({
       flexDirection: 'column',
       alignItems: 'center',
       gap: 12,
-      padding: '20px 16px',
+      padding: '24px 20px',
       flex: 1,
-      minWidth: 180,
-      maxWidth: 240,
+      minWidth: 200,
+      maxWidth: 260,
+      background: '#fff',
+      borderRadius: 12,
+      border: '1px solid #e5e5e5',
     }}>
-      {/* Title with Temperature - always show temp area for symmetry */}
+      {/* Title with Temperature */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -328,11 +335,11 @@ function FanCard({
         justifyContent: 'center',
       }}>
         <span style={{
-          fontSize: 9,
+          fontSize: 10,
           fontWeight: 600,
-          letterSpacing: '0.25em',
+          letterSpacing: '0.2em',
           textTransform: 'uppercase',
-          color: '#555',
+          color: '#666',
         }}>
           {name}
         </span>
@@ -341,11 +348,10 @@ function FanCard({
           alignItems: 'center',
           gap: 3,
           fontSize: 11,
-          color: temp !== null ? '#666' : '#333',
-          background: '#1a1a1a',
-          padding: '2px 6px',
+          color: temp !== null ? '#666' : '#ccc',
+          background: '#f5f5f5',
+          padding: '2px 8px',
           borderRadius: 4,
-          opacity: temp !== null ? 1 : 0.4,
         }}>
           <Thermometer size={10} />
           {temp !== null ? `${temp.toFixed(1)}°` : '--'}
@@ -356,26 +362,26 @@ function FanCard({
       <div
         onClick={onToggleFan}
         style={{
-          width: 72,
-          height: 72,
+          width: 80,
+          height: 80,
           borderRadius: '50%',
           background: fanIsOn
-            ? 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)'
-            : '#111',
-          border: fanIsOn ? '2px solid #444' : '2px solid #222',
+            ? 'linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%)'
+            : '#f5f5f5',
+          border: fanIsOn ? '3px solid #333' : '3px solid #ddd',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',
           boxShadow: fanIsOn
-            ? '0 0 30px rgba(255,255,255,0.04)'
+            ? '0 0 20px rgba(0,0,0,0.08)'
             : 'none',
           transition: 'all 0.4s ease',
         }}
       >
         <Fan
           size={28}
-          color={fanIsOn ? '#fff' : '#333'}
+          color={fanIsOn ? '#333' : '#ccc'}
           strokeWidth={1.5}
           style={{
             animation: fanIsOn ? `spin ${2.5 - (fanSpeed / 100) * 2}s linear infinite` : 'none',
@@ -385,9 +391,9 @@ function FanCard({
 
       {/* Speed Label */}
       <div style={{
-        fontSize: 16,
-        fontWeight: 200,
-        color: fanIsOn ? '#fff' : '#333',
+        fontSize: 18,
+        fontWeight: 300,
+        color: fanIsOn ? '#333' : '#ccc',
         letterSpacing: '0.05em',
       }}>
         {fanIsOn ? `Speed ${currentSpeed}` : 'Off'}
@@ -397,7 +403,7 @@ function FanCard({
       <div style={{
         display: 'flex',
         alignItems: 'flex-end',
-        gap: 4,
+        gap: 5,
         height: 36,
       }}>
         {[1, 2, 3, 4, 5, 6, 7].map((speed) => {
@@ -408,23 +414,22 @@ function FanCard({
               key={speed}
               onClick={() => onSetSpeed(speed * 14.29)}
               style={{
-                width: 7,
+                width: 8,
                 height,
-                borderRadius: 3,
+                borderRadius: 4,
                 border: 'none',
                 background: isActive
                   ? 'linear-gradient(180deg, #666 0%, #333 100%)'
-                  : '#1a1a1a',
+                  : '#e5e5e5',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                opacity: isActive ? 1 : 0.5,
               }}
             />
           );
         })}
       </div>
 
-      {/* Feature toggles - always show for symmetry */}
+      {/* Feature toggles */}
       <div style={{
         display: 'flex',
         gap: 8,
@@ -437,16 +442,16 @@ function FanCard({
             display: 'flex',
             alignItems: 'center',
             gap: 4,
-            padding: '4px 8px',
-            background: whooshOn ? '#2a2a2a' : '#111',
-            border: whooshOn ? '1px solid #444' : '1px solid #222',
+            padding: '6px 10px',
+            background: whooshOn ? '#f0f0f0' : '#fff',
+            border: whooshOn ? '1px solid #999' : '1px solid #e5e5e5',
             borderRadius: 6,
             cursor: whoosh ? 'pointer' : 'default',
-            color: whooshOn ? '#fff' : '#444',
+            color: whooshOn ? '#333' : '#999',
             fontSize: 9,
             fontWeight: 500,
             letterSpacing: '0.05em',
-            opacity: whoosh ? 1 : 0.25,
+            opacity: whoosh ? 1 : 0.4,
           }}
           title="Whoosh mode - natural breeze effect"
         >
@@ -460,16 +465,16 @@ function FanCard({
             display: 'flex',
             alignItems: 'center',
             gap: 4,
-            padding: '4px 8px',
-            background: ecoOn ? '#1a2a1a' : '#111',
-            border: ecoOn ? '1px solid #2a4a2a' : '1px solid #222',
+            padding: '6px 10px',
+            background: ecoOn ? '#f0f8f0' : '#fff',
+            border: ecoOn ? '1px solid #5a8a5a' : '1px solid #e5e5e5',
             borderRadius: 6,
             cursor: ecoMode ? 'pointer' : 'default',
-            color: ecoOn ? '#4a4' : '#444',
+            color: ecoOn ? '#5a8a5a' : '#999',
             fontSize: 9,
             fontWeight: 500,
             letterSpacing: '0.05em',
-            opacity: ecoMode ? 1 : 0.25,
+            opacity: ecoMode ? 1 : 0.4,
           }}
           title="Eco mode - energy saving"
         >
@@ -478,23 +483,23 @@ function FanCard({
         </button>
       </div>
 
-      {/* Light Control - always show for symmetry */}
+      {/* Light Control */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         gap: 10,
         width: '100%',
         marginTop: 8,
-        opacity: light ? 1 : 0.25,
+        opacity: light ? 1 : 0.4,
       }}>
         <div
           onClick={() => light && onToggleLight()}
           style={{
-            width: 32,
-            height: 32,
+            width: 36,
+            height: 36,
             borderRadius: '50%',
-            background: lightIsOn ? '#2a2a1a' : '#111',
-            border: lightIsOn ? '1px solid #444422' : '1px solid #222',
+            background: lightIsOn ? '#fffbf0' : '#f5f5f5',
+            border: lightIsOn ? '1px solid #d4a84b' : '1px solid #e5e5e5',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -503,18 +508,18 @@ function FanCard({
           }}
         >
           <Lightbulb
-            size={14}
-            color={lightIsOn ? '#aa9944' : '#333'}
-            fill={lightIsOn ? '#aa9944' : 'none'}
+            size={16}
+            color={lightIsOn ? '#d4a84b' : '#ccc'}
+            fill={lightIsOn ? '#d4a84b' : 'none'}
             strokeWidth={1.5}
           />
         </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
-            fontSize: 8,
-            color: '#444',
+            fontSize: 9,
+            color: '#999',
             letterSpacing: '0.1em',
           }}>
             <span>LIGHT</span>
@@ -529,12 +534,12 @@ function FanCard({
             disabled={!light}
             style={{
               width: '100%',
-              height: 3,
+              height: 4,
               borderRadius: 2,
               appearance: 'none',
-              background: `linear-gradient(to right, #444 0%, #444 ${brightnessPercent}%, #1a1a1a ${brightnessPercent}%, #1a1a1a 100%)`,
+              background: `linear-gradient(to right, #d4a84b 0%, #d4a84b ${brightnessPercent}%, #e5e5e5 ${brightnessPercent}%, #e5e5e5 100%)`,
               cursor: light ? 'pointer' : 'default',
-              opacity: light ? (lightIsOn ? 1 : 0.4) : 0.3,
+              opacity: light ? (lightIsOn ? 1 : 0.5) : 0.3,
             }}
           />
         </div>
@@ -571,7 +576,6 @@ export function HomeAssistantScreen() {
 
       const data = await response.json();
 
-      // Find all entities by type
       const fans = data.filter((e: FanEntity) => e.entity_id.startsWith('fan.'));
       const lights = data.filter((e: LightEntity) => e.entity_id.startsWith('light.'));
       const sensors = data.filter((e: SensorEntity) => e.entity_id.startsWith('sensor.'));
@@ -583,13 +587,11 @@ export function HomeAssistantScreen() {
 
       setThermostats(climates);
 
-      // Match each fan with its extras
       const matched: FanWithExtras[] = fans.map((fan: FanEntity) => {
         const fanName = fan.attributes.friendly_name || fan.entity_id.split('.')[1];
         const baseName = fanName.toLowerCase().replace(' fan', '').replace('_fan', '').replace('fan.', '').trim();
         const baseId = fan.entity_id.split('.')[1];
 
-        // Find matching entities
         const matchingLight = lights.find((l: LightEntity) =>
           l.entity_id.toLowerCase().includes(baseId)
         );
@@ -683,16 +685,16 @@ export function HomeAssistantScreen() {
 
   if (!haUrl || !haToken) {
     return (
-      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000' }}>
-        <AlertCircle size={32} color="#444" />
+      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#faf9f6' }}>
+        <AlertCircle size={32} color="#ccc" />
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000' }}>
-        <Fan size={32} color="#333" style={{ animation: 'spin 2s linear infinite' }} />
+      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#faf9f6' }}>
+        <Fan size={32} color="#999" style={{ animation: 'spin 2s linear infinite' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -700,9 +702,9 @@ export function HomeAssistantScreen() {
 
   if (error || (fansWithExtras.length === 0 && thermostats.length === 0)) {
     return (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#000', gap: 12 }}>
-        <AlertCircle size={24} color="#444" />
-        <span style={{ fontSize: 12, color: '#444' }}>{error || 'No devices found'}</span>
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#faf9f6', gap: 12 }}>
+        <AlertCircle size={24} color="#999" />
+        <span style={{ fontSize: 12, color: '#999' }}>{error || 'No devices found'}</span>
       </div>
     );
   }
@@ -710,7 +712,7 @@ export function HomeAssistantScreen() {
   return (
     <div style={{
       height: '100%',
-      background: '#000',
+      background: '#faf9f6',
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
@@ -724,8 +726,8 @@ export function HomeAssistantScreen() {
         flexWrap: 'wrap',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 12,
-        gap: 16,
+        padding: 24,
+        gap: 20,
       }}>
         {/* Thermostats */}
         {thermostats.map((climate) => (
