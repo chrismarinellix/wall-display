@@ -4,10 +4,9 @@ import { useWeather } from '../../hooks/useWeather';
 import { useCalendar } from '../../hooks/useCalendar';
 import { useStocks } from '../../hooks/useStocks';
 import { useNews } from '../../hooks/useNews';
-import { useSettings } from '../../contexts/SettingsContext';
 import { generateDailySummary } from '../../services/aiService';
 import { weatherCodeToDescription } from '../../types/weather';
-import { getDailyHabits, toggleHabit, subscribeToHabits, DailyHabit, getCalendarEvents, CalendarEventRecord } from '../../services/supabase';
+import { getDailyHabits, toggleHabit, subscribeToHabits, DailyHabit, getCalendarEvents, CalendarEventRecord, getCountdowns, CountdownEvent } from '../../services/supabase';
 
 interface Summary {
   greeting: string;
@@ -179,6 +178,7 @@ export function SummaryScreen() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [habits, setHabits] = useState<DailyHabit[]>([]);
   const [customEvents, setCustomEvents] = useState<CalendarEventRecord[]>([]);
+  const [countdowns, setCountdowns] = useState<CountdownEvent[]>([]);
 
   // Load habits from Supabase on mount
   useEffect(() => {
@@ -188,6 +188,11 @@ export function SummaryScreen() {
   // Load custom calendar events from Supabase
   useEffect(() => {
     getCalendarEvents().then(setCustomEvents);
+  }, []);
+
+  // Load countdowns from Supabase
+  useEffect(() => {
+    getCountdowns().then(setCountdowns);
   }, []);
 
   // Subscribe to realtime habit changes
@@ -222,7 +227,6 @@ export function SummaryScreen() {
   const { events } = useCalendar();
   const { crypto } = useStocks();
   const { items: news } = useNews();
-  const { settings } = useSettings();
 
   const groqApiKey = import.meta.env.VITE_GROQ_API_KEY || '';
 
@@ -282,23 +286,25 @@ export function SummaryScreen() {
       });
     }
 
-    // Countdown from settings
-    if (settings.countdown?.targetDate) {
-      const target = new Date(settings.countdown.targetDate);
-      const now = new Date();
-      const diff = target.getTime() - now.getTime();
-      if (diff > 0) {
-        const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-        items.push({
-          label: 'Countdown',
-          value: `${days} day${days !== 1 ? 's' : ''}`,
-          sublabel: `until ${settings.countdown.label || 'target date'}`,
-        });
-      }
+    // Countdowns from Supabase - show the nearest upcoming one
+    const upcomingCountdowns = countdowns
+      .filter(c => new Date(c.target_date).getTime() > Date.now())
+      .sort((a, b) => new Date(a.target_date).getTime() - new Date(b.target_date).getTime());
+
+    if (upcomingCountdowns.length > 0) {
+      const nearest = upcomingCountdowns[0];
+      const target = new Date(nearest.target_date);
+      const diff = target.getTime() - Date.now();
+      const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+      items.push({
+        label: 'Countdown',
+        value: `${days} day${days !== 1 ? 's' : ''}`,
+        sublabel: `until ${nearest.title}`,
+      });
     }
 
     return items;
-  }, [weather, forecast, crypto, events, settings.countdown]);
+  }, [weather, forecast, crypto, events, countdowns]);
 
   const generateSummary = useCallback(async () => {
     if (!groqApiKey) {
