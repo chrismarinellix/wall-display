@@ -11,7 +11,7 @@ import { CalendarScreen } from '../screens/CalendarScreen';
 import { CountdownScreen } from '../screens/CountdownScreen';
 import { HomeAssistantScreen } from '../screens/HomeAssistantScreen';
 import { MomentsScreen } from '../screens/MomentsScreen';
-import { SummaryScreen } from '../screens/SummaryScreen';
+import { BriefingTestScreen } from '../screens/BriefingTestScreen';
 import { SetupScreen } from '../screens/SetupScreen';
 import { VideoScreen } from '../screens/VideoScreen';
 import { ScreenType } from '../../types/settings';
@@ -41,7 +41,7 @@ const screens: Record<ScreenType, React.ComponentType> = {
   countdown: CountdownScreen,
   homeassistant: HomeAssistantScreen,
   moments: MomentsScreen,
-  summary: SummaryScreen,
+  summary: BriefingTestScreen,
   setup: SetupScreen,
   video: VideoScreen,
 };
