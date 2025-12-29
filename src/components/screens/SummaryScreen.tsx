@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Dumbbell, Bike, Beef, Salad, Droplet, Moon, Check, AlertTriangle, Clock, Calendar as CalendarIcon } from 'lucide-react';
+import { Dumbbell, Bike, Beef, Salad, Droplet, Moon, Check, AlertTriangle, Clock, Brain, Target } from 'lucide-react';
 import { useWeather } from '../../hooks/useWeather';
 import { useCalendar } from '../../hooks/useCalendar';
 import { useStocks } from '../../hooks/useStocks';
 import { weatherCodeToDescription } from '../../types/weather';
-import { getDailyHabits, toggleHabit, subscribeToHabits, DailyHabit, getCountdowns, CountdownEvent, getTodos, toggleTodo, TodoItem, subscribeToTodos } from '../../services/supabase';
+import { getDailyHabits, toggleHabit, subscribeToHabits, DailyHabit, getCountdowns, CountdownEvent, getTodos, toggleTodo, TodoItem, subscribeToTodos, getPomodoroHistory, PomodoroHistory } from '../../services/supabase';
 import { proverbs } from '../../data/proverbs';
 import { historicalMoments, HistoricalMoment } from '../../data/moments';
 import { format, isToday, isTomorrow, differenceInDays, differenceInHours, isPast } from 'date-fns';
@@ -151,6 +151,15 @@ function getGreeting(): string {
   return 'Good night';
 }
 
+// Get today's date key for pomodoro
+function getTodayKey(): string {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // Play notification sound
 function playNotificationSound() {
   try {
@@ -180,6 +189,7 @@ export function SummaryScreen() {
   const [habits, setHabits] = useState<DailyHabit[]>([]);
   const [countdowns, setCountdowns] = useState<CountdownEvent[]>([]);
   const [todos, setTodos] = useState<TodoItem[]>([]);
+  const [pomodoroHistory, setPomodoroHistory] = useState<PomodoroHistory>({});
   const [historicalMoment, setHistoricalMoment] = useState<HistoricalMoment & { imageUrl: string } | null>(null);
   const lastAlertRef = useRef<string | null>(null);
 
@@ -187,6 +197,7 @@ export function SummaryScreen() {
   useEffect(() => { getDailyHabits().then(setHabits); }, []);
   useEffect(() => { getCountdowns().then(setCountdowns); }, []);
   useEffect(() => { getTodos().then(setTodos); }, []);
+  useEffect(() => { getPomodoroHistory().then(setPomodoroHistory); }, []);
 
   // Subscribe to realtime changes
   useEffect(() => {
@@ -313,6 +324,35 @@ export function SummaryScreen() {
     });
     return incomplete.slice(0, 5);
   }, [todos]);
+
+  // Pomodoro stats
+  const pomodoroStats = useMemo(() => {
+    const todayKey = getTodayKey();
+    const todayData = pomodoroHistory[todayKey] || { count: 0, minutes: 0 };
+    const dailyGoal = 8; // default daily goal
+
+    // Calculate streak (consecutive days with at least 1 pomodoro)
+    let streak = 0;
+    const today = new Date();
+    for (let i = 0; i < 30; i++) {
+      const checkDate = new Date(today);
+      checkDate.setDate(today.getDate() - i);
+      const key = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
+      if (pomodoroHistory[key]?.count > 0) {
+        streak++;
+      } else if (i > 0) {
+        break; // Don't break on today if no pomodoros yet
+      }
+    }
+
+    return {
+      todayCount: todayData.count,
+      todayMinutes: todayData.minutes,
+      dailyGoal,
+      goalProgress: Math.min(100, (todayData.count / dailyGoal) * 100),
+      streak,
+    };
+  }, [pomodoroHistory]);
 
   const dateStr = format(currentTime, 'EEEE, MMMM d, yyyy');
   const timeStr = format(currentTime, 'h:mm a');
@@ -456,6 +496,44 @@ export function SummaryScreen() {
                   <span style={{ flex: 1, fontSize: 11, color: habit.completed ? '#888' : '#333', textDecoration: habit.completed ? 'line-through' : 'none' }}>{habit.name}</span>
                 </div>
               ))}
+            </div>
+          </Section>
+
+          {/* Pomodoro Focus */}
+          <Section title="Focus">
+            <div style={{ padding: '10px', background: '#f8f7f4', borderRadius: 6, border: '1px solid #e8e7e4' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Brain size={16} color="#666" />
+                  <span style={{ fontSize: 12, fontWeight: 500, color: '#333' }}>Today's Focus</span>
+                </div>
+                {pomodoroStats.streak > 1 && (
+                  <span style={{ fontSize: 10, color: '#888', background: '#f0f0f0', padding: '2px 6px', borderRadius: 10 }}>
+                    🔥 {pomodoroStats.streak} day streak
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
+                <span style={{ fontSize: 28, fontWeight: 300, color: '#222' }}>{pomodoroStats.todayCount}</span>
+                <span style={{ fontSize: 12, color: '#888' }}>/ {pomodoroStats.dailyGoal} pomodoros</span>
+              </div>
+
+              {/* Progress bar */}
+              <div style={{ width: '100%', height: 4, background: '#e5e5e5', borderRadius: 2, overflow: 'hidden', marginBottom: 8 }}>
+                <div style={{
+                  width: `${pomodoroStats.goalProgress}%`,
+                  height: '100%',
+                  background: pomodoroStats.goalProgress >= 100 ? '#5a8a5a' : '#666',
+                  transition: 'width 0.3s ease',
+                  borderRadius: 2,
+                }} />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#888' }}>
+                <Target size={10} />
+                <span>{Math.floor(pomodoroStats.todayMinutes / 60)}h {pomodoroStats.todayMinutes % 60}m focused today</span>
+              </div>
             </div>
           </Section>
 
