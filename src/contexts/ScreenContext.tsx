@@ -20,27 +20,37 @@ const ScreenContext = createContext<ScreenContextType | null>(null);
 const NON_CYCLE_SCREENS: ScreenType[] = ['video'];
 
 // How many screens to auto-cycle between (first N screens in screenOrder)
-const AUTO_CYCLE_COUNT = 2;
+const AUTO_CYCLE_COUNT = 3;
+
+// Per-screen display durations (in ms) - weather stays longest
+const SCREEN_DURATIONS: Record<string, number> = {
+  'weather': 300000,   // 5 minutes - most prominent
+  'summary': 180000,   // 3 minutes - briefing
+  'moments': 120000,   // 2 minutes - history
+};
+const DEFAULT_DURATION = 180000; // 3 minutes default
 
 export function ScreenProvider({ children }: { children: ReactNode }) {
   const { settings } = useSettings();
-  const [currentIndex, setCurrentIndex] = useState(0); // Start on first screen (Prophet)
+  const [currentIndex, setCurrentIndex] = useState(0); // Start on first screen (Weather)
   const [nonCycleScreen, setNonCycleScreen] = useState<ScreenType | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const cycleTimerRef = useRef<number | null>(null);
 
   const screens = settings.screenOrder;
-  const cycleInterval = settings.cycleInterval || 180000; // Use settings, default 3 min
   const currentScreen = nonCycleScreen || screens[currentIndex];
   const isNonCycleScreen = nonCycleScreen !== null;
 
-  // Auto-cycle between first N screens only (Prophet & History)
+  // Get duration for current screen
+  const getCurrentDuration = useCallback(() => {
+    const screen = screens[currentIndex];
+    return SCREEN_DURATIONS[screen] || DEFAULT_DURATION;
+  }, [screens, currentIndex]);
+
+  // Auto-cycle between first N screens (Weather, Prophet, History)
   const goToNextCycleScreen = useCallback(() => {
     // Don't auto-cycle when on a non-cycle screen or paused
     if (nonCycleScreen || isPaused) return;
-
-    // Only cycle if cycle interval is enabled
-    if (cycleInterval <= 0) return;
 
     setCurrentIndex(prev => {
       // Only cycle between first AUTO_CYCLE_COUNT screens
@@ -48,20 +58,27 @@ export function ScreenProvider({ children }: { children: ReactNode }) {
       if (prev >= maxCycleIndex) return 0;
       return prev + 1;
     });
-  }, [screens.length, nonCycleScreen, isPaused, cycleInterval]);
+  }, [screens.length, nonCycleScreen, isPaused]);
+
+  // Schedule next screen transition based on current screen's duration
+  const scheduleNextTransition = useCallback(() => {
+    if (cycleTimerRef.current) {
+      clearTimeout(cycleTimerRef.current);
+    }
+    const duration = getCurrentDuration();
+    cycleTimerRef.current = window.setTimeout(() => {
+      goToNextCycleScreen();
+      scheduleNextTransition(); // Schedule the next one
+    }, duration);
+  }, [getCurrentDuration, goToNextCycleScreen]);
 
   // Reset the cycle timer (called after manual navigation)
   const resetCycleTimer = useCallback(() => {
     if (cycleTimerRef.current) {
-      clearInterval(cycleTimerRef.current);
+      clearTimeout(cycleTimerRef.current);
     }
-    // Only start cycle timer if interval is enabled
-    if (cycleInterval > 0) {
-      cycleTimerRef.current = window.setInterval(() => {
-        goToNextCycleScreen();
-      }, cycleInterval);
-    }
-  }, [goToNextCycleScreen, cycleInterval]);
+    scheduleNextTransition();
+  }, [scheduleNextTransition]);
 
   const nextScreen = useCallback(() => {
     setNonCycleScreen(null); // Return to cycle
@@ -87,21 +104,16 @@ export function ScreenProvider({ children }: { children: ReactNode }) {
     resetCycleTimer();
   }, [screens, resetCycleTimer]);
 
-  // Auto-cycle timer
+  // Auto-cycle timer - uses per-screen durations
   useEffect(() => {
-    // Only start cycle timer if interval is enabled
-    if (cycleInterval > 0) {
-      cycleTimerRef.current = window.setInterval(() => {
-        goToNextCycleScreen();
-      }, cycleInterval);
-    }
+    scheduleNextTransition();
 
     return () => {
       if (cycleTimerRef.current) {
-        clearInterval(cycleTimerRef.current);
+        clearTimeout(cycleTimerRef.current);
       }
     };
-  }, [goToNextCycleScreen, cycleInterval]);
+  }, [scheduleNextTransition]);
 
   // Keyboard navigation
   useEffect(() => {

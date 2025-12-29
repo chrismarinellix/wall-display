@@ -39,8 +39,8 @@ export const defaultSettings: Settings = {
   longitude: 144.9631, // Melbourne
   temperatureUnit: 'celsius',
   timeFormat: '24h',
-  // First two screens auto-cycle (Prophet & History), others available via dock
-  screenOrder: ['summary', 'moments', 'weather', 'calendar', 'pomodoro', 'countdown', 'homeassistant', 'stocks', 'quotes', 'japanese', 'setup'],
+  // First three screens auto-cycle (Weather, Prophet, History), others available via dock
+  screenOrder: ['weather', 'summary', 'moments', 'calendar', 'pomodoro', 'countdown', 'homeassistant', 'stocks', 'quotes', 'japanese', 'setup'],
   // Default crypto and stocks
   stockSymbols: ['AAPL', 'GOOGL', 'MSFT'],
   cryptoSymbols: ['bitcoin', 'ethereum', 'solana'],

@@ -287,9 +287,24 @@ export function MomentsScreen() {
         height: '100%',
         width: '100%',
         overflow: 'hidden',
-        background: '#111',
+        background: '#0a0a0a',
       }}
     >
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes yearPulse {
+          0%, 100% { opacity: 0.15; }
+          50% { opacity: 0.25; }
+        }
+        @keyframes lineExpand {
+          from { width: 0; }
+          to { width: 120px; }
+        }
+      `}</style>
+
       {/* Full-screen background image */}
       <img
         src={moment.imageUrl}
@@ -303,48 +318,100 @@ export function MomentsScreen() {
           width: '100%',
           height: '100%',
           objectFit: 'cover',
-          filter: 'grayscale(100%) contrast(1.05)',
-          opacity: imageLoaded ? 0.85 : 0,
-          transition: 'opacity 0.8s ease',
+          filter: 'grayscale(100%) contrast(1.1) brightness(0.9)',
+          opacity: imageLoaded ? 0.7 : 0,
+          transition: 'opacity 1.2s ease',
         }}
       />
 
-      {/* Gradient overlay for text readability */}
+      {/* Artistic overlay - multiple gradients for depth */}
       <div
         style={{
           position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: '50%',
-          background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)',
+          inset: 0,
+          background: `
+            radial-gradient(ellipse at 30% 20%, rgba(0,0,0,0) 0%, rgba(0,0,0,0.4) 70%),
+            linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.2) 70%, transparent 100%)
+          `,
           pointerEvents: 'none',
         }}
       />
 
-      {/* Text content - bottom */}
+      {/* Giant Year - artistic background element */}
       <div
         style={{
           position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          padding: '48px 40px 56px',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          fontSize: 280,
+          fontWeight: 100,
+          fontFamily: '"Playfair Display", Georgia, serif',
+          color: 'rgba(255,255,255,0.15)',
+          letterSpacing: '-0.05em',
+          lineHeight: 1,
+          textShadow: '0 0 100px rgba(255,255,255,0.1)',
+          animation: 'yearPulse 8s ease-in-out infinite',
+          pointerEvents: 'none',
+          userSelect: 'none',
         }}
       >
-        {/* Year badge */}
+        {moment.year}
+      </div>
+
+      {/* Content - centered artistic layout */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-end',
+          padding: '60px 50px 70px',
+        }}
+      >
+        {/* Section label */}
         <div
           style={{
-            display: 'inline-block',
-            fontSize: 11,
-            fontWeight: 600,
-            letterSpacing: '0.3em',
-            color: 'rgba(255,255,255,0.6)',
-            textTransform: 'uppercase',
-            marginBottom: 12,
-            padding: '4px 10px',
-            background: 'rgba(255,255,255,0.1)',
-            borderRadius: 4,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 16,
+            marginBottom: 24,
+            animation: 'fadeInUp 1s ease 0.2s both',
+          }}
+        >
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: '0.4em',
+              color: 'rgba(255,255,255,0.5)',
+              textTransform: 'uppercase',
+            }}
+          >
+            This Day in History
+          </span>
+          <div
+            style={{
+              height: 1,
+              width: 120,
+              background: 'linear-gradient(to right, rgba(255,255,255,0.4), transparent)',
+              animation: 'lineExpand 1.5s ease 0.5s both',
+            }}
+          />
+        </div>
+
+        {/* Year - prominent */}
+        <div
+          style={{
+            fontSize: 72,
+            fontWeight: 200,
+            fontFamily: '"Playfair Display", Georgia, serif',
+            color: '#fff',
+            letterSpacing: '-0.02em',
+            marginBottom: 16,
+            textShadow: '0 4px 30px rgba(0,0,0,0.5)',
+            animation: 'fadeInUp 1s ease 0.3s both',
           }}
         >
           {moment.year}
@@ -353,31 +420,63 @@ export function MomentsScreen() {
         {/* Title */}
         <h2
           style={{
-            fontSize: 42,
+            fontSize: 48,
             fontWeight: 300,
+            fontFamily: '"Playfair Display", Georgia, serif',
             color: '#fff',
-            margin: '0 0 16px 0',
+            margin: '0 0 24px 0',
             letterSpacing: '-0.02em',
-            lineHeight: 1.1,
-            textShadow: '0 2px 20px rgba(0,0,0,0.3)',
+            lineHeight: 1.15,
+            textShadow: '0 2px 30px rgba(0,0,0,0.4)',
+            maxWidth: 700,
+            animation: 'fadeInUp 1s ease 0.4s both',
           }}
         >
           {moment.title}
         </h2>
 
-        {/* Description */}
+        {/* Decorative line */}
+        <div
+          style={{
+            width: 60,
+            height: 2,
+            background: 'linear-gradient(to right, rgba(255,255,255,0.6), transparent)',
+            marginBottom: 24,
+            animation: 'fadeInUp 1s ease 0.5s both',
+          }}
+        />
+
+        {/* Description - more detailed, artistic typography */}
         <p
           style={{
-            fontSize: 16,
-            fontWeight: 400,
-            lineHeight: 1.6,
-            color: 'rgba(255,255,255,0.85)',
+            fontSize: 18,
+            fontWeight: 300,
+            lineHeight: 1.8,
+            color: 'rgba(255,255,255,0.9)',
             margin: 0,
-            maxWidth: 600,
-            textShadow: '0 1px 10px rgba(0,0,0,0.3)',
+            maxWidth: 650,
+            fontFamily: 'Georgia, serif',
+            textShadow: '0 1px 15px rgba(0,0,0,0.3)',
+            animation: 'fadeInUp 1s ease 0.6s both',
           }}
         >
           {moment.description}
+        </p>
+
+        {/* Additional context line */}
+        <p
+          style={{
+            fontSize: 14,
+            fontWeight: 300,
+            fontStyle: 'italic',
+            lineHeight: 1.6,
+            color: 'rgba(255,255,255,0.6)',
+            margin: '20px 0 0 0',
+            maxWidth: 600,
+            animation: 'fadeInUp 1s ease 0.8s both',
+          }}
+        >
+          A moment that shaped our world and continues to inspire generations.
         </p>
       </div>
 
@@ -389,12 +488,13 @@ export function MomentsScreen() {
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            color: '#666',
-            fontSize: 12,
-            letterSpacing: '0.2em',
+            color: '#444',
+            fontSize: 10,
+            letterSpacing: '0.3em',
+            textTransform: 'uppercase',
           }}
         >
-          LOADING...
+          Loading...
         </div>
       )}
     </div>
