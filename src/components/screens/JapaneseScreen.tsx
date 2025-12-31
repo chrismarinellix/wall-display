@@ -23,7 +23,10 @@ function InkDotsText({
     y: number;
     targetX: number;
     targetY: number;
+    finalX: number; // Slightly offset from target for organic look
+    finalY: number;
     size: number;
+    finalSize: number; // Vary final size slightly
     opacity: number;
     delay: number;
     settled: boolean;
@@ -80,12 +83,20 @@ function InkDotsText({
           const startX = targetX + Math.cos(angle) * distance;
           const startY = targetY + Math.sin(angle) * distance;
 
+          // Final position - slightly offset from target for organic ink dot look
+          const finalOffsetX = (Math.random() - 0.5) * 2.5;
+          const finalOffsetY = (Math.random() - 0.5) * 2.5;
+          const baseSize = 1.5 + Math.random() * 2;
+
           dots.push({
             x: startX,
             y: startY,
             targetX,
             targetY,
-            size: 1.5 + Math.random() * 2,
+            finalX: targetX + finalOffsetX,
+            finalY: targetY + finalOffsetY,
+            size: baseSize,
+            finalSize: baseSize * (0.8 + Math.random() * 0.5), // Vary final size
             opacity: 0,
             delay: Math.random() * 0.6, // Stagger over 60% of duration
             settled: false,
@@ -116,24 +127,31 @@ function InkDotsText({
         const dotProgress = Math.max(0, Math.min(1, (progress - dotStart) / 0.4));
 
         if (dotProgress > 0) {
-          // Ease out cubic
+          // Ease out cubic for smooth deceleration
           const ease = 1 - Math.pow(1 - dotProgress, 3);
 
-          // Move towards target
-          dot.x = dot.x + (dot.targetX - dot.x) * ease * 0.15;
-          dot.y = dot.y + (dot.targetY - dot.y) * ease * 0.15;
-          dot.opacity = Math.min(1, dotProgress * 2);
+          // Smoother ease for final settling
+          const settleEase = 1 - Math.pow(1 - Math.min(1, dotProgress * 1.2), 4);
 
-          // Check if settled
-          const distX = Math.abs(dot.x - dot.targetX);
-          const distY = Math.abs(dot.y - dot.targetY);
-          dot.settled = distX < 0.5 && distY < 0.5;
+          // Move towards final position (slightly offset from target)
+          dot.x = dot.x + (dot.finalX - dot.x) * ease * 0.12;
+          dot.y = dot.y + (dot.finalY - dot.y) * ease * 0.12;
+
+          // Smoothly transition size
+          const currentSize = dot.size + (dot.finalSize - dot.size) * settleEase;
+
+          dot.opacity = Math.min(0.95, dotProgress * 1.8); // Slightly transparent for ink look
+
+          // Check if settled (use finalX/Y)
+          const distX = Math.abs(dot.x - dot.finalX);
+          const distY = Math.abs(dot.y - dot.finalY);
+          dot.settled = distX < 1 && distY < 1;
 
           if (!dot.settled) allSettled = false;
 
-          // Draw dot
+          // Draw dot with slight blur effect for ink feel
           ctx.beginPath();
-          ctx.arc(dot.x, dot.y, dot.size, 0, Math.PI * 2);
+          ctx.arc(dot.x, dot.y, currentSize, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(26, 26, 26, ${dot.opacity})`;
           ctx.fill();
         } else {
@@ -144,13 +162,15 @@ function InkDotsText({
       if (progress < 1 || !allSettled) {
         animationRef.current = requestAnimationFrame(animate);
       } else {
-        // Final state - draw crisp text
+        // Final state - keep the ink dots, don't switch to crisp text
+        // Draw final dots one more time to ensure they're rendered
         ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
-        ctx.font = `400 80px "Shippori Mincho", serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#1a1a1a';
-        ctx.fillText(text, canvasSize.width / 2, canvasSize.height / 2);
+        dotsRef.current.forEach(dot => {
+          ctx.beginPath();
+          ctx.arc(dot.finalX, dot.finalY, dot.finalSize, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(26, 26, 26, 0.92)`;
+          ctx.fill();
+        });
         setIsComplete(true);
       }
     };
