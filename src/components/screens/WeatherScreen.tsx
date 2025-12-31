@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { format } from 'date-fns';
-import { Sun, Cloud, CloudRain, CloudSnow, Wind } from 'lucide-react';
+import { Sun, Cloud, CloudRain, CloudSnow, Wind, CloudDrizzle, CloudLightning, CloudFog, Cloudy, Snowflake, CloudSun, CloudMoon, Moon } from 'lucide-react';
 import { motion, useSpring, useTransform } from 'framer-motion';
 import { useWeather } from '../../hooks/useWeather';
 import { ParticleSystem } from '../effects/ParticleSystem';
@@ -278,6 +278,382 @@ function WeatherIcon({ code, size = 32 }: { code: number; size?: number }) {
   return <Cloud {...props} />;
 }
 
+// Get weather description from code
+function getWeatherDescription(code: number): string {
+  if (code === 0) return 'Clear';
+  if (code === 1) return 'Mostly Clear';
+  if (code === 2) return 'Partly Cloudy';
+  if (code === 3) return 'Overcast';
+  if (code >= 45 && code <= 48) return 'Foggy';
+  if (code >= 51 && code <= 55) return 'Drizzle';
+  if (code >= 56 && code <= 57) return 'Freezing Drizzle';
+  if (code >= 61 && code <= 65) return 'Rain';
+  if (code === 66 || code === 67) return 'Freezing Rain';
+  if (code >= 71 && code <= 75) return 'Snow';
+  if (code === 77) return 'Snow Grains';
+  if (code >= 80 && code <= 82) return 'Rain Showers';
+  if (code >= 85 && code <= 86) return 'Snow Showers';
+  if (code === 95) return 'Thunderstorm';
+  if (code >= 96 && code <= 99) return 'Thunderstorm with Hail';
+  return 'Unknown';
+}
+
+// Determine if it's daytime (simple check based on hours)
+function isDaytime(): boolean {
+  const hour = new Date().getHours();
+  return hour >= 6 && hour < 20;
+}
+
+// Large animated weather icon as the main visual
+function DynamicWeatherIcon({
+  code,
+  temp,
+  style = {}
+}: {
+  code: number;
+  temp: number;
+  style?: React.CSSProperties;
+}) {
+  const [time, setTime] = useState(0);
+  const animationRef = useRef<number | null>(null);
+  const daytime = isDaytime();
+
+  // Animation loop
+  useEffect(() => {
+    const animate = () => {
+      setTime(performance.now());
+      animationRef.current = requestAnimationFrame(animate);
+    };
+    animationRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+  }, []);
+
+  const t = time / 1000;
+  const iconSize = 'clamp(120px, 40vw, 200px)';
+
+  // Get icon and animation based on weather code
+  const renderWeatherIcon = () => {
+    const baseStyle: React.CSSProperties = {
+      width: iconSize,
+      height: iconSize,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    };
+
+    // Clear sky - Sun or Moon
+    if (code === 0 || code === 1) {
+      if (daytime) {
+        // Animated sun with rotating rays
+        const rotation = t * 10;
+        const pulse = 1 + Math.sin(t * 2) * 0.05;
+        const glow = 20 + Math.sin(t * 1.5) * 10;
+        return (
+          <div style={{ ...baseStyle, position: 'relative' }}>
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 60, repeat: Infinity, ease: 'linear' }}
+              style={{
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Sun
+                size={parseInt(iconSize) || 160}
+                strokeWidth={1}
+                style={{
+                  color: '#FFB300',
+                  filter: `drop-shadow(0 0 ${glow}px #FFD54F) drop-shadow(0 0 ${glow * 2}px #FFB300)`,
+                  transform: `scale(${pulse})`,
+                }}
+              />
+            </motion.div>
+          </div>
+        );
+      } else {
+        // Animated moon
+        const glow = 15 + Math.sin(t * 0.8) * 8;
+        return (
+          <div style={baseStyle}>
+            <Moon
+              size={parseInt(iconSize) || 160}
+              strokeWidth={1}
+              style={{
+                color: '#E3F2FD',
+                filter: `drop-shadow(0 0 ${glow}px #90CAF9) drop-shadow(0 0 ${glow * 1.5}px #64B5F6)`,
+              }}
+            />
+          </div>
+        );
+      }
+    }
+
+    // Partly cloudy
+    if (code === 2) {
+      const cloudDrift = Math.sin(t * 0.5) * 10;
+      return (
+        <div style={{ ...baseStyle, position: 'relative' }}>
+          {daytime ? (
+            <>
+              <Sun
+                size={(parseInt(iconSize) || 160) * 0.6}
+                strokeWidth={1.2}
+                style={{
+                  color: '#FFB300',
+                  position: 'absolute',
+                  top: '10%',
+                  right: '15%',
+                  filter: 'drop-shadow(0 0 15px #FFD54F)',
+                }}
+              />
+              <Cloud
+                size={(parseInt(iconSize) || 160) * 0.8}
+                strokeWidth={1}
+                style={{
+                  color: '#90A4AE',
+                  transform: `translateX(${cloudDrift}px)`,
+                  filter: 'drop-shadow(2px 4px 6px rgba(0,0,0,0.1))',
+                }}
+              />
+            </>
+          ) : (
+            <>
+              <Moon
+                size={(parseInt(iconSize) || 160) * 0.5}
+                strokeWidth={1.2}
+                style={{
+                  color: '#E3F2FD',
+                  position: 'absolute',
+                  top: '10%',
+                  right: '15%',
+                  filter: 'drop-shadow(0 0 10px #90CAF9)',
+                }}
+              />
+              <Cloud
+                size={(parseInt(iconSize) || 160) * 0.8}
+                strokeWidth={1}
+                style={{
+                  color: '#607D8B',
+                  transform: `translateX(${cloudDrift}px)`,
+                }}
+              />
+            </>
+          )}
+        </div>
+      );
+    }
+
+    // Overcast / Cloudy
+    if (code === 3) {
+      const drift1 = Math.sin(t * 0.4) * 8;
+      const drift2 = Math.sin(t * 0.3 + 1) * 6;
+      return (
+        <div style={{ ...baseStyle, position: 'relative' }}>
+          <Cloudy
+            size={(parseInt(iconSize) || 160) * 0.7}
+            strokeWidth={1}
+            style={{
+              color: '#78909C',
+              position: 'absolute',
+              top: '20%',
+              left: '10%',
+              transform: `translateX(${drift1}px)`,
+              filter: 'drop-shadow(2px 4px 8px rgba(0,0,0,0.15))',
+            }}
+          />
+          <Cloud
+            size={(parseInt(iconSize) || 160) * 0.9}
+            strokeWidth={1}
+            style={{
+              color: '#90A4AE',
+              transform: `translateX(${drift2}px)`,
+              filter: 'drop-shadow(3px 5px 10px rgba(0,0,0,0.1))',
+            }}
+          />
+        </div>
+      );
+    }
+
+    // Fog
+    if (code >= 45 && code <= 48) {
+      const wave1 = Math.sin(t * 0.5) * 15;
+      const wave2 = Math.sin(t * 0.4 + 2) * 12;
+      const opacity = 0.6 + Math.sin(t * 0.3) * 0.2;
+      return (
+        <div style={{ ...baseStyle, position: 'relative' }}>
+          <CloudFog
+            size={parseInt(iconSize) || 160}
+            strokeWidth={1}
+            style={{
+              color: '#B0BEC5',
+              opacity,
+              transform: `translateX(${wave1}px)`,
+              filter: 'blur(1px)',
+            }}
+          />
+        </div>
+      );
+    }
+
+    // Drizzle
+    if (code >= 51 && code <= 57) {
+      const drift = Math.sin(t * 0.6) * 5;
+      return (
+        <div style={{ ...baseStyle, position: 'relative' }}>
+          <CloudDrizzle
+            size={parseInt(iconSize) || 160}
+            strokeWidth={1}
+            style={{
+              color: '#78909C',
+              transform: `translateX(${drift}px)`,
+              filter: 'drop-shadow(0 4px 8px rgba(100,181,246,0.3))',
+            }}
+          />
+        </div>
+      );
+    }
+
+    // Rain
+    if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) {
+      const shake = Math.sin(t * 3) * 3;
+      const intensity = code >= 65 || code >= 81 ? 1.2 : 1;
+      return (
+        <div style={{ ...baseStyle, position: 'relative' }}>
+          <motion.div
+            animate={{ y: [0, 2, 0] }}
+            transition={{ duration: 0.5, repeat: Infinity }}
+          >
+            <CloudRain
+              size={parseInt(iconSize) || 160}
+              strokeWidth={1}
+              style={{
+                color: '#546E7A',
+                transform: `translateX(${shake}px) scale(${intensity})`,
+                filter: 'drop-shadow(0 6px 12px rgba(66,165,245,0.4))',
+              }}
+            />
+          </motion.div>
+        </div>
+      );
+    }
+
+    // Snow
+    if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) {
+      const drift = Math.sin(t * 0.4) * 8;
+      const float = Math.sin(t * 0.6) * 4;
+      return (
+        <div style={{ ...baseStyle, position: 'relative' }}>
+          <motion.div
+            animate={{ y: [0, -5, 0], rotate: [-2, 2, -2] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <CloudSnow
+              size={parseInt(iconSize) || 160}
+              strokeWidth={1}
+              style={{
+                color: '#78909C',
+                transform: `translateX(${drift}px)`,
+                filter: 'drop-shadow(0 0 15px rgba(255,255,255,0.8)) drop-shadow(0 4px 8px rgba(144,202,249,0.3))',
+              }}
+            />
+          </motion.div>
+        </div>
+      );
+    }
+
+    // Thunderstorm
+    if (code >= 95 && code <= 99) {
+      const flash = Math.random() > 0.98 ? 1 : 0.7 + Math.sin(t * 2) * 0.1;
+      const shake = Math.sin(t * 8) * 2;
+      return (
+        <div style={{ ...baseStyle, position: 'relative' }}>
+          <motion.div
+            animate={{
+              filter: ['brightness(1)', 'brightness(1.5)', 'brightness(1)'],
+            }}
+            transition={{ duration: 0.1, repeat: Infinity, repeatDelay: Math.random() * 3 + 1 }}
+          >
+            <CloudLightning
+              size={parseInt(iconSize) || 160}
+              strokeWidth={1}
+              style={{
+                color: '#546E7A',
+                transform: `translateX(${shake}px)`,
+                filter: `drop-shadow(0 0 20px rgba(255,235,59,${flash})) drop-shadow(0 6px 12px rgba(66,165,245,0.4))`,
+              }}
+            />
+          </motion.div>
+        </div>
+      );
+    }
+
+    // Windy (default for drizzle with wind codes)
+    const windDrift = Math.sin(t * 2) * 15;
+    const tilt = Math.sin(t * 1.5) * 5;
+    return (
+      <div style={baseStyle}>
+        <Wind
+          size={parseInt(iconSize) || 160}
+          strokeWidth={1}
+          style={{
+            color: '#78909C',
+            transform: `translateX(${windDrift}px) rotate(${tilt}deg)`,
+            filter: 'drop-shadow(4px 0 8px rgba(120,144,156,0.3))',
+          }}
+        />
+      </div>
+    );
+  };
+
+  const weatherEffect = getWeatherEffect(temp, code);
+  const particleType = (() => {
+    switch (weatherEffect) {
+      case 'frost': return 'frost';
+      case 'heat': return 'heat';
+      case 'steam': return 'steam';
+      case 'rain': return 'rain';
+      case 'snow': return 'snow';
+      default: return null;
+    }
+  })();
+
+  return (
+    <div style={{ position: 'relative', ...style }}>
+      {/* Particle effects behind icon */}
+      {particleType && (
+        <div style={{
+          position: 'absolute',
+          top: -60,
+          left: -80,
+          right: -80,
+          bottom: -60,
+          pointerEvents: 'none',
+          overflow: 'hidden',
+        }}>
+          <ParticleSystem
+            type={particleType}
+            width={400}
+            height={320}
+            intensity={1.2}
+            density={weatherEffect === 'rain' ? 10 : weatherEffect === 'snow' ? 6 : 4}
+          />
+        </div>
+      )}
+
+      {/* Main weather icon */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        {renderWeatherIcon()}
+      </div>
+    </div>
+  );
+}
+
 export function WeatherScreen() {
   const { current, forecast } = useWeather();
   const [time, setTime] = useState(new Date());
@@ -294,19 +670,37 @@ export function WeatherScreen() {
   }
 
   const today = forecast[0];
+  const weatherDescription = getWeatherDescription(current.weatherCode);
 
   return (
     <div style={weatherStyles.container}>
       {/* Main content - centered */}
       <div style={weatherStyles.mainContent}>
         <div className="flex flex--col" style={{ alignItems: 'center' }}>
-          {/* Weather Icon */}
-          <div style={{ marginBottom: 'clamp(12px, 3vw, 16px)' }}>
-            <WeatherIcon code={current.weatherCode} size={isMobile ? 36 : 48} />
+          {/* Large Weather Icon - main visual */}
+          <div style={{ marginBottom: 'clamp(8px, 2vw, 12px)' }}>
+            <DynamicWeatherIcon
+              code={current.weatherCode}
+              temp={current.temperature}
+            />
           </div>
 
-          {/* Temperature - BIG with weather effects */}
-          <div className="value" style={weatherStyles.temperature}>
+          {/* Weather Description */}
+          <div style={{
+            fontSize: 'clamp(14px, 4vw, 20px)',
+            fontWeight: 300,
+            color: '#666',
+            letterSpacing: '0.05em',
+            marginBottom: 'clamp(8px, 2vw, 12px)',
+          }}>
+            {weatherDescription}
+          </div>
+
+          {/* Temperature - still prominent with weather effects */}
+          <div className="value" style={{
+            ...weatherStyles.temperature,
+            fontSize: 'clamp(60px, 22vw, 140px)',
+          }}>
             <DynamicTemperature
               temp={current.temperature}
               weatherCode={current.weatherCode}

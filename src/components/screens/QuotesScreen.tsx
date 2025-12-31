@@ -1,33 +1,55 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { quotes } from '../../data/quotes';
 
-// Cycling quote with fog reveal and dissolve
+// Generate ink splatter dots for a character
+function generateInkDots(charIndex: number, totalChars: number) {
+  const seed = charIndex * 7919; // Prime for pseudo-randomness
+  const dots = [];
+  const numDots = 8 + Math.floor((seed % 5));
+
+  for (let i = 0; i < numDots; i++) {
+    const angle = ((seed * (i + 1)) % 360) * Math.PI / 180;
+    const distance = 3 + ((seed * (i + 2)) % 12);
+    dots.push({
+      x: Math.cos(angle) * distance,
+      y: Math.sin(angle) * distance,
+      size: 2 + ((seed * (i + 3)) % 4),
+      delay: (i / numDots) * 0.3 + (charIndex / totalChars) * 0.5,
+    });
+  }
+  return dots;
+}
+
+// Cycling quote with ink dots morphing into calligraphy
 function CyclingQuote({
   quote,
   author,
   onCycleComplete,
-  revealDuration = 4000,
+  dotsDuration = 2500,
+  morphDuration = 3000,
   visibleDuration = 5000,
-  dissolveDuration = 3000,
+  dissolveDuration = 2500,
 }: {
   quote: string;
   author: string;
   onCycleComplete: () => void;
-  revealDuration?: number;
+  dotsDuration?: number;
+  morphDuration?: number;
   visibleDuration?: number;
   dissolveDuration?: number;
 }) {
-  const [phase, setPhase] = useState<'revealing' | 'visible' | 'dissolving'>('revealing');
+  const [phase, setPhase] = useState<'dots' | 'morphing' | 'visible' | 'dissolving'>('dots');
   const [progress, setProgress] = useState(0);
   const startTimeRef = useRef<number>(0);
   const animationRef = useRef<number | null>(null);
 
   const charProps = useMemo(() =>
-    quote.split('').map((_, i) => ({
-      revealStart: (i / quote.length) * 0.7,
-      randomDelay: Math.random() * 0.1,
-      fogPhase: Math.random() * Math.PI * 2,
-      fogAmplitude: 4 + Math.random() * 6,
+    quote.split('').map((char, i) => ({
+      revealStart: (i / quote.length) * 0.6,
+      randomDelay: Math.random() * 0.15,
+      inkDots: generateInkDots(i, quote.length),
+      brushStroke: Math.random() * 0.3, // Slight variation in brush stroke timing
+      inkSpread: 0.8 + Math.random() * 0.4, // How much the ink spreads
     })), [quote]
   );
 
@@ -36,17 +58,20 @@ function CyclingQuote({
 
     const animate = (timestamp: number) => {
       const elapsed = timestamp - startTimeRef.current;
-      const totalDuration = revealDuration + visibleDuration + dissolveDuration;
+      const totalDuration = dotsDuration + morphDuration + visibleDuration + dissolveDuration;
 
-      if (elapsed < revealDuration) {
-        setPhase('revealing');
-        setProgress(elapsed / revealDuration);
-      } else if (elapsed < revealDuration + visibleDuration) {
+      if (elapsed < dotsDuration) {
+        setPhase('dots');
+        setProgress(elapsed / dotsDuration);
+      } else if (elapsed < dotsDuration + morphDuration) {
+        setPhase('morphing');
+        setProgress((elapsed - dotsDuration) / morphDuration);
+      } else if (elapsed < dotsDuration + morphDuration + visibleDuration) {
         setPhase('visible');
         setProgress(1);
       } else if (elapsed < totalDuration) {
         setPhase('dissolving');
-        setProgress(1 - (elapsed - revealDuration - visibleDuration) / dissolveDuration);
+        setProgress(1 - (elapsed - dotsDuration - morphDuration - visibleDuration) / dissolveDuration);
       } else {
         onCycleComplete();
         return;
@@ -59,7 +84,7 @@ function CyclingQuote({
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [revealDuration, visibleDuration, dissolveDuration, onCycleComplete]);
+  }, [dotsDuration, morphDuration, visibleDuration, dissolveDuration, onCycleComplete]);
 
   const renderText = (text: string, isAuthor = false) => {
     const props = isAuthor ? charProps.slice(0, text.length) : charProps;
@@ -68,40 +93,102 @@ function CyclingQuote({
       <span style={{ display: 'inline' }}>
         {text.split('').map((char, i) => {
           const charProp = props[i % props.length];
-          let charProgress: number;
+          const charStart = charProp.revealStart + charProp.randomDelay;
 
-          if (phase === 'revealing') {
-            const charStart = charProp.revealStart + charProp.randomDelay;
-            charProgress = Math.max(0, Math.min(1, (progress - charStart) / 0.3));
+          // Calculate phase-specific progress for this character
+          let dotsProgress = 0;
+          let morphProgress = 0;
+          let charOpacity = 0;
+
+          if (phase === 'dots') {
+            dotsProgress = Math.max(0, Math.min(1, (progress - charStart) / 0.4));
+            charOpacity = 0;
+          } else if (phase === 'morphing') {
+            dotsProgress = 1;
+            morphProgress = Math.max(0, Math.min(1, (progress - charProp.brushStroke) / 0.7));
+            charOpacity = morphProgress;
           } else if (phase === 'visible') {
-            charProgress = 1;
+            dotsProgress = 1;
+            morphProgress = 1;
+            charOpacity = 1;
           } else {
-            // Dissolving - reverse the reveal
-            charProgress = progress;
+            // Dissolving
+            dotsProgress = progress;
+            morphProgress = progress;
+            charOpacity = progress;
           }
 
-          const easeProgress = charProgress * charProgress * (3 - 2 * charProgress);
-          const fogTime = performance.now() / 1000;
-          const fogX = Math.sin(fogTime * 2 + charProp.fogPhase) * charProp.fogAmplitude * (1 - easeProgress);
-          const fogY = Math.cos(fogTime * 1.5 + charProp.fogPhase) * (charProp.fogAmplitude * 0.5) * (1 - easeProgress);
-          const blurAmount = (1 - easeProgress) * 6;
-          const opacity = 0.05 + easeProgress * 0.95;
-          const drift = phase === 'dissolving' ? (1 - easeProgress) * 15 : 0;
+          // Smooth easing
+          const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+          const easedDots = easeOut(dotsProgress);
+          const easedMorph = easeOut(morphProgress);
+
+          // Ink bleeding effect during morphing
+          const inkBleed = phase === 'morphing' ? Math.sin(morphProgress * Math.PI) * 0.5 : 0;
+          const textShadow = phase === 'morphing' || phase === 'visible'
+            ? `0 0 ${2 + inkBleed * 3}px rgba(20, 20, 20, ${0.3 + inkBleed * 0.3})`
+            : 'none';
 
           return (
             <span
               key={i}
               style={{
                 display: 'inline-block',
-                opacity,
-                transform: `translate(${fogX}px, ${fogY - drift}px)`,
-                filter: blurAmount > 0.1 ? `blur(${blurAmount}px)` : 'none',
-                transition: 'none',
+                position: 'relative',
                 whiteSpace: char === ' ' ? 'pre' : 'normal',
-                willChange: 'transform, opacity, filter',
+                width: char === ' ' ? '0.3em' : 'auto',
               }}
             >
-              {char === ' ' ? '\u00A0' : char}
+              {/* Ink dots layer */}
+              {char !== ' ' && (phase === 'dots' || (phase === 'morphing' && morphProgress < 0.8)) && (
+                <span style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  opacity: phase === 'morphing' ? 1 - easedMorph : 1,
+                }}>
+                  {charProp.inkDots.map((dot, dotIndex) => {
+                    const dotProgress = Math.max(0, Math.min(1, (easedDots - dot.delay) / 0.3));
+                    const spreadX = dot.x * (phase === 'morphing' ? (1 - easedMorph * 0.8) : 1);
+                    const spreadY = dot.y * (phase === 'morphing' ? (1 - easedMorph * 0.8) : 1);
+
+                    return (
+                      <span
+                        key={dotIndex}
+                        style={{
+                          position: 'absolute',
+                          width: dot.size * dotProgress,
+                          height: dot.size * dotProgress,
+                          borderRadius: '50%',
+                          background: `radial-gradient(circle, rgba(25,25,25,${0.9 * dotProgress}) 0%, rgba(40,35,30,${0.6 * dotProgress}) 70%, transparent 100%)`,
+                          transform: `translate(${spreadX}px, ${spreadY}px)`,
+                          transition: 'none',
+                        }}
+                      />
+                    );
+                  })}
+                </span>
+              )}
+
+              {/* Character layer - calligraphy style */}
+              <span
+                style={{
+                  opacity: charOpacity,
+                  color: '#1a1a1a',
+                  textShadow,
+                  filter: phase === 'dissolving' ? `blur(${(1 - progress) * 3}px)` : 'none',
+                  transform: phase === 'dissolving'
+                    ? `translateY(${(1 - progress) * -10}px)`
+                    : phase === 'morphing'
+                    ? `scale(${0.95 + easedMorph * 0.05})`
+                    : 'none',
+                  transition: 'none',
+                  willChange: 'transform, opacity, filter',
+                }}
+              >
+                {char === ' ' ? '\u00A0' : char}
+              </span>
             </span>
           );
         })}
@@ -116,51 +203,58 @@ function CyclingQuote({
         textAlign: 'center',
       }}>
         <span style={{
-          fontSize: 32,
+          fontSize: 'clamp(24px, 5vw, 36px)',
           fontWeight: 300,
-          lineHeight: 1.6,
-          letterSpacing: '0.01em',
+          lineHeight: 1.7,
+          letterSpacing: '0.02em',
           color: '#1a1a1a',
-          fontFamily: '"Playfair Display", Georgia, serif',
+          fontFamily: '"Noto Serif JP", "Hiragino Mincho Pro", "Yu Mincho", "Playfair Display", Georgia, serif',
+          fontStyle: 'normal',
         }}>
           {renderText(quote)}
         </span>
       </div>
 
+      {/* Decorative ink brush stroke divider */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 16,
-        marginTop: 40,
-        opacity: phase === 'visible' ? 1 : progress,
-        transition: 'opacity 0.5s ease',
+        justifyContent: 'center',
+        gap: 20,
+        marginTop: 'clamp(24px, 5vw, 40px)',
+        opacity: phase === 'visible' ? 1 : phase === 'dissolving' ? progress : Math.min(1, progress * 2),
+        transition: 'opacity 0.8s ease',
       }}>
         <div style={{
-          width: 80,
-          height: 1,
-          background: 'linear-gradient(to right, transparent, #999)',
+          width: 'clamp(40px, 10vw, 80px)',
+          height: 2,
+          background: 'linear-gradient(to right, transparent, rgba(40,35,30,0.4))',
+          borderRadius: 1,
         }} />
         <div style={{
-          width: 6,
-          height: 6,
-          background: '#b8312f',
-          transform: 'rotate(45deg)',
+          width: 8,
+          height: 8,
+          background: 'radial-gradient(circle, #8b0000 0%, #5c0000 100%)',
+          borderRadius: '50%',
+          boxShadow: '0 0 8px rgba(139,0,0,0.3)',
         }} />
         <div style={{
-          width: 80,
-          height: 1,
-          background: 'linear-gradient(to left, transparent, #999)',
+          width: 'clamp(40px, 10vw, 80px)',
+          height: 2,
+          background: 'linear-gradient(to left, transparent, rgba(40,35,30,0.4))',
+          borderRadius: 1,
         }} />
       </div>
 
-      <div style={{ marginTop: 24 }}>
+      {/* Author with brush stroke aesthetic */}
+      <div style={{ marginTop: 'clamp(16px, 3vw, 24px)' }}>
         <span style={{
-          fontSize: 14,
-          fontWeight: 600,
-          letterSpacing: '0.25em',
-          color: '#666',
+          fontSize: 'clamp(11px, 2vw, 14px)',
+          fontWeight: 500,
+          letterSpacing: '0.2em',
+          color: '#555',
           textTransform: 'uppercase',
-          fontFamily: 'Georgia, serif',
+          fontFamily: '"Noto Sans JP", "Hiragino Sans", Georgia, serif',
         }}>
           {renderText(`— ${author}`, true)}
         </span>
@@ -203,57 +297,64 @@ export function QuotesScreen() {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        background: 'linear-gradient(180deg, #f8f6f0 0%, #ebe8e0 100%)',
-        fontFamily: 'Georgia, "Times New Roman", serif',
+        // Old Japanese paper texture aesthetic
+        background: `
+          radial-gradient(ellipse at 20% 30%, rgba(245,240,230,0.8) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 70%, rgba(235,225,210,0.6) 0%, transparent 40%),
+          linear-gradient(180deg, #f5f0e6 0%, #ebe5d8 30%, #e8e0d0 70%, #ddd5c5 100%)
+        `,
+        fontFamily: '"Noto Serif JP", Georgia, serif',
         overflow: 'hidden',
         position: 'relative',
       }}
     >
-      <style>{`
-        @keyframes gentlePulse {
-          0%, 100% { opacity: 0.6; }
-          50% { opacity: 0.8; }
-        }
-      `}</style>
-
-      {/* Header */}
+      {/* Paper texture overlay */}
       <div style={{
-        padding: '20px 32px 16px',
-        borderBottom: '3px double #000',
-        textAlign: 'center',
-        background: 'rgba(255,255,255,0.5)',
-      }}>
-        <div style={{
-          fontSize: 9,
-          fontWeight: 600,
-          letterSpacing: '0.4em',
-          textTransform: 'uppercase',
-          color: '#666',
-          marginBottom: 8,
-        }}>
-          Words of Wisdom
-        </div>
-        <h1 style={{
-          fontSize: 28,
-          fontWeight: 700,
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-          margin: 0,
-          color: '#000',
-          fontFamily: '"Playfair Display", Georgia, serif',
-        }}>
-          Daily Inspiration
-        </h1>
-        <div style={{
-          fontSize: 8,
-          letterSpacing: '0.3em',
-          textTransform: 'uppercase',
-          color: '#888',
-          marginTop: 6,
-        }}>
-          Timeless wisdom for your day
-        </div>
-      </div>
+        position: 'absolute',
+        inset: 0,
+        background: `
+          repeating-linear-gradient(
+            90deg,
+            transparent,
+            transparent 2px,
+            rgba(200,190,175,0.03) 2px,
+            rgba(200,190,175,0.03) 4px
+          ),
+          repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 3px,
+            rgba(180,170,155,0.02) 3px,
+            rgba(180,170,155,0.02) 6px
+          )
+        `,
+        pointerEvents: 'none',
+      }} />
+
+      {/* Subtle paper grain */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        opacity: 0.3,
+        background: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")',
+        backgroundSize: '150px 150px',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Aged paper edges/vignette */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        boxShadow: 'inset 0 0 100px rgba(180,160,130,0.3), inset 0 0 200px rgba(160,140,110,0.15)',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Top brush stroke border */}
+      <div style={{
+        height: 3,
+        background: 'linear-gradient(90deg, transparent 5%, rgba(60,50,40,0.2) 20%, rgba(40,35,30,0.4) 50%, rgba(60,50,40,0.2) 80%, transparent 95%)',
+        margin: '0 10%',
+      }} />
 
       {/* Main quote area */}
       <div style={{
@@ -262,68 +363,105 @@ export function QuotesScreen() {
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: '40px 60px',
+        padding: 'clamp(30px, 6vw, 60px)',
         position: 'relative',
+        zIndex: 1,
       }}>
-        {/* Decorative corner flourishes */}
+        {/* Decorative ink wash corners */}
         <div style={{
           position: 'absolute',
-          top: 30,
-          left: 40,
-          fontSize: 48,
-          color: 'rgba(0,0,0,0.08)',
-          fontFamily: 'Georgia, serif',
-          transform: 'rotate(-10deg)',
-        }}>❧</div>
+          top: 20,
+          left: 20,
+          width: 40,
+          height: 40,
+          borderTop: '2px solid rgba(60,50,40,0.15)',
+          borderLeft: '2px solid rgba(60,50,40,0.15)',
+          borderRadius: '4px 0 0 0',
+        }} />
         <div style={{
           position: 'absolute',
-          bottom: 30,
-          right: 40,
-          fontSize: 48,
-          color: 'rgba(0,0,0,0.08)',
-          fontFamily: 'Georgia, serif',
-          transform: 'rotate(170deg)',
-        }}>❧</div>
+          top: 20,
+          right: 20,
+          width: 40,
+          height: 40,
+          borderTop: '2px solid rgba(60,50,40,0.15)',
+          borderRight: '2px solid rgba(60,50,40,0.15)',
+          borderRadius: '0 4px 0 0',
+        }} />
+        <div style={{
+          position: 'absolute',
+          bottom: 20,
+          left: 20,
+          width: 40,
+          height: 40,
+          borderBottom: '2px solid rgba(60,50,40,0.15)',
+          borderLeft: '2px solid rgba(60,50,40,0.15)',
+          borderRadius: '0 0 0 4px',
+        }} />
+        <div style={{
+          position: 'absolute',
+          bottom: 20,
+          right: 20,
+          width: 40,
+          height: 40,
+          borderBottom: '2px solid rgba(60,50,40,0.15)',
+          borderRight: '2px solid rgba(60,50,40,0.15)',
+          borderRadius: '0 0 4px 0',
+        }} />
 
-        {/* Large decorative quote mark */}
+        {/* Large decorative ink brush quote mark */}
         <div style={{
-          fontSize: 120,
+          fontSize: 'clamp(80px, 15vw, 140px)',
           fontWeight: 200,
           lineHeight: 0.5,
-          color: 'rgba(0,0,0,0.08)',
-          fontFamily: '"Playfair Display", Georgia, serif',
-          marginBottom: -20,
+          color: 'rgba(60,50,40,0.06)',
+          fontFamily: '"Noto Serif JP", Georgia, serif',
+          marginBottom: -10,
+          textShadow: '2px 2px 4px rgba(0,0,0,0.02)',
         }}>
           "
         </div>
 
-        {/* Cycling quote with fog reveal and dissolve */}
+        {/* Cycling quote with ink dots morphing to calligraphy */}
         <CyclingQuote
           key={key}
           quote={quoteData.quote.text}
           author={quoteData.quote.author}
           onCycleComplete={handleCycleComplete}
-          revealDuration={4000}
+          dotsDuration={2500}
+          morphDuration={3000}
           visibleDuration={5000}
-          dissolveDuration={3000}
+          dissolveDuration={2500}
         />
       </div>
 
-      {/* Footer flourish */}
+      {/* Bottom brush stroke border */}
       <div style={{
-        padding: '16px 32px',
-        borderTop: '1px solid #ddd',
-        textAlign: 'center',
-        background: 'rgba(255,255,255,0.3)',
+        height: 2,
+        background: 'linear-gradient(90deg, transparent 5%, rgba(60,50,40,0.15) 20%, rgba(40,35,30,0.3) 50%, rgba(60,50,40,0.15) 80%, transparent 95%)',
+        margin: '0 10%',
+      }} />
+
+      {/* Subtle seal/stamp in corner */}
+      <div style={{
+        position: 'absolute',
+        bottom: 30,
+        right: 30,
+        width: 40,
+        height: 40,
+        borderRadius: 4,
+        background: 'radial-gradient(circle, rgba(139,26,26,0.08) 0%, rgba(139,26,26,0.04) 60%, transparent 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transform: 'rotate(-5deg)',
       }}>
         <div style={{
-          fontSize: 10,
-          fontStyle: 'italic',
-          color: '#888',
-          animation: 'gentlePulse 4s ease-in-out infinite',
-        }}>
-          "Words have magic — let them transform your day"
-        </div>
+          width: 32,
+          height: 32,
+          border: '1px solid rgba(139,26,26,0.15)',
+          borderRadius: 3,
+        }} />
       </div>
     </div>
   );
