@@ -29,6 +29,13 @@ html, body, #root {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Prevent orphan letters and awkward text wrapping */
+p, span, div, h1, h2, h3, h4, h5, h6, li, td, th, label, a {
+  text-wrap: pretty; /* Modern CSS - balances lines to prevent orphans */
+  overflow-wrap: break-word; /* Break long words if needed */
+  word-break: normal; /* Keep words together */
+}
+
 /* ========================================
    TRMNL LAYOUT SYSTEM
    ======================================== */
