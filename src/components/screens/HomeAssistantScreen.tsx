@@ -1,9 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Fan, Lightbulb, AlertCircle, Thermometer, Wind, Leaf, Flame, Snowflake, Power, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Fan, Lightbulb, AlertCircle, Thermometer, Wind, Leaf, Flame, Snowflake, Power,
+  ChevronLeft, ChevronRight, Tv, Speaker, Volume2, VolumeX, Shirt, Eye, Dog, Car, User
+} from 'lucide-react';
 
-interface FanEntity {
+interface Entity {
   entity_id: string;
   state: string;
+  attributes: {
+    friendly_name?: string;
+    [key: string]: unknown;
+  };
+}
+
+interface FanEntity extends Entity {
   attributes: {
     friendly_name?: string;
     percentage?: number;
@@ -11,35 +21,27 @@ interface FanEntity {
   };
 }
 
-interface LightEntity {
-  entity_id: string;
-  state: string;
+interface LightEntity extends Entity {
   attributes: {
     friendly_name?: string;
     brightness?: number;
   };
 }
 
-interface SensorEntity {
-  entity_id: string;
-  state: string;
+interface SensorEntity extends Entity {
   attributes: {
     friendly_name?: string;
     unit_of_measurement?: string;
   };
 }
 
-interface SwitchEntity {
-  entity_id: string;
-  state: string;
+interface SwitchEntity extends Entity {
   attributes: {
     friendly_name?: string;
   };
 }
 
-interface ClimateEntity {
-  entity_id: string;
-  state: string;
+interface ClimateEntity extends Entity {
   attributes: {
     friendly_name?: string;
     current_temperature?: number;
@@ -54,6 +56,16 @@ interface ClimateEntity {
   };
 }
 
+interface MediaPlayerEntity extends Entity {
+  attributes: {
+    friendly_name?: string;
+    volume_level?: number;
+    is_volume_muted?: boolean;
+    source?: string;
+    media_title?: string;
+  };
+}
+
 interface FanWithExtras {
   fan: FanEntity;
   light: LightEntity | null;
@@ -61,6 +73,307 @@ interface FanWithExtras {
   whoosh: SwitchEntity | null;
   ecoMode: SwitchEntity | null;
   name: string;
+}
+
+// Compact Light Card
+function LightCard({
+  light,
+  onToggle,
+}: {
+  light: LightEntity;
+  onToggle: () => void;
+}) {
+  const isOn = light.state === 'on';
+  const name = light.attributes.friendly_name?.replace(' Light', '').replace(' light', '') ||
+               light.entity_id.split('.')[1].replace(/_/g, ' ');
+  const brightness = light.attributes.brightness || 0;
+  const brightnessPercent = Math.round((brightness / 255) * 100);
+
+  return (
+    <button
+      onClick={onToggle}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 4,
+        padding: '8px 4px',
+        background: isOn ? '#fffbf0' : '#fff',
+        borderRadius: 8,
+        border: isOn ? '1px solid #d4a84b' : '1px solid #e0e0e0',
+        cursor: 'pointer',
+        minWidth: 60,
+        transition: 'all 0.2s',
+      }}
+    >
+      <Lightbulb
+        size={20}
+        color={isOn ? '#d4a84b' : '#aaa'}
+        fill={isOn ? '#d4a84b' : 'none'}
+        style={{ filter: isOn ? 'drop-shadow(0 0 4px rgba(212,168,75,0.5))' : 'none' }}
+      />
+      <span style={{
+        fontSize: 9,
+        fontWeight: 500,
+        color: isOn ? '#333' : '#888',
+        textAlign: 'center',
+        lineHeight: 1.2,
+        maxWidth: 56,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      }}>
+        {name}
+      </span>
+      {isOn && (
+        <span style={{ fontSize: 8, color: '#999' }}>{brightnessPercent}%</span>
+      )}
+    </button>
+  );
+}
+
+// Media Player Card
+function MediaCard({
+  media,
+  onToggle,
+  onMute,
+}: {
+  media: MediaPlayerEntity;
+  onToggle: () => void;
+  onMute: () => void;
+}) {
+  const isOn = media.state !== 'off' && media.state !== 'unavailable';
+  const isMuted = media.attributes.is_volume_muted;
+  const name = media.attributes.friendly_name?.replace('Samsung ', '').replace(' Series 65', '') ||
+               media.entity_id.split('.')[1].replace(/_/g, ' ');
+  const volume = media.attributes.volume_level ? Math.round(media.attributes.volume_level * 100) : 0;
+
+  const getIcon = () => {
+    if (name.toLowerCase().includes('soundbar') || name.toLowerCase().includes('speaker')) {
+      return <Speaker size={18} />;
+    }
+    return <Tv size={18} />;
+  };
+
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 4,
+      padding: '8px 6px',
+      background: isOn ? '#f0f4ff' : '#fff',
+      borderRadius: 8,
+      border: isOn ? '1px solid #5a7fd5' : '1px solid #e0e0e0',
+      minWidth: 70,
+    }}>
+      <button
+        onClick={onToggle}
+        style={{
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          color: isOn ? '#5a7fd5' : '#aaa',
+          padding: 4,
+        }}
+      >
+        {getIcon()}
+      </button>
+      <span style={{
+        fontSize: 9,
+        fontWeight: 500,
+        color: isOn ? '#333' : '#888',
+        textAlign: 'center',
+        maxWidth: 64,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      }}>
+        {name}
+      </span>
+      {isOn && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button
+            onClick={onMute}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 2,
+            }}
+          >
+            {isMuted ? <VolumeX size={12} color="#999" /> : <Volume2 size={12} color="#5a7fd5" />}
+          </button>
+          <span style={{ fontSize: 9, color: '#666' }}>{volume}%</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Dryer Status Card
+function DryerCard({ sensors }: { sensors: SensorEntity[] }) {
+  const machineState = sensors.find(s => s.entity_id.includes('machine_state'));
+  const completionTime = sensors.find(s => s.entity_id.includes('completion_time'));
+  const jobState = sensors.find(s => s.entity_id.includes('job_state'));
+
+  const state = machineState?.state || 'unknown';
+  const isRunning = state === 'run' || state === 'running';
+  const isDone = state === 'stop' || state === 'finished';
+
+  let timeRemaining = '';
+  if (completionTime?.state && completionTime.state !== 'unknown') {
+    const completion = new Date(completionTime.state);
+    const now = new Date();
+    const diffMs = completion.getTime() - now.getTime();
+    if (diffMs > 0) {
+      const mins = Math.round(diffMs / 60000);
+      timeRemaining = mins > 60 ? `${Math.floor(mins/60)}h ${mins%60}m` : `${mins}m`;
+    }
+  }
+
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      padding: '10px 12px',
+      background: isRunning ? '#fff8f0' : isDone ? '#f0fff4' : '#fff',
+      borderRadius: 8,
+      border: isRunning ? '1px solid #e0a040' : isDone ? '1px solid #40c060' : '1px solid #e0e0e0',
+    }}>
+      <div style={{
+        width: 36,
+        height: 36,
+        borderRadius: '50%',
+        background: isRunning ? '#fff0e0' : '#f5f5f5',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        animation: isRunning ? 'pulse 1.5s ease-in-out infinite' : 'none',
+      }}>
+        <Shirt size={18} color={isRunning ? '#e0a040' : isDone ? '#40c060' : '#999'} />
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: '#333' }}>Dryer</div>
+        <div style={{ fontSize: 10, color: '#666', textTransform: 'capitalize' }}>
+          {jobState?.state || state}
+        </div>
+      </div>
+      {timeRemaining && (
+        <div style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: '#e0a040',
+        }}>
+          {timeRemaining}
+        </div>
+      )}
+      {isDone && (
+        <div style={{
+          fontSize: 10,
+          fontWeight: 600,
+          color: '#40c060',
+          textTransform: 'uppercase',
+        }}>
+          Done!
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Motion Detection Card
+function MotionCard({ sensors }: { sensors: Entity[] }) {
+  const motion = sensors.find(s => s.entity_id.includes('_motion') && !s.entity_id.includes('sense'));
+  const person = sensors.find(s => s.entity_id.includes('_person'));
+  const pet = sensors.find(s => s.entity_id.includes('_pet'));
+  const vehicle = sensors.find(s => s.entity_id.includes('_vehicle'));
+
+  const detections = [
+    { entity: motion, icon: <Eye size={12} />, label: 'Motion' },
+    { entity: person, icon: <User size={12} />, label: 'Person' },
+    { entity: pet, icon: <Dog size={12} />, label: 'Pet' },
+    { entity: vehicle, icon: <Car size={12} />, label: 'Vehicle' },
+  ].filter(d => d.entity);
+
+  const anyDetected = detections.some(d => d.entity?.state === 'on');
+
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      padding: '8px 12px',
+      background: anyDetected ? '#fff0f0' : '#fff',
+      borderRadius: 8,
+      border: anyDetected ? '1px solid #e05050' : '1px solid #e0e0e0',
+    }}>
+      <span style={{ fontSize: 10, fontWeight: 600, color: '#333' }}>Camera:</span>
+      <div style={{ display: 'flex', gap: 6 }}>
+        {detections.map((d, i) => (
+          <div
+            key={i}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              padding: '2px 6px',
+              borderRadius: 10,
+              background: d.entity?.state === 'on' ? '#ffe0e0' : '#f5f5f5',
+              color: d.entity?.state === 'on' ? '#c03030' : '#999',
+              fontSize: 9,
+            }}
+          >
+            {d.icon}
+            {d.entity?.state === 'on' && <span>{d.label}</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Temperature Display
+function TempDisplay({ sensors }: { sensors: SensorEntity[] }) {
+  const temps = sensors.filter(s =>
+    s.entity_id.includes('temperature') &&
+    !s.entity_id.includes('iphone')
+  );
+
+  if (temps.length === 0) return null;
+
+  return (
+    <div style={{
+      display: 'flex',
+      gap: 8,
+      flexWrap: 'wrap',
+    }}>
+      {temps.map(temp => {
+        const name = temp.attributes.friendly_name?.replace(' Temperature', '').replace(' temperature', '') ||
+                     temp.entity_id.split('.')[1].split('_')[0];
+        const value = parseFloat(temp.state);
+        if (isNaN(value)) return null;
+
+        return (
+          <div key={temp.entity_id} style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '4px 8px',
+            background: '#fff',
+            borderRadius: 6,
+            border: '1px solid #e0e0e0',
+          }}>
+            <Thermometer size={12} color="#e05a33" />
+            <span style={{ fontSize: 10, color: '#333', fontWeight: 500 }}>
+              {name}: {value.toFixed(0)}°
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function ThermostatCard({
@@ -77,7 +390,7 @@ function ThermostatCard({
   const humidity = climate.attributes.current_humidity;
   const hvacAction = climate.attributes.hvac_action || 'idle';
   const mode = climate.state;
-  const name = climate.attributes.friendly_name?.replace(' Thermostat', '') || 'Thermostat';
+  const name = climate.attributes.friendly_name?.replace(' Thermostat', '').replace(' Auto Comfort', '') || 'Thermostat';
 
   const isHeating = hvacAction === 'heating';
   const isCooling = hvacAction === 'cooling';
@@ -90,10 +403,10 @@ function ThermostatCard({
   };
 
   const getActionIcon = () => {
-    if (isHeating) return <Flame size={20} color="#e05a33" />;
-    if (isCooling) return <Snowflake size={20} color="#2d8fd5" />;
-    if (isOff) return <Power size={20} color="#999" />;
-    return <Thermometer size={20} color="#666" />;
+    if (isHeating) return <Flame size={16} color="#e05a33" />;
+    if (isCooling) return <Snowflake size={16} color="#2d8fd5" />;
+    if (isOff) return <Power size={16} color="#999" />;
+    return <Thermometer size={16} color="#666" />;
   };
 
   return (
@@ -102,13 +415,11 @@ function ThermostatCard({
       flexDirection: 'column',
       alignItems: 'center',
       gap: 4,
-      padding: '10px 6px 8px',
+      padding: '8px 6px',
       background: isOff ? '#fafafa' : '#fff',
       borderRadius: 8,
       border: isOff ? '1px solid #eee' : '1px solid #ddd',
-      transition: 'all 0.2s ease',
     }}>
-      {/* Header: Name + Humidity */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -118,7 +429,7 @@ function ThermostatCard({
         borderBottom: '1px solid #f0f0f0',
       }}>
         <span style={{
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: 600,
           letterSpacing: '0.05em',
           textTransform: 'uppercase',
@@ -127,22 +438,14 @@ function ThermostatCard({
           {name}
         </span>
         {humidity !== undefined && (
-          <span style={{ fontSize: 10, color: '#888' }}>
-            {humidity}%
-          </span>
+          <span style={{ fontSize: 9, color: '#888' }}>{humidity}%</span>
         )}
       </div>
 
-      {/* Current Temp + Icon */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '4px 0',
-      }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0' }}>
         <div style={{
-          width: 36,
-          height: 36,
+          width: 32,
+          height: 32,
           borderRadius: '50%',
           background: isOff ? '#eee' : '#f0f0f0',
           border: `2px solid ${getActionColor()}`,
@@ -153,7 +456,7 @@ function ThermostatCard({
           {getActionIcon()}
         </div>
         <div style={{
-          fontSize: 28,
+          fontSize: 24,
           fontWeight: 300,
           color: isOff ? '#aaa' : '#333',
         }}>
@@ -161,32 +464,27 @@ function ThermostatCard({
         </div>
       </div>
 
-      {/* Target Controls */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-      }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <button
           onClick={() => onSetTemp(targetTemp - 1)}
           disabled={isOff}
           style={{
-            width: 28,
-            height: 28,
+            width: 24,
+            height: 24,
             borderRadius: '50%',
             border: '1px solid #ddd',
             background: '#fff',
             color: isOff ? '#ccc' : '#333',
-            fontSize: 14,
+            fontSize: 12,
             cursor: isOff ? 'default' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >−</button>
-        <div style={{ textAlign: 'center', minWidth: 36 }}>
-          <div style={{ fontSize: 7, color: '#999', letterSpacing: '0.1em' }}>SET</div>
-          <div style={{ fontSize: 14, color: isOff ? '#ccc' : '#333', fontWeight: 500 }}>
+        <div style={{ textAlign: 'center', minWidth: 32 }}>
+          <div style={{ fontSize: 6, color: '#999', letterSpacing: '0.1em' }}>SET</div>
+          <div style={{ fontSize: 12, color: isOff ? '#ccc' : '#333', fontWeight: 500 }}>
             {targetTemp.toFixed(0)}°
           </div>
         </div>
@@ -194,13 +492,13 @@ function ThermostatCard({
           onClick={() => onSetTemp(targetTemp + 1)}
           disabled={isOff}
           style={{
-            width: 28,
-            height: 28,
+            width: 24,
+            height: 24,
             borderRadius: '50%',
             border: '1px solid #ddd',
             background: '#fff',
             color: isOff ? '#ccc' : '#333',
-            fontSize: 14,
+            fontSize: 12,
             cursor: isOff ? 'default' : 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -209,15 +507,14 @@ function ThermostatCard({
         >+</button>
       </div>
 
-      {/* Mode Buttons */}
-      <div style={{ display: 'flex', gap: 4 }}>
+      <div style={{ display: 'flex', gap: 3 }}>
         {['off', 'heat', 'cool'].map((m) => (
           <button
             key={m}
             onClick={() => onSetMode(m)}
             style={{
-              width: 26,
-              height: 26,
+              width: 22,
+              height: 22,
               padding: 0,
               background: mode === m ? (m === 'heat' ? '#fef3f0' : m === 'cool' ? '#f0f7fe' : '#f0f0f0') : '#fff',
               border: mode === m
@@ -231,16 +528,15 @@ function ThermostatCard({
               color: mode === m ? (m === 'heat' ? '#e05a33' : m === 'cool' ? '#2d8fd5' : '#666') : '#aaa',
             }}
           >
-            {m === 'heat' && <Flame size={11} />}
-            {m === 'cool' && <Snowflake size={11} />}
-            {m === 'off' && <Power size={11} />}
+            {m === 'heat' && <Flame size={10} />}
+            {m === 'cool' && <Snowflake size={10} />}
+            {m === 'off' && <Power size={10} />}
           </button>
         ))}
       </div>
 
-      {/* Status */}
       <div style={{
-        fontSize: 8,
+        fontSize: 7,
         color: getActionColor(),
         letterSpacing: '0.08em',
         textTransform: 'uppercase',
@@ -257,7 +553,6 @@ function FanCard({
   onToggleFan,
   onSetSpeed,
   onToggleLight,
-  onSetBrightness,
   onToggleWhoosh,
   onToggleEco,
 }: {
@@ -265,7 +560,6 @@ function FanCard({
   onToggleFan: () => void;
   onSetSpeed: (pct: number) => void;
   onToggleLight: () => void;
-  onSetBrightness: (b: number) => void;
   onToggleWhoosh: () => void;
   onToggleEco: () => void;
 }) {
@@ -275,62 +569,26 @@ function FanCard({
   const lightIsOn = light?.state === 'on';
   const fanSpeed = fan.attributes.percentage || 0;
   const currentSpeed = Math.round(fanSpeed / 14.29);
-  const brightness = light?.attributes.brightness || 0;
-  const brightnessPercent = Math.round((brightness / 255) * 100);
   const temp = temperature?.state ? parseFloat(temperature.state) : null;
   const whooshOn = whoosh?.state === 'on';
   const ecoOn = ecoMode?.state === 'on';
 
-  // Show unavailable/offline state
   if (isUnavailable) {
     return (
       <div style={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 6,
-        padding: '12px 8px',
+        gap: 4,
+        padding: '10px 6px',
         background: '#f8f8f8',
-        borderRadius: 10,
+        borderRadius: 8,
         border: '1px solid #e0e0e0',
         opacity: 0.6,
       }}>
-        <span style={{
-          fontSize: 9,
-          fontWeight: 600,
-          letterSpacing: '0.15em',
-          textTransform: 'uppercase',
-          color: '#999',
-        }}>
-          {name}
-        </span>
-        <div style={{
-          width: 48,
-          height: 48,
-          borderRadius: '50%',
-          background: '#eee',
-          border: '2px solid #ddd',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          <Fan size={20} color="#bbb" strokeWidth={1.5} />
-        </div>
-        <div style={{
-          fontSize: 10,
-          fontWeight: 500,
-          color: '#999',
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-        }}>
-          Offline
-        </div>
-        <div style={{
-          fontSize: 8,
-          color: '#aaa',
-        }}>
-          Check power switch
-        </div>
+        <span style={{ fontSize: 9, fontWeight: 600, color: '#999', textTransform: 'uppercase' }}>{name}</span>
+        <Fan size={18} color="#bbb" />
+        <span style={{ fontSize: 9, color: '#999' }}>Offline</span>
       </div>
     );
   }
@@ -340,24 +598,22 @@ function FanCard({
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      gap: 4,
-      padding: '10px 6px 8px',
+      gap: 3,
+      padding: '8px 4px 6px',
       background: fanIsOn ? '#fff' : '#fafafa',
       borderRadius: 8,
       border: fanIsOn ? '1px solid #ddd' : '1px solid #eee',
-      transition: 'all 0.2s ease',
     }}>
-      {/* Header: Name + Temp */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         width: '100%',
-        paddingBottom: 4,
+        paddingBottom: 3,
         borderBottom: '1px solid #f0f0f0',
       }}>
         <span style={{
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: 600,
           letterSpacing: '0.05em',
           textTransform: 'uppercase',
@@ -366,41 +622,20 @@ function FanCard({
           {name}
         </span>
         {temp !== null && (
-          <span style={{
-            fontSize: 10,
-            color: '#888',
-            fontWeight: 500,
-          }}>
-            {temp.toFixed(0)}°
-          </span>
+          <span style={{ fontSize: 9, color: '#888', fontWeight: 500 }}>{temp.toFixed(0)}°</span>
         )}
       </div>
 
-      {/* Fan + Speed Controls Row */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        width: '100%',
-        justifyContent: 'center',
-        padding: '4px 0',
-      }}>
-        {/* Left Arrow */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0' }}>
         <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
+          onClick={() => {
             const newSpeed = Math.max(0, currentSpeed - 1);
-            if (newSpeed === 0) {
-              onToggleFan();
-            } else {
-              onSetSpeed(newSpeed * 14.29);
-            }
+            if (newSpeed === 0) onToggleFan();
+            else onSetSpeed(newSpeed * 14.29);
           }}
           style={{
-            width: 32,
-            height: 32,
+            width: 28,
+            height: 28,
             borderRadius: '50%',
             border: '1px solid #ddd',
             background: '#fff',
@@ -408,72 +643,41 @@ function FanCard({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            touchAction: 'manipulation',
           }}
         >
-          <ChevronLeft size={16} color={fanIsOn ? '#333' : '#aaa'} strokeWidth={2} />
+          <ChevronLeft size={14} color={fanIsOn ? '#333' : '#aaa'} />
         </button>
 
-        {/* Fan Icon + Speed */}
-        <div
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleFan();
-          }}
-          role="button"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            cursor: 'pointer',
-            minWidth: 50,
-          }}
-        >
+        <div onClick={onToggleFan} style={{ cursor: 'pointer', textAlign: 'center' }}>
           <div style={{
-            width: 40,
-            height: 40,
+            width: 36,
+            height: 36,
             borderRadius: '50%',
             background: fanIsOn ? '#f0f0f0' : '#eee',
             border: fanIsOn ? '2px solid #333' : '2px solid #ccc',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            marginBottom: 2,
           }}>
             <Fan
-              size={18}
+              size={16}
               color={fanIsOn ? '#333' : '#bbb'}
-              strokeWidth={1.5}
-              style={{
-                animation: fanIsOn ? `spin ${Math.max(0.3, 2.5 - currentSpeed * 0.3)}s linear infinite` : 'none',
-              }}
+              style={{ animation: fanIsOn ? `spin ${Math.max(0.3, 2.5 - currentSpeed * 0.3)}s linear infinite` : 'none' }}
             />
           </div>
-          <span style={{
-            fontSize: 14,
-            fontWeight: 500,
-            color: fanIsOn ? '#333' : '#aaa',
-          }}>
+          <span style={{ fontSize: 12, fontWeight: 500, color: fanIsOn ? '#333' : '#aaa' }}>
             {fanIsOn ? currentSpeed : '–'}
           </span>
         </div>
 
-        {/* Right Arrow */}
         <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (!fanIsOn) {
-              onSetSpeed(14.29);
-            } else {
-              const newSpeed = Math.min(7, currentSpeed + 1);
-              onSetSpeed(newSpeed * 14.29);
-            }
+          onClick={() => {
+            if (!fanIsOn) onSetSpeed(14.29);
+            else onSetSpeed(Math.min(7, currentSpeed + 1) * 14.29);
           }}
           style={{
-            width: 32,
-            height: 32,
+            width: 28,
+            height: 28,
             borderRadius: '50%',
             border: '1px solid #ddd',
             background: '#fff',
@@ -481,169 +685,91 @@ function FanCard({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            touchAction: 'manipulation',
           }}
         >
-          <ChevronRight size={16} color={fanIsOn ? '#333' : '#aaa'} strokeWidth={2} />
+          <ChevronRight size={14} color={fanIsOn ? '#333' : '#aaa'} />
         </button>
       </div>
 
-      {/* Speed dots - progressively larger */}
       <div style={{ display: 'flex', gap: 2, marginBottom: 2, alignItems: 'flex-end' }}>
         {[1, 2, 3, 4, 5, 6, 7].map((s) => (
           <div
             key={s}
             style={{
-              width: 2 + s,
-              height: 2 + s,
+              width: 2 + s * 0.5,
+              height: 2 + s * 0.5,
               borderRadius: '50%',
               background: fanIsOn && currentSpeed >= s ? '#333' : '#ddd',
-              transition: 'background 0.15s ease',
             }}
           />
         ))}
       </div>
 
-      {/* Whoosh + Eco toggles */}
-      {(whoosh || ecoMode) && (
-        <div style={{ display: 'flex', gap: 4 }}>
-          {whoosh && (
-            <button
-              onClick={() => onToggleWhoosh()}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-                padding: '2px 5px',
-                background: whooshOn ? '#eee' : '#fff',
-                border: whooshOn ? '1px solid #888' : '1px solid #ddd',
-                borderRadius: 3,
-                cursor: 'pointer',
-                color: whooshOn ? '#333' : '#999',
-                fontSize: 8,
-              }}
-            >
-              <Wind size={8} /> W
-            </button>
-          )}
-          {ecoMode && (
-            <button
-              onClick={() => onToggleEco()}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-                padding: '2px 5px',
-                background: ecoOn ? '#e8f5e8' : '#fff',
-                border: ecoOn ? '1px solid #5a8a5a' : '1px solid #ddd',
-                borderRadius: 3,
-                cursor: 'pointer',
-                color: ecoOn ? '#5a8a5a' : '#999',
-                fontSize: 8,
-              }}
-            >
-              <Leaf size={8} /> E
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Light Control */}
-      {light && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 4,
-          width: '100%',
-          marginTop: 2,
-          paddingTop: 4,
-          borderTop: '1px solid #eee',
-        }}>
+      <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', justifyContent: 'center' }}>
+        {whoosh && (
           <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleLight();
-            }}
+            onClick={onToggleWhoosh}
             style={{
-              width: 26,
-              height: 26,
-              borderRadius: '50%',
-              border: lightIsOn ? '1px solid #d4a84b' : '1px solid #ccc',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              padding: '2px 4px',
+              background: whooshOn ? '#eee' : '#fff',
+              border: whooshOn ? '1px solid #888' : '1px solid #ddd',
+              borderRadius: 3,
+              cursor: 'pointer',
+              color: whooshOn ? '#333' : '#999',
+              fontSize: 7,
+            }}
+          >
+            <Wind size={7} /> W
+          </button>
+        )}
+        {ecoMode && (
+          <button
+            onClick={onToggleEco}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              padding: '2px 4px',
+              background: ecoOn ? '#e8f5e8' : '#fff',
+              border: ecoOn ? '1px solid #5a8a5a' : '1px solid #ddd',
+              borderRadius: 3,
+              cursor: 'pointer',
+              color: ecoOn ? '#5a8a5a' : '#999',
+              fontSize: 7,
+            }}
+          >
+            <Leaf size={7} /> E
+          </button>
+        )}
+        {light && (
+          <button
+            onClick={onToggleLight}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              padding: '2px 4px',
               background: lightIsOn ? '#fffbf0' : '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              border: lightIsOn ? '1px solid #d4a84b' : '1px solid #ddd',
+              borderRadius: 3,
               cursor: 'pointer',
-              boxShadow: lightIsOn ? '0 0 6px rgba(212,168,75,0.3)' : 'none',
+              color: lightIsOn ? '#d4a84b' : '#999',
+              fontSize: 7,
             }}
           >
-            <Lightbulb size={12} color={lightIsOn ? '#d4a84b' : '#aaa'} fill={lightIsOn ? '#d4a84b' : 'none'} />
+            <Lightbulb size={7} fill={lightIsOn ? '#d4a84b' : 'none'} /> L
           </button>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (lightIsOn) onSetBrightness(Math.max(0, brightness - 51));
-            }}
-            disabled={!lightIsOn}
-            style={{
-              width: 22,
-              height: 22,
-              borderRadius: '50%',
-              border: '1px solid #ddd',
-              background: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: lightIsOn ? 'pointer' : 'default',
-              opacity: lightIsOn ? 1 : 0.4,
-            }}
-          >
-            <ChevronLeft size={10} color="#666" />
-          </button>
-
-          <span style={{
-            flex: 1,
-            textAlign: 'center',
-            fontSize: 11,
-            color: lightIsOn ? '#333' : '#aaa',
-          }}>
-            {lightIsOn ? `${brightnessPercent}%` : 'Off'}
-          </span>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!lightIsOn) {
-                onSetBrightness(128);
-              } else {
-                onSetBrightness(Math.min(255, brightness + 51));
-              }
-            }}
-            style={{
-              width: 22,
-              height: 22,
-              borderRadius: '50%',
-              border: '1px solid #ddd',
-              background: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-            }}
-          >
-            <ChevronRight size={10} color="#666" />
-          </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
 
 export function HomeAssistantScreen() {
-  const [fansWithExtras, setFansWithExtras] = useState<FanWithExtras[]>([]);
-  const [thermostats, setThermostats] = useState<ClimateEntity[]>([]);
+  const [allEntities, setAllEntities] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -666,59 +792,8 @@ export function HomeAssistantScreen() {
       });
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
       const data = await response.json();
-
-      const fans = data.filter((e: FanEntity) => e.entity_id.startsWith('fan.'));
-      const lights = data.filter((e: LightEntity) => e.entity_id.startsWith('light.'));
-      const sensors = data.filter((e: SensorEntity) => e.entity_id.startsWith('sensor.'));
-      const switches = data.filter((e: SwitchEntity) => e.entity_id.startsWith('switch.'));
-
-      console.log('[HA] Found fans:', fans.map((f: FanEntity) => f.entity_id));
-      console.log('[HA] Found lights:', lights.map((l: LightEntity) => l.entity_id));
-      const climates = data.filter((e: ClimateEntity) =>
-        e.entity_id.startsWith('climate.') &&
-        e.entity_id.toLowerCase().includes('hallway')
-      );
-
-      setThermostats(climates);
-
-      const matched: FanWithExtras[] = fans.map((fan: FanEntity) => {
-        const fanName = fan.attributes.friendly_name || fan.entity_id.split('.')[1];
-        const baseName = fanName.toLowerCase().replace(' fan', '').replace('_fan', '').replace('fan.', '').trim();
-        const baseId = fan.entity_id.split('.')[1];
-
-        const matchingLight = lights.find((l: LightEntity) =>
-          l.entity_id.toLowerCase().includes(baseId)
-        );
-
-        const matchingTemp = sensors.find((s: SensorEntity) =>
-          s.entity_id.toLowerCase().includes(baseId) &&
-          s.entity_id.includes('temperature')
-        );
-
-        const matchingWhoosh = switches.find((s: SwitchEntity) =>
-          s.entity_id.toLowerCase().includes(baseId) &&
-          s.entity_id.includes('whoosh')
-        );
-
-        const matchingEco = switches.find((s: SwitchEntity) =>
-          s.entity_id.toLowerCase().includes(baseId) &&
-          s.entity_id.includes('eco')
-        );
-
-        return {
-          fan,
-          light: matchingLight || null,
-          temperature: matchingTemp || null,
-          whoosh: matchingWhoosh || null,
-          ecoMode: matchingEco || null,
-          name: baseName.charAt(0).toUpperCase() + baseName.slice(1),
-        };
-      });
-
-      console.log('[HA] Matched fans with extras:', matched.map(m => ({ name: m.name, id: m.fan.entity_id, hasLight: !!m.light })));
-      setFansWithExtras(matched);
+      setAllEntities(data);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to connect');
@@ -729,53 +804,16 @@ export function HomeAssistantScreen() {
 
   const callService = async (domain: string, service: string, entityId: string, data?: object) => {
     if (!haUrl || !haToken) return;
-    const payload = { entity_id: entityId, ...data };
-    console.log(`[HA] Calling ${domain}.${service}`, payload);
     try {
-      const response = await fetch(`${haUrl}/api/services/${domain}/${service}`, {
+      await fetch(`${haUrl}/api/services/${domain}/${service}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${haToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ entity_id: entityId, ...data }),
       });
-      if (!response.ok) {
-        console.error(`[HA] Service call failed: ${response.status}`, await response.text());
-      } else {
-        console.log(`[HA] Service call success: ${domain}.${service}`);
-      }
       setTimeout(fetchEntities, 500);
     } catch (e) {
       console.error('[HA] Service call error:', e);
     }
-  };
-
-  const toggleFan = (entityId: string) => callService('fan', 'toggle', entityId);
-
-  const setFanSpeed = async (entityId: string, percentage: number) => {
-    const fan = fansWithExtras.find(f => f.fan.entity_id === entityId)?.fan;
-    if (fan?.state === 'off') {
-      await callService('fan', 'turn_on', entityId);
-    }
-    await callService('fan', 'set_percentage', entityId, { percentage });
-  };
-
-  const toggleLight = (entityId: string) => callService('light', 'toggle', entityId);
-
-  const setLightBrightness = (entityId: string, brightness: number) => {
-    if (brightness === 0) {
-      callService('light', 'turn_off', entityId);
-    } else {
-      callService('light', 'turn_on', entityId, { brightness });
-    }
-  };
-
-  const toggleSwitch = (entityId: string) => callService('switch', 'toggle', entityId);
-
-  const setThermostatTemp = (entityId: string, temperature: number) => {
-    callService('climate', 'set_temperature', entityId, { temperature });
-  };
-
-  const setThermostatMode = (entityId: string, hvac_mode: string) => {
-    callService('climate', 'set_hvac_mode', entityId, { hvac_mode });
   };
 
   useEffect(() => {
@@ -783,6 +821,46 @@ export function HomeAssistantScreen() {
     const interval = setInterval(fetchEntities, 10000);
     return () => clearInterval(interval);
   }, [fetchEntities]);
+
+  // Parse entities
+  const fans = allEntities.filter((e): e is FanEntity => e.entity_id.startsWith('fan.'));
+  const lights = allEntities.filter((e): e is LightEntity =>
+    e.entity_id.startsWith('light.') &&
+    !e.entity_id.includes('ella') &&
+    !e.entity_id.includes('olivier') &&
+    !e.entity_id.includes('master_bedroom')
+  );
+  const sensors = allEntities.filter((e): e is SensorEntity => e.entity_id.startsWith('sensor.'));
+  const switches = allEntities.filter((e): e is SwitchEntity => e.entity_id.startsWith('switch.'));
+  const climates = allEntities.filter((e): e is ClimateEntity => e.entity_id.startsWith('climate.'));
+  const mediaPlayers = allEntities.filter((e): e is MediaPlayerEntity =>
+    e.entity_id.startsWith('media_player.') &&
+    e.state !== 'unavailable'
+  );
+  const binarySensors = allEntities.filter(e => e.entity_id.startsWith('binary_sensor.rlc'));
+  const dryerSensors = sensors.filter(s => s.entity_id.includes('tumble_dryer'));
+  const tempSensors = sensors.filter(s => s.entity_id.includes('temperature'));
+
+  // Build fan data
+  const fansWithExtras: FanWithExtras[] = fans.map((fan) => {
+    const baseId = fan.entity_id.split('.')[1];
+    const fanName = fan.attributes.friendly_name || baseId;
+    const baseName = fanName.toLowerCase().replace(' fan', '').replace('_fan', '').trim();
+
+    return {
+      fan,
+      light: allEntities.find((l): l is LightEntity =>
+        l.entity_id.startsWith('light.') && l.entity_id.toLowerCase().includes(baseId)
+      ) || null,
+      temperature: sensors.find(s => s.entity_id.toLowerCase().includes(baseId) && s.entity_id.includes('temperature')) || null,
+      whoosh: switches.find(s => s.entity_id.toLowerCase().includes(baseId) && s.entity_id.includes('whoosh')) || null,
+      ecoMode: switches.find(s => s.entity_id.toLowerCase().includes(baseId) && s.entity_id.includes('eco')) || null,
+      name: baseName.charAt(0).toUpperCase() + baseName.slice(1),
+    };
+  });
+
+  // Filter thermostats (hallway for now)
+  const thermostats = climates.filter(c => c.entity_id.includes('hallway'));
 
   if (!haUrl || !haToken) {
     return (
@@ -801,16 +879,14 @@ export function HomeAssistantScreen() {
     );
   }
 
-  if (error || (fansWithExtras.length === 0 && thermostats.length === 0)) {
+  if (error) {
     return (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#faf9f6', gap: 12 }}>
         <AlertCircle size={24} color="#999" />
-        <span style={{ fontSize: 12, color: '#999' }}>{error || 'No devices found'}</span>
+        <span style={{ fontSize: 12, color: '#999' }}>{error}</span>
       </div>
     );
   }
-
-  const totalDevices = thermostats.length + fansWithExtras.length;
 
   return (
     <div style={{
@@ -819,81 +895,90 @@ export function HomeAssistantScreen() {
       display: 'flex',
       flexDirection: 'column',
       overflow: 'auto',
-      WebkitOverflowScrolling: 'touch',
+      padding: 8,
+      gap: 8,
     }}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        .devices-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 6px;
-          padding: 6px;
-          width: 100%;
-          box-sizing: border-box;
-          flex: 1;
-          align-content: start;
-        }
-
-        /* 3 columns for 5+ devices on mobile landscape or small tablets */
-        @media (min-width: 480px) and (max-width: 767px) {
-          .devices-grid.many-devices {
-            grid-template-columns: repeat(3, 1fr);
-          }
-        }
-
-        /* Tablets */
-        @media (min-width: 768px) {
-          .devices-grid {
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            padding: 12px;
-          }
-        }
-
-        /* Large tablets / small desktops */
-        @media (min-width: 1024px) {
-          .devices-grid {
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            padding: 16px;
-            max-width: 1200px;
-            margin: 0 auto;
-          }
-        }
-
-        /* Large screens */
-        @media (min-width: 1400px) {
-          .devices-grid {
-            grid-template-columns: repeat(5, 1fr);
-          }
-        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
       `}</style>
 
-      {/* Devices Grid */}
-      <div className={`devices-grid ${totalDevices >= 5 ? 'many-devices' : ''}`}>
-        {/* Thermostats */}
-        {thermostats.map((climate) => (
-          <ThermostatCard
-            key={climate.entity_id}
-            climate={climate}
-            onSetTemp={(temp) => setThermostatTemp(climate.entity_id, temp)}
-            onSetMode={(mode) => setThermostatMode(climate.entity_id, mode)}
-          />
-        ))}
-        {/* Fans */}
-        {fansWithExtras.map((data) => (
-          <FanCard
-            key={data.fan.entity_id}
-            data={data}
-            onToggleFan={() => toggleFan(data.fan.entity_id)}
-            onSetSpeed={(pct) => setFanSpeed(data.fan.entity_id, pct)}
-            onToggleLight={() => data.light && toggleLight(data.light.entity_id)}
-            onSetBrightness={(b) => data.light && setLightBrightness(data.light.entity_id, b)}
-            onToggleWhoosh={() => data.whoosh && toggleSwitch(data.whoosh.entity_id)}
-            onToggleEco={() => data.ecoMode && toggleSwitch(data.ecoMode.entity_id)}
-          />
-        ))}
+      {/* Temperature sensors row */}
+      {tempSensors.length > 0 && <TempDisplay sensors={tempSensors} />}
+
+      {/* Motion detection */}
+      {binarySensors.length > 0 && <MotionCard sensors={binarySensors} />}
+
+      {/* Dryer status */}
+      {dryerSensors.length > 0 && <DryerCard sensors={dryerSensors} />}
+
+      {/* Lights Section */}
+      {lights.length > 0 && (
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: '#666', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            Lights
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {lights.map(light => (
+              <LightCard
+                key={light.entity_id}
+                light={light}
+                onToggle={() => callService('light', 'toggle', light.entity_id)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Media Section */}
+      {mediaPlayers.length > 0 && (
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: '#666', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            Media
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {mediaPlayers.map(media => (
+              <MediaCard
+                key={media.entity_id}
+                media={media}
+                onToggle={() => callService('media_player', 'toggle', media.entity_id)}
+                onMute={() => callService('media_player', 'volume_mute', media.entity_id, { is_volume_muted: !media.attributes.is_volume_muted })}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Climate & Fans Grid */}
+      <div>
+        <div style={{ fontSize: 10, fontWeight: 600, color: '#666', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          Climate
+        </div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+          gap: 6,
+        }}>
+          {thermostats.map(climate => (
+            <ThermostatCard
+              key={climate.entity_id}
+              climate={climate}
+              onSetTemp={(temp) => callService('climate', 'set_temperature', climate.entity_id, { temperature: temp })}
+              onSetMode={(mode) => callService('climate', 'set_hvac_mode', climate.entity_id, { hvac_mode: mode })}
+            />
+          ))}
+          {fansWithExtras.map(data => (
+            <FanCard
+              key={data.fan.entity_id}
+              data={data}
+              onToggleFan={() => callService('fan', 'toggle', data.fan.entity_id)}
+              onSetSpeed={(pct) => callService('fan', 'set_percentage', data.fan.entity_id, { percentage: pct })}
+              onToggleLight={() => data.light && callService('light', 'toggle', data.light.entity_id)}
+              onToggleWhoosh={() => data.whoosh && callService('switch', 'toggle', data.whoosh.entity_id)}
+              onToggleEco={() => data.ecoMode && callService('switch', 'toggle', data.ecoMode.entity_id)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
