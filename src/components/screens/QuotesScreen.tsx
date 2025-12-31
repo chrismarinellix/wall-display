@@ -44,7 +44,7 @@ function CyclingQuote({
   const animationRef = useRef<number | null>(null);
 
   const charProps = useMemo(() =>
-    quote.split('').map((char, i) => ({
+    quote.split('').map((_, i) => ({
       revealStart: (i / quote.length) * 0.6,
       randomDelay: Math.random() * 0.15,
       inkDots: generateInkDots(i, quote.length),
