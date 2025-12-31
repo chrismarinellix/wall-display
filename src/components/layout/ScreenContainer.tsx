@@ -56,7 +56,7 @@ const screenInfo: Record<ScreenType, { title: string; shortTitle: string; Icon: 
   countdown: { title: 'Countdown', shortTitle: 'Timer', Icon: Clock },
   homeassistant: { title: 'Home', shortTitle: 'Home', Icon: Home },
   moments: { title: 'Moments', shortTitle: 'History', Icon: Image },
-  summary: { title: 'Daily Prophet', shortTitle: 'Prophet', Icon: LayoutGrid },
+  summary: { title: 'Daily Brief', shortTitle: 'Brief', Icon: LayoutGrid },
   setup: { title: 'Setup', shortTitle: 'Setup', Icon: Settings },
   video: { title: 'Camera', shortTitle: 'Cam', Icon: Video },
 };

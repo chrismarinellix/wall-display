@@ -1,0 +1,334 @@
+# ===========================================
+# HOME ASSISTANT DASHBOARD CONFIGURATION
+# ===========================================
+# To use: Go to Home Assistant → Settings → Dashboards → Add Dashboard
+# Then: Edit Dashboard → Raw Configuration Editor → Paste this config
+
+# ===========================================
+# MAIN DASHBOARD - All Controls
+# ===========================================
+title: Home
+views:
+  # -----------------------------------------
+  # Home Overview Tab
+  # -----------------------------------------
+  - title: Home
+    path: home
+    icon: mdi:home
+    badges:
+      - entity: sensor.hallway_temperature
+      - entity: sensor.hallway_humidity
+      - entity: sensor.chriss_iphone_battery_level
+    cards:
+      # Thermostat Card
+      - type: thermostat
+        entity: climate.hallway
+        name: Hallway Thermostat
+
+      # Weather & Climate Section
+      - type: horizontal-stack
+        cards:
+          - type: gauge
+            entity: sensor.hallway_temperature
+            name: Temperature
+            min: 15
+            max: 35
+            severity:
+              green: 18
+              yellow: 26
+              red: 30
+          - type: gauge
+            entity: sensor.hallway_humidity
+            name: Humidity
+            min: 0
+            max: 100
+            severity:
+              green: 40
+              yellow: 60
+              red: 80
+
+      # All Fans in a Grid
+      - type: entities
+        title: Ceiling Fans
+        show_header_toggle: true
+        entities:
+          - entity: fan.master_bedroom
+            name: Master Bedroom
+          - entity: fan.ella_2
+            name: Ella's Room
+          - entity: fan.olivier
+            name: Olivier's Room
+          - entity: fan.ella
+            name: Sitting Room
+
+      # Room Temperatures
+      - type: glance
+        title: Room Temperatures
+        show_name: true
+        show_state: true
+        entities:
+          - entity: sensor.master_bedroom_temperature
+            name: Master
+          - entity: sensor.ella_temperature_2
+            name: Ella
+          - entity: sensor.olivier_temperature
+            name: Olivier
+          - entity: sensor.ella_temperature
+            name: Sitting
+
+  # -----------------------------------------
+  # Fans Tab
+  # -----------------------------------------
+  - title: Fans
+    path: fans
+    icon: mdi:fan
+    cards:
+      # Master Bedroom Fan
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-fan-card
+            entity: fan.master_bedroom
+            name: Master Bedroom
+            show_percentage_control: true
+            collapsible_controls: false
+          - type: conditional
+            conditions:
+              - entity: light.master_bedroom
+                state_not: unavailable
+            card:
+              type: light
+              entity: light.master_bedroom
+              name: Master Bedroom Light
+          - type: sensor
+            entity: sensor.master_bedroom_temperature
+            name: Temperature
+            graph: line
+
+      # Ella's Fan
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-fan-card
+            entity: fan.ella_2
+            name: Ella's Room
+            show_percentage_control: true
+            collapsible_controls: false
+          - type: light
+            entity: light.ella
+            name: Ella's Light
+          - type: sensor
+            entity: sensor.ella_temperature_2
+            name: Temperature
+            graph: line
+
+      # Olivier's Fan
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-fan-card
+            entity: fan.olivier
+            name: Olivier's Room
+            show_percentage_control: true
+            collapsible_controls: false
+          - type: light
+            entity: light.olivier
+            name: Olivier's Light
+          - type: sensor
+            entity: sensor.olivier_temperature
+            name: Temperature
+            graph: line
+
+      # Sitting Room Fan
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-fan-card
+            entity: fan.ella
+            name: Sitting Room
+            show_percentage_control: true
+            collapsible_controls: false
+          - type: sensor
+            entity: sensor.ella_temperature
+            name: Temperature
+            graph: line
+
+  # -----------------------------------------
+  # Cameras Tab
+  # -----------------------------------------
+  - title: Cameras
+    path: cameras
+    icon: mdi:cctv
+    cards:
+      # Nest Camera (Upstairs)
+      - type: picture-entity
+        entity: camera.upstairs
+        name: Upstairs (Nest)
+        show_state: false
+        show_name: true
+        camera_view: live
+
+      # Reolink Camera
+      - type: vertical-stack
+        cards:
+          - type: picture-entity
+            entity: camera.rlc_823a_snapshots_clear
+            name: Outdoor (Reolink)
+            show_state: false
+            camera_view: auto
+          # PTZ Controls
+          - type: horizontal-stack
+            cards:
+              - type: button
+                entity: button.rlc_823a_ptz_left
+                name: Left
+                icon: mdi:arrow-left
+                tap_action:
+                  action: call-service
+                  service: button.press
+                  target:
+                    entity_id: button.rlc_823a_ptz_left
+              - type: button
+                entity: button.rlc_823a_ptz_up
+                name: Up
+                icon: mdi:arrow-up
+                tap_action:
+                  action: call-service
+                  service: button.press
+                  target:
+                    entity_id: button.rlc_823a_ptz_up
+              - type: button
+                entity: button.rlc_823a_ptz_down
+                name: Down
+                icon: mdi:arrow-down
+                tap_action:
+                  action: call-service
+                  service: button.press
+                  target:
+                    entity_id: button.rlc_823a_ptz_down
+              - type: button
+                entity: button.rlc_823a_ptz_right
+                name: Right
+                icon: mdi:arrow-right
+                tap_action:
+                  action: call-service
+                  service: button.press
+                  target:
+                    entity_id: button.rlc_823a_ptz_right
+          - type: horizontal-stack
+            cards:
+              - type: light
+                entity: light.rlc_823a_floodlight
+                name: Floodlight
+              - type: entity
+                entity: switch.rlc_823a_auto_tracking
+                name: Auto Track
+          # Motion Detection Status
+          - type: glance
+            title: Detection Status
+            entities:
+              - entity: binary_sensor.rlc_823a_motion
+                name: Motion
+              - entity: binary_sensor.rlc_823a_person
+                name: Person
+              - entity: binary_sensor.rlc_823a_vehicle
+                name: Vehicle
+              - entity: binary_sensor.rlc_823a_pet
+                name: Pet
+
+  # -----------------------------------------
+  # Climate Tab
+  # -----------------------------------------
+  - title: Climate
+    path: climate
+    icon: mdi:thermostat
+    cards:
+      # Main Thermostat
+      - type: thermostat
+        entity: climate.hallway
+        name: Nest Thermostat
+
+      # Climate history
+      - type: history-graph
+        title: Temperature History
+        hours_to_show: 24
+        entities:
+          - entity: sensor.hallway_temperature
+            name: Hallway
+          - entity: sensor.master_bedroom_temperature
+            name: Master
+          - entity: sensor.ella_temperature_2
+            name: Ella
+          - entity: sensor.olivier_temperature
+            name: Olivier
+
+      - type: history-graph
+        title: Humidity
+        hours_to_show: 24
+        entities:
+          - entity: sensor.hallway_humidity
+            name: Hallway
+
+      # Auto Comfort Controls
+      - type: entities
+        title: Fan Auto Comfort Modes
+        entities:
+          - entity: climate.master_bedroom_auto_comfort
+            name: Master Bedroom Auto
+          - entity: climate.ella_auto_comfort_2
+            name: Ella Auto
+          - entity: climate.olivier_auto_comfort
+            name: Olivier Auto
+          - entity: climate.ella_auto_comfort
+            name: Sitting Room Auto
+
+  # -----------------------------------------
+  # Phone/Devices Tab
+  # -----------------------------------------
+  - title: Devices
+    path: devices
+    icon: mdi:cellphone
+    cards:
+      - type: entities
+        title: Chris's iPhone
+        entities:
+          - entity: sensor.chriss_iphone_battery_level
+            name: Battery
+          - entity: sensor.chriss_iphone_battery_state
+            name: Charging Status
+          - entity: device_tracker.chriss_iphone
+            name: Location
+          - entity: sensor.chriss_iphone_geocoded_location
+            name: Address
+
+      - type: entity
+        entity: person.chris
+        name: Chris
+
+      # Sun Info
+      - type: entities
+        title: Sun
+        entities:
+          - entity: sun.sun
+          - entity: sensor.sun_next_rising
+            name: Sunrise
+          - entity: sensor.sun_next_setting
+            name: Sunset
+
+# ===========================================
+# SIMPLE DASHBOARD (Alternative - Minimal)
+# ===========================================
+# If you want a simpler dashboard, use this instead:
+#
+# title: Simple Home
+# views:
+#   - title: Home
+#     cards:
+#       - type: thermostat
+#         entity: climate.hallway
+#       - type: entities
+#         title: Fans
+#         entities:
+#           - fan.master_bedroom
+#           - fan.ella_2
+#           - fan.olivier
+#           - fan.ella
+#       - type: picture-entity
+#         entity: camera.upstairs
+#         camera_view: live

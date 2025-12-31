@@ -1,9 +1,48 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { format } from 'date-fns';
 import { Sun, Cloud, CloudRain, CloudSnow, Wind } from 'lucide-react';
+import { motion, useSpring, useTransform } from 'framer-motion';
 import { useWeather } from '../../hooks/useWeather';
+import { ParticleSystem } from '../effects/ParticleSystem';
 
-// Dynamic temperature display with weather-based effects
+// Determine temperature condition for styling
+function getTemperatureCondition(temp: number): 'freezing' | 'cold' | 'cool' | 'warm' | 'hot' {
+  if (temp <= 0) return 'freezing';
+  if (temp <= 10) return 'cold';
+  if (temp <= 20) return 'cool';
+  if (temp <= 30) return 'warm';
+  return 'hot';
+}
+
+// Determine weather effect type
+function getWeatherEffect(temp: number, weatherCode: number): 'frost' | 'heat' | 'rain' | 'snow' | 'steam' | 'wind' | 'normal' {
+  // Snow
+  if (weatherCode >= 71 && weatherCode <= 77) return 'snow';
+  if (weatherCode >= 85 && weatherCode <= 86) return 'snow';
+  // Rain
+  if (weatherCode >= 61 && weatherCode <= 67) return 'rain';
+  if (weatherCode >= 95 && weatherCode <= 99) return 'rain';
+  if (weatherCode >= 80 && weatherCode <= 82) return 'rain';
+  // Drizzle with wind
+  if (weatherCode >= 51 && weatherCode <= 57) return 'wind';
+  // Temperature based
+  if (temp >= 35) return 'heat';
+  if (temp >= 28) return 'steam';
+  if (temp <= 0) return 'frost';
+  if (temp <= 8) return 'frost';
+  return 'normal';
+}
+
+// Color schemes for different temperatures
+const temperatureColors = {
+  freezing: { primary: '#00d4ff', glow: '#80eaff', text: '#e0f7ff' },
+  cold: { primary: '#4fc3f7', glow: '#81d4fa', text: '#e1f5fe' },
+  cool: { primary: '#81c784', glow: '#a5d6a7', text: '#333' },
+  warm: { primary: '#ffb74d', glow: '#ffcc80', text: '#333' },
+  hot: { primary: '#ff5722', glow: '#ff8a65', text: '#fff3e0' },
+};
+
+// Dynamic temperature display with weather-based particle effects
 function DynamicTemperature({
   temp,
   weatherCode,
@@ -16,32 +55,23 @@ function DynamicTemperature({
   const [time, setTime] = useState(0);
   const animationRef = useRef<number | null>(null);
 
-  // Determine weather effect type
-  const effectType = useMemo(() => {
-    // Windy conditions (weather codes with wind)
-    if (weatherCode >= 51 && weatherCode <= 57) return 'windy'; // Drizzle with wind
-    if (weatherCode >= 80 && weatherCode <= 82) return 'windy'; // Rain showers
+  const tempCondition = getTemperatureCondition(temp);
+  const weatherEffect = getWeatherEffect(temp, weatherCode);
+  const colors = temperatureColors[tempCondition];
 
-    // Hot (temp > 30°C)
-    if (temp >= 30) return 'hot';
+  // Spring animation for smooth temperature changes
+  const springTemp = useSpring(temp, { stiffness: 50, damping: 20 });
+  const displayTemp = useTransform(springTemp, (v) => Math.round(v));
+  const [animatedTemp, setAnimatedTemp] = useState(Math.round(temp));
 
-    // Cold (temp < 5°C)
-    if (temp <= 5) return 'cold';
-
-    // Rainy
-    if (weatherCode >= 61 && weatherCode <= 67) return 'rainy';
-    if (weatherCode >= 95 && weatherCode <= 99) return 'rainy'; // Thunderstorm
-
-    // Snowy
-    if (weatherCode >= 71 && weatherCode <= 77) return 'snowy';
-    if (weatherCode >= 85 && weatherCode <= 86) return 'snowy';
-
-    return 'normal';
-  }, [temp, weatherCode]);
+  useEffect(() => {
+    const unsubscribe = displayTemp.on('change', (v) => setAnimatedTemp(v));
+    return unsubscribe;
+  }, [displayTemp]);
 
   // Animation loop for dynamic effects
   useEffect(() => {
-    if (effectType === 'normal') return;
+    if (weatherEffect === 'normal') return;
 
     const animate = () => {
       setTime(performance.now());
@@ -52,12 +82,12 @@ function DynamicTemperature({
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [effectType]);
+  }, [weatherEffect]);
 
-  const text = `${Math.round(temp)}°`;
-  const t = time / 1000; // seconds
+  const text = `${animatedTemp}°`;
+  const t = time / 1000;
 
-  // Generate character-level effects
+  // Character-level animation based on weather
   const renderChars = () => {
     return text.split('').map((char, i) => {
       let charStyle: React.CSSProperties = {
@@ -65,9 +95,8 @@ function DynamicTemperature({
         transition: 'none',
       };
 
-      switch (effectType) {
-        case 'windy': {
-          // Characters blown by wind - wobble and tilt
+      switch (weatherEffect) {
+        case 'wind': {
           const wobble = Math.sin(t * 3 + i * 0.8) * 8;
           const tilt = Math.sin(t * 2 + i * 1.2) * 15;
           const drift = Math.sin(t * 1.5 + i * 0.5) * 5;
@@ -75,54 +104,109 @@ function DynamicTemperature({
           charStyle.opacity = 0.85 + Math.sin(t * 4 + i) * 0.15;
           break;
         }
-        case 'hot': {
-          // Melting effect - wavy, dripping downward
-          const wave = Math.sin(t * 2 + i * 0.5) * 3;
-          const drip = Math.sin(t * 1.5 + i * 0.3) * 4 + 2;
-          const stretch = 1 + Math.sin(t + i * 0.4) * 0.05;
+        case 'heat': {
+          const wave = Math.sin(t * 2 + i * 0.5) * 4;
+          const drip = Math.sin(t * 1.5 + i * 0.3) * 5 + 3;
+          const stretch = 1 + Math.sin(t + i * 0.4) * 0.08;
           charStyle.transform = `translateX(${wave}px) translateY(${drip}px) scaleY(${stretch})`;
-          charStyle.filter = `blur(${Math.sin(t * 2 + i) * 0.5}px)`;
-          charStyle.opacity = 0.9;
+          charStyle.filter = `blur(${Math.sin(t * 2 + i) * 0.8}px)`;
+          charStyle.color = colors.primary;
+          charStyle.textShadow = `0 0 30px ${colors.glow}, 0 0 60px ${colors.primary}`;
           break;
         }
-        case 'cold': {
-          // Shivering/frosted effect
-          const shiver = Math.sin(t * 15 + i * 2) * 2;
-          const shake = Math.cos(t * 12 + i * 1.5) * 1;
+        case 'steam': {
+          const wave = Math.sin(t * 1.5 + i * 0.4) * 2;
+          const rise = Math.sin(t + i * 0.3) * 3;
+          charStyle.transform = `translateX(${wave}px) translateY(${rise}px)`;
+          charStyle.color = colors.primary;
+          charStyle.textShadow = `0 0 20px ${colors.glow}`;
+          break;
+        }
+        case 'frost': {
+          const shiver = Math.sin(t * 12 + i * 2) * 3;
+          const shake = Math.cos(t * 10 + i * 1.5) * 1.5;
           charStyle.transform = `translateX(${shiver}px) translateY(${shake}px)`;
-          charStyle.textShadow = '0 0 10px rgba(100, 180, 255, 0.5), 0 0 20px rgba(100, 180, 255, 0.3)';
+          charStyle.color = colors.primary;
+          charStyle.textShadow = `0 0 15px ${colors.glow}, 0 0 30px ${colors.primary}, 0 0 45px ${colors.glow}`;
           break;
         }
-        case 'rainy': {
-          // Slight drip and blur
-          const drip = Math.sin(t * 2 + i * 0.4) * 3;
+        case 'rain': {
+          const drip = Math.sin(t * 2 + i * 0.4) * 4;
           charStyle.transform = `translateY(${drip}px)`;
           charStyle.opacity = 0.85 + Math.sin(t * 3 + i) * 0.1;
-          charStyle.textShadow = '0 2px 4px rgba(0, 100, 200, 0.3)';
+          charStyle.textShadow = '0 3px 6px rgba(0, 100, 200, 0.4)';
           break;
         }
-        case 'snowy': {
-          // Gentle floating/snowfall effect
-          const float = Math.sin(t * 0.8 + i * 0.6) * 4;
-          const drift = Math.cos(t * 0.5 + i * 0.8) * 3;
+        case 'snow': {
+          const float = Math.sin(t * 0.8 + i * 0.6) * 5;
+          const drift = Math.cos(t * 0.5 + i * 0.8) * 4;
           charStyle.transform = `translateX(${drift}px) translateY(${float}px)`;
-          charStyle.textShadow = '0 0 15px rgba(255, 255, 255, 0.8)';
+          charStyle.textShadow = '0 0 20px rgba(255, 255, 255, 0.9), 0 0 40px rgba(200, 230, 255, 0.5)';
           charStyle.opacity = 0.95;
           break;
         }
       }
 
       return (
-        <span key={i} style={charStyle}>
+        <motion.span
+          key={i}
+          style={charStyle}
+          animate={{
+            scale: weatherEffect === 'heat' ? [1, 1.02, 1] : 1,
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            delay: i * 0.1,
+          }}
+        >
           {char}
-        </span>
+        </motion.span>
       );
     });
   };
 
+  // Get particle type based on weather
+  const getParticleType = (): 'frost' | 'heat' | 'rain' | 'snow' | 'steam' | null => {
+    switch (weatherEffect) {
+      case 'frost': return 'frost';
+      case 'heat': return 'heat';
+      case 'steam': return 'steam';
+      case 'rain': return 'rain';
+      case 'snow': return 'snow';
+      default: return null;
+    }
+  };
+
+  const particleType = getParticleType();
+
   return (
-    <div style={{ display: 'inline-flex', ...style }}>
-      {effectType === 'normal' ? text : renderChars()}
+    <div style={{ position: 'relative', display: 'inline-flex', ...style }}>
+      {/* Particle effects behind text */}
+      {particleType && (
+        <div style={{
+          position: 'absolute',
+          top: -40,
+          left: -60,
+          right: -60,
+          bottom: -40,
+          pointerEvents: 'none',
+          overflow: 'hidden',
+        }}>
+          <ParticleSystem
+            type={particleType}
+            width={300}
+            height={200}
+            intensity={weatherEffect === 'heat' || weatherEffect === 'frost' ? 1.5 : 1}
+            density={weatherEffect === 'rain' ? 8 : weatherEffect === 'snow' ? 4 : 3}
+          />
+        </div>
+      )}
+
+      {/* Temperature text */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        {weatherEffect === 'normal' ? text : renderChars()}
+      </div>
     </div>
   );
 }

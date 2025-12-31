@@ -209,7 +209,7 @@ Respond ONLY with valid JSON, no markdown or extra text.`;
   }
 }
 
-// Generate newspaper-style articles for the Daily Prophet briefing
+// Generate newspaper-style articles for the Daily Briefing
 export async function generateNewspaperArticles(
   data: NewspaperData,
   apiKey: string
@@ -219,77 +219,64 @@ export async function generateNewspaperArticles(
   const dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
   const dateStr = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-  const prompt = `You are the editor of "The Daily Briefing" - a magical, personalized newspaper like the Daily Prophet from Harry Potter.
-Write engaging, newspaper-style articles for ${data.userName}. Be warm, slightly whimsical, but informative.
-Articles should feel alive - like they're speaking directly to the reader.
+  // System message enforces consistent structure
+  const systemMessage = `You are a newspaper editor writing for a personalized daily briefing display.
+Your articles MUST follow this exact structure - NO EXCEPTIONS:
 
-Current: ${timeOfDay}, ${dayName}, ${dateStr}
+ARTICLE BODY FORMAT (for weatherArticle.body, dayArticle.body, marketsArticle.body, historyArticle.body):
+- MUST be exactly 2 paragraphs
+- First paragraph: 3-4 sentences describing the situation
+- Second paragraph: 3-4 sentences with analysis or implications
+- Paragraphs separated by a single space (not newline)
+- Write in flowing, newspaper prose style
+- Never use bullet points or lists
 
-DATA TO TRANSFORM INTO ARTICLES:
+GREETING FORMAT:
+- Must be 3-4 complete sentences
+- Address the reader by name
+- Reference time of day and weather
+- Set a warm, professional tone
 
-${data.weather ? `WEATHER:
-Temperature: ${data.weather.temperature}°C
-Condition: ${data.weather.condition}
-${data.weather.humidity ? `Humidity: ${data.weather.humidity}%` : ''}
-${data.weather.forecast?.length ? `Forecast: ${data.weather.forecast.map(f => `${f.date}: ${f.tempMax}°/${f.tempMin}° ${f.condition}`).join(', ')}` : ''}` : 'Weather unavailable'}
+All output must be valid JSON only. No markdown, no code blocks.`;
 
-${data.calendar?.length ? `SCHEDULE (${data.calendar.length} events):
-${data.calendar.slice(0, 5).map(e => `- ${e.title} (${e.isToday ? 'Today' : 'Tomorrow'} ${e.time})`).join('\n')}` : 'Calendar clear'}
+  const userPrompt = `Write the daily briefing for ${data.userName} on ${dayName}, ${dateStr} (${timeOfDay}).
 
-${data.todos?.length ? `TASKS (${data.todos.length} pending):
-${data.todos.slice(0, 5).map(t => `- ${t.title} [${t.priority}]${t.isOverdue ? ' OVERDUE!' : ''}`).join('\n')}` : 'No tasks'}
+DATA TO COVER:
+Weather: ${data.weather ? `${data.weather.temperature}°C, ${data.weather.condition}${data.weather.humidity ? `, humidity ${data.weather.humidity}%` : ''}` : 'unavailable'}
+${data.weather?.forecast?.length ? `Forecast: ${data.weather.forecast.map(f => `${f.date}: ${f.tempMax}°/${f.tempMin}°`).join(', ')}` : ''}
+Schedule: ${data.calendar?.length ? data.calendar.slice(0, 4).map(e => `${e.title} (${e.time})`).join(', ') : 'No events scheduled'}
+Tasks: ${data.todos?.length ? data.todos.slice(0, 4).map(t => `${t.title}${t.isOverdue ? ' [OVERDUE]' : ''}`).join(', ') : 'No pending tasks'}
+Habits: ${data.habits?.length ? `${data.habits.filter(h => h.completed).length} of ${data.habits.length} completed` : 'None tracked'}
+Focus: ${data.pomodoro ? `${data.pomodoro.todayCount} pomodoros today (goal: ${data.pomodoro.dailyGoal})` : 'No sessions'}
+Markets: ${data.crypto?.length ? data.crypto.slice(0, 2).map(c => `${c.name}: $${c.price.toLocaleString()} (${c.change24h > 0 ? '+' : ''}${c.change24h.toFixed(1)}%)`).join(', ') : 'unavailable'}
+History: ${data.historicalMoment ? `${data.historicalMoment.year} - ${data.historicalMoment.title}: ${data.historicalMoment.description}` : 'unavailable'}
+Countdown: ${data.countdown ? `${data.countdown.daysUntil} days until ${data.countdown.title}` : 'none'}
 
-${data.habits?.length ? `HABITS:
-${data.habits.map(h => `- ${h.name}: ${h.completed ? 'DONE' : 'pending'}`).join('\n')}` : ''}
-
-${data.pomodoro ? `FOCUS: ${data.pomodoro.todayCount}/${data.pomodoro.dailyGoal} pomodoros, ${data.pomodoro.todayMinutes}min focused, ${data.pomodoro.streak} day streak` : ''}
-
-${data.crypto?.length ? `MARKETS:
-${data.crypto.map(c => `- ${c.name}: $${c.price.toLocaleString()} (${c.change24h > 0 ? '+' : ''}${c.change24h.toFixed(1)}%)`).join('\n')}` : ''}
-
-${data.historicalMoment ? `THIS DAY IN HISTORY:
-${data.historicalMoment.year}: ${data.historicalMoment.title}
-${data.historicalMoment.description}` : ''}
-
-${data.countdown ? `COUNTDOWN: ${data.countdown.daysUntil} days until ${data.countdown.title}` : ''}
-
-${data.proverb ? `WISDOM: "${data.proverb.meaning}" (${data.proverb.romaji})` : ''}
-
-Generate a JSON response. Write like a REAL magical Victorian newspaper with RICH, FLOWING prose.
-
-CRITICAL REQUIREMENTS - YOU MUST FOLLOW THESE:
-- Each article body MUST be AT LEAST 80-120 words. Count your words!
-- Write in LONG, flowing sentences with multiple clauses
-- Use vivid imagery, metaphors, and poetic descriptions
-- NO short sentences. NO bullet points. NO lists.
-- Every body field must be a SUBSTANTIAL PARAGRAPH
-
+Generate this exact JSON structure:
 {
-  "headline": "Dramatic Victorian headline (8-12 words)",
-  "greeting": "Warm greeting for ${data.userName} (50-70 words, describe the day's character)",
+  "headline": "Compelling 8-12 word headline for today",
+  "greeting": "3-4 sentences greeting ${data.userName}, mentioning ${timeOfDay} and the weather conditions",
   "weatherArticle": {
-    "headline": "Poetic weather headline",
-    "body": "80-120 words MINIMUM. Paint the sky, describe the light quality, the air's feel, how weather unfolds through the day. Use sensory details - colors, textures, temperatures. Write it like poetry.",
-    "advice": "2-3 sentences of practical wisdom"
+    "headline": "Weather headline 6-10 words",
+    "body": "PARAGRAPH 1 (3-4 sentences about current conditions and forecast). PARAGRAPH 2 (3-4 sentences about what this means for the day).",
+    "advice": "2 sentences of practical weather advice"
   },
   "dayArticle": {
-    "headline": "Grand headline about today's agenda",
-    "body": "80-120 words MINIMUM. Describe each commitment with Victorian gravitas. Paint the day's narrative arc from morning duties through evening. Connect tasks to larger life purposes."
+    "headline": "Schedule headline 6-10 words",
+    "body": "PARAGRAPH 1 (3-4 sentences about today's events and tasks). PARAGRAPH 2 (3-4 sentences about priorities and approach)."
   },
   "marketsArticle": {
-    "headline": "Dramatic financial headline",
-    "body": "80-120 words MINIMUM. Describe market movements with gravitas - the rise and fall of fortunes, the whispers of traders, the broader economic currents shaping wealth."
+    "headline": "Markets headline 6-10 words",
+    "body": "PARAGRAPH 1 (3-4 sentences about current prices and movements). PARAGRAPH 2 (3-4 sentences about trends and context)."
   },
   "historyArticle": {
-    "headline": "Fascinating historical headline",
-    "body": "80-120 words MINIMUM. Transport the reader to that moment. Describe the scene, the key figures, the tension or triumph. Explain why this moment still echoes through time."
+    "headline": "History headline 6-10 words",
+    "body": "PARAGRAPH 1 (3-4 sentences describing what happened). PARAGRAPH 2 (3-4 sentences about significance and legacy)."
   },
-  "wisdomCorner": "60-80 words reflecting on the proverb, connecting ancient wisdom to modern life",
-  "productivityNote": "40-50 words of warm encouragement about focus progress",
-  "closingThought": "25-35 words tying the day's themes together poetically"
-}
-
-Respond ONLY with valid JSON, no markdown.`;
+  "wisdomCorner": "3-4 sentences of thoughtful reflection",
+  "productivityNote": "2-3 sentences about focus progress",
+  "closingThought": "2 sentences of encouragement"
+}`;
 
   try {
     const response = await fetch(GROQ_API_URL, {
@@ -299,10 +286,13 @@ Respond ONLY with valid JSON, no markdown.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile', // More capable model for longer content
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.8,
-        max_tokens: 4000, // Much more room for long articles
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.3, // Very low for consistent structure
+        max_tokens: 3000,
       }),
     });
 
@@ -318,7 +308,6 @@ Respond ONLY with valid JSON, no markdown.`;
     return JSON.parse(jsonStr);
   } catch (error) {
     console.error('AI article generation failed:', error);
-    // Return fallback articles
     return generateFallbackArticles(data, timeOfDay);
   }
 }

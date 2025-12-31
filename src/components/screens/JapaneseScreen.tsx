@@ -1,141 +1,238 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { proverbs } from '../../data/proverbs';
 
-// Ink brush stroke reveal - characters appear as if painted with calligraphy brush
-function InkBrushText({
+// Ink dots forming text - dots appear scattered and gradually form letters
+function InkDotsText({
   text,
   style = {},
-  revealDuration = 4000,
+  revealDuration = 5000,
 }: {
   text: string;
   style?: React.CSSProperties;
   revealDuration?: number;
 }) {
-  const [progress, setProgress] = useState(0);
-  const [isRevealed, setIsRevealed] = useState(false);
-  const startTimeRef = useRef<number>(0);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number | null>(null);
+  const [isComplete, setIsComplete] = useState(false);
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
-  // Generate unique properties for each character
-  const charProps = useMemo(() =>
-    text.split('').map((_, i) => ({
-      // Staggered reveal - each character starts at different time
-      revealStart: (i / text.length) * 0.8,
-      // Random brush stroke angle
-      brushAngle: -15 + Math.random() * 30,
-      // Ink splatter delay
-      inkDelay: Math.random() * 0.2,
-    })), [text]
-  );
+  // Generate ink dot particles
+  interface InkDot {
+    x: number;
+    y: number;
+    targetX: number;
+    targetY: number;
+    size: number;
+    opacity: number;
+    delay: number;
+    settled: boolean;
+  }
 
+  const dotsRef = useRef<InkDot[]>([]);
+
+  // Measure text and create canvas
   useEffect(() => {
-    startTimeRef.current = performance.now();
+    if (!textRef.current) return;
+    const rect = textRef.current.getBoundingClientRect();
+    setCanvasSize({ width: rect.width + 40, height: rect.height + 40 });
+  }, [text]);
 
-    const animate = (timestamp: number) => {
-      const elapsed = timestamp - startTimeRef.current;
-      const p = Math.min(1, elapsed / revealDuration);
-      setProgress(p);
+  // Initialize dots when canvas is ready
+  useEffect(() => {
+    if (canvasSize.width === 0 || !canvasRef.current) return;
 
-      if (p < 1) {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set up canvas
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = canvasSize.width * dpr;
+    canvas.height = canvasSize.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    // Draw text to get pixel data
+    ctx.font = `400 80px "Shippori Mincho", serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#000';
+    ctx.fillText(text, canvasSize.width / 2, canvasSize.height / 2);
+
+    // Sample pixels to create dots
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const dots: InkDot[] = [];
+    const sampleStep = 3; // Sample every N pixels
+
+    for (let y = 0; y < canvas.height; y += sampleStep * dpr) {
+      for (let x = 0; x < canvas.width; x += sampleStep * dpr) {
+        const i = (y * canvas.width + x) * 4;
+        const alpha = imageData.data[i + 3];
+
+        if (alpha > 50) {
+          // This pixel is part of the text
+          const targetX = x / dpr;
+          const targetY = y / dpr;
+
+          // Start position - scattered around
+          const angle = Math.random() * Math.PI * 2;
+          const distance = 50 + Math.random() * 150;
+          const startX = targetX + Math.cos(angle) * distance;
+          const startY = targetY + Math.sin(angle) * distance;
+
+          dots.push({
+            x: startX,
+            y: startY,
+            targetX,
+            targetY,
+            size: 1.5 + Math.random() * 2,
+            opacity: 0,
+            delay: Math.random() * 0.6, // Stagger over 60% of duration
+            settled: false,
+          });
+        }
+      }
+    }
+
+    dotsRef.current = dots;
+
+    // Clear canvas for animation
+    ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
+
+    // Animation
+    const startTime = performance.now();
+
+    const animate = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / revealDuration);
+
+      ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
+
+      let allSettled = true;
+
+      dotsRef.current.forEach(dot => {
+        // Calculate dot's individual progress
+        const dotStart = dot.delay;
+        const dotProgress = Math.max(0, Math.min(1, (progress - dotStart) / 0.4));
+
+        if (dotProgress > 0) {
+          // Ease out cubic
+          const ease = 1 - Math.pow(1 - dotProgress, 3);
+
+          // Move towards target
+          dot.x = dot.x + (dot.targetX - dot.x) * ease * 0.15;
+          dot.y = dot.y + (dot.targetY - dot.y) * ease * 0.15;
+          dot.opacity = Math.min(1, dotProgress * 2);
+
+          // Check if settled
+          const distX = Math.abs(dot.x - dot.targetX);
+          const distY = Math.abs(dot.y - dot.targetY);
+          dot.settled = distX < 0.5 && distY < 0.5;
+
+          if (!dot.settled) allSettled = false;
+
+          // Draw dot
+          ctx.beginPath();
+          ctx.arc(dot.x, dot.y, dot.size, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(26, 26, 26, ${dot.opacity})`;
+          ctx.fill();
+        } else {
+          allSettled = false;
+        }
+      });
+
+      if (progress < 1 || !allSettled) {
         animationRef.current = requestAnimationFrame(animate);
       } else {
-        setIsRevealed(true);
+        // Final state - draw crisp text
+        ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
+        ctx.font = `400 80px "Shippori Mincho", serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillText(text, canvasSize.width / 2, canvasSize.height / 2);
+        setIsComplete(true);
       }
     };
 
     animationRef.current = requestAnimationFrame(animate);
+
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [revealDuration, text]);
-
-  // Once revealed, show static text
-  if (isRevealed) {
-    return <span style={{ display: 'inline', ...style }}>{text}</span>;
-  }
+  }, [canvasSize, text, revealDuration]);
 
   return (
-    <span style={{ display: 'inline', ...style }}>
-      {text.split('').map((char, i) => {
-        const props = charProps[i];
+    <div style={{ position: 'relative', ...style }}>
+      {/* Hidden text for measurement */}
+      <div
+        ref={textRef}
+        style={{
+          visibility: 'hidden',
+          position: 'absolute',
+          fontSize: 80,
+          fontWeight: 400,
+          fontFamily: '"Shippori Mincho", serif',
+          letterSpacing: '0.2em',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {text}
+      </div>
 
-        // Character reveal progress (0 = invisible, 1 = fully painted)
-        const charProgress = Math.max(0, Math.min(1,
-          (progress - props.revealStart) / 0.25
-        ));
-
-        // Brush stroke effect - scale from thin line to full character
-        const scaleY = 0.1 + charProgress * 0.9;
-        const scaleX = charProgress < 0.3 ? 0.5 + charProgress * 1.7 : 1;
-
-        // Opacity builds up like ink saturating paper
-        const opacity = Math.pow(charProgress, 0.5);
-
-        // Slight rotation as brush lifts
-        const rotation = props.brushAngle * (1 - charProgress);
-
-        // Ink spread blur at start
-        const blur = (1 - charProgress) * 3;
-
-        return (
-          <span
-            key={i}
-            style={{
-              display: 'inline-block',
-              opacity,
-              transform: `scaleX(${scaleX}) scaleY(${scaleY}) rotate(${rotation}deg)`,
-              transformOrigin: 'bottom center',
-              filter: blur > 0.1 ? `blur(${blur}px)` : 'none',
-              transition: 'none',
-              willChange: 'transform, opacity, filter',
-            }}
-          >
-            {char}
-          </span>
-        );
-      })}
-    </span>
+      {/* Canvas for ink dots animation */}
+      <canvas
+        ref={canvasRef}
+        style={{
+          width: canvasSize.width,
+          height: canvasSize.height,
+          display: 'block',
+        }}
+      />
+    </div>
   );
 }
 
-// Floating ink drops decoration
-function InkDrops() {
-  const drops = useMemo(() =>
-    Array.from({ length: 8 }, (_, i) => ({
-      x: 10 + Math.random() * 80,
-      y: 10 + Math.random() * 80,
-      size: 3 + Math.random() * 8,
-      delay: i * 0.5,
-      duration: 3 + Math.random() * 2,
-    })), []
-  );
-
+// Zen ripple circles - peaceful water ripples
+function ZenRipples() {
   return (
     <>
       <style>{`
-        @keyframes inkDrop {
-          0% { opacity: 0; transform: scale(0); }
-          20% { opacity: 0.3; transform: scale(1); }
-          80% { opacity: 0.3; transform: scale(1); }
-          100% { opacity: 0; transform: scale(1.5); }
+        @keyframes ripple {
+          0% { transform: translate(-50%, -50%) scale(0); opacity: 0.4; }
+          100% { transform: translate(-50%, -50%) scale(4); opacity: 0; }
         }
       `}</style>
-      {drops.map((drop, i) => (
-        <div
-          key={i}
-          style={{
-            position: 'absolute',
-            left: `${drop.x}%`,
-            top: `${drop.y}%`,
-            width: drop.size,
-            height: drop.size,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(26,26,26,0.4) 0%, rgba(26,26,26,0) 70%)',
-            animation: `inkDrop ${drop.duration}s ease-in-out ${drop.delay}s infinite`,
-            pointerEvents: 'none',
-          }}
-        />
-      ))}
+      <div style={{
+        position: 'absolute',
+        left: '20%',
+        top: '30%',
+        width: 100,
+        height: 100,
+        border: '1px solid rgba(180, 160, 140, 0.3)',
+        borderRadius: '50%',
+        animation: 'ripple 8s ease-out infinite',
+      }} />
+      <div style={{
+        position: 'absolute',
+        left: '75%',
+        top: '60%',
+        width: 80,
+        height: 80,
+        border: '1px solid rgba(180, 160, 140, 0.25)',
+        borderRadius: '50%',
+        animation: 'ripple 10s ease-out 2s infinite',
+      }} />
+      <div style={{
+        position: 'absolute',
+        left: '50%',
+        top: '80%',
+        width: 60,
+        height: 60,
+        border: '1px solid rgba(180, 160, 140, 0.2)',
+        borderRadius: '50%',
+        animation: 'ripple 12s ease-out 4s infinite',
+      }} />
     </>
   );
 }
@@ -232,12 +329,12 @@ export function JapaneseScreen() {
         }}
       />
 
-      {/* Floating ink drops */}
-      <InkDrops />
+      {/* Zen ripples background */}
+      <ZenRipples />
 
       {/* Main content container */}
       <div style={{ position: 'relative', maxWidth: 700 }}>
-        {/* Japanese calligraphy text with ink brush reveal */}
+        {/* Japanese calligraphy text with watercolor wash reveal */}
         <div
           style={{
             fontSize: 80,
@@ -249,7 +346,7 @@ export function JapaneseScreen() {
             color: '#1a1a1a',
           }}
         >
-          <InkBrushText text={proverbData.proverb.japanese} revealDuration={3000} />
+          <InkDotsText text={proverbData.proverb.japanese} revealDuration={4000} />
         </div>
 
         {/* Romaji pronunciation */}

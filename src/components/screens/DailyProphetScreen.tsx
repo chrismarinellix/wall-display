@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Dumbbell, Bike, Beef, Salad, Droplet, Moon, Check, AlertTriangle, Clock, Brain, Target, Volume2, VolumeX, Play, Pause as PauseIcon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Dumbbell, Bike, Beef, Salad, Droplet, Moon, Check, AlertTriangle, Clock, Brain, Volume2, VolumeX } from 'lucide-react';
 import { useWeather } from '../../hooks/useWeather';
 import { useCalendar } from '../../hooks/useCalendar';
 import { useStocks } from '../../hooks/useStocks';
@@ -130,33 +131,28 @@ function getWeatherImageUrl(condition: string): string {
   return `https://images.unsplash.com/photo-${weatherImageMap.default}?w=800&q=80`;
 }
 
-// Magical Prophet Text - fog/smoke reveal like the Daily Prophet from Harry Potter
-// Text emerges from mist, then STAYS visible and readable
+// Magical Prophet Text - ink materializing on parchment with quill animation
+// Professional NY Post meets Hogwarts - clean, fast, magical
 function MagicalText({
   text,
   style = {},
-  revealDuration = 8000, // How long the reveal takes (not a cycle!)
+  revealDuration = 3000,
+  variant = 'default', // 'default' | 'headline' | 'subtle'
 }: {
   text: string;
   style?: React.CSSProperties;
   revealDuration?: number;
+  variant?: 'default' | 'headline' | 'subtle';
 }) {
-  const [time, setTime] = useState(0);
+  const [progress, setProgress] = useState(0);
   const [isRevealed, setIsRevealed] = useState(false);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
 
-  // Generate unique properties for each character
-  const charProps = useMemo(() =>
-    text.split('').map((_, i) => ({
-      // When this character starts revealing (0-1 of reveal duration)
-      revealStart: (i / text.length) * 0.7, // Stagger across 70% of duration
-      // Random variation
-      randomDelay: Math.random() * 0.1,
-      // Fog movement during reveal
-      fogPhase: Math.random() * Math.PI * 2,
-      fogAmplitude: 4 + Math.random() * 6,
-    })), [text]
+  // Generate character timing (each char starts at a different time)
+  const charStarts = useMemo(() =>
+    text.split('').map((_, i) => (i / text.length) * 0.6),
+    [text]
   );
 
   // Animation loop
@@ -165,10 +161,10 @@ function MagicalText({
 
     const animate = (timestamp: number) => {
       const elapsed = timestamp - startTimeRef.current;
-      setTime(elapsed);
+      const p = Math.min(1, elapsed / revealDuration);
+      setProgress(p);
 
-      // Stop animating once fully revealed
-      if (elapsed < revealDuration + 1000) {
+      if (p < 1) {
         animationRef.current = requestAnimationFrame(animate);
       } else {
         setIsRevealed(true);
@@ -181,35 +177,41 @@ function MagicalText({
     };
   }, [revealDuration]);
 
-  // If fully revealed, just show static text (no animation overhead)
+  // Static text once revealed (no animation overhead)
   if (isRevealed) {
-    return <span style={{ display: 'inline', ...style }}>{text}</span>;
+    return (
+      <motion.span
+        style={{ display: 'inline', ...style }}
+        initial={{ opacity: 0.95 }}
+        animate={{ opacity: 1 }}
+      >
+        {text}
+      </motion.span>
+    );
   }
-
-  const progress = Math.min(1, time / revealDuration);
 
   return (
     <span style={{ display: 'inline', ...style }}>
       {text.split('').map((char, i) => {
-        const props = charProps[i];
-        const charStart = props.revealStart + props.randomDelay;
+        const charStart = charStarts[i];
+        const charProgress = Math.max(0, Math.min(1, (progress - charStart) / 0.4));
+        const ease = 1 - Math.pow(1 - charProgress, 3);
 
-        // How revealed is this character? (0 = fog, 1 = solid)
-        const charProgress = Math.max(0, Math.min(1, (progress - charStart) / 0.3));
+        // Different effects based on variant
+        let opacity = ease;
+        let blur = (1 - ease) * 2;
+        let scale = 0.95 + ease * 0.05;
+        let yOffset = (1 - ease) * 4;
 
-        // Smooth easing
-        const easeReveal = charProgress * charProgress * (3 - 2 * charProgress);
-
-        // Fog movement (only while revealing)
-        const fogTime = time / 1000;
-        const fogX = Math.sin(fogTime * 2 + props.fogPhase) * props.fogAmplitude * (1 - easeReveal);
-        const fogY = Math.cos(fogTime * 1.5 + props.fogPhase) * (props.fogAmplitude * 0.5) * (1 - easeReveal);
-
-        // Blur clears as text reveals
-        const blurAmount = (1 - easeReveal) * 6;
-
-        // Opacity goes from very faint to solid
-        const opacity = 0.05 + easeReveal * 0.95;
+        if (variant === 'headline') {
+          // Clean dramatic for headlines - no rotation to avoid layout issues
+          blur = (1 - ease) * 3;
+          scale = 0.9 + ease * 0.1;
+          yOffset = (1 - ease) * 8;
+        } else if (variant === 'subtle') {
+          blur = (1 - ease) * 1;
+          yOffset = (1 - ease) * 2;
+        }
 
         return (
           <span
@@ -217,11 +219,11 @@ function MagicalText({
             style={{
               display: 'inline-block',
               opacity,
-              transform: easeReveal < 1 ? `translate(${fogX}px, ${fogY}px)` : 'none',
-              filter: blurAmount > 0.1 ? `blur(${blurAmount}px)` : 'none',
+              transform: ease < 1 ? `translateY(${yOffset}px) scale(${scale})` : 'none',
+              filter: blur > 0.1 ? `blur(${blur}px)` : 'none',
               transition: 'none',
               whiteSpace: char === ' ' ? 'pre' : 'normal',
-              willChange: easeReveal < 1 ? 'transform, opacity, filter' : 'auto',
+              willChange: ease < 1 ? 'transform, opacity, filter' : 'auto',
             }}
           >
             {char === ' ' ? '\u00A0' : char}
@@ -272,9 +274,9 @@ function Article({
 
   if (!started) return <div style={{ minHeight: 80 }} />;
 
-  // Fast reveal - headline in 3-5 sec, body in 5-10 sec
-  const headlineDuration = Math.max(3000, Math.min(5000, headline.length * 50));
-  const bodyDuration = Math.max(5000, Math.min(10000, body.length * 20));
+  // Fast reveal - headline in 1.5-3 sec, body in 2-4 sec
+  const headlineDuration = Math.max(1500, Math.min(3000, headline.length * 25));
+  const bodyDuration = Math.max(2000, Math.min(4000, body.length * 10));
 
   return (
     <div style={{ minHeight: 80 }}>
@@ -450,6 +452,118 @@ function getTodayKey(): string {
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 }
 
+// Local voice clone API URL (auto-started via launchd)
+const VOICE_CLONE_API = 'http://localhost:5123/synthesize';
+
+// Pre-generate voice audio for the briefing
+async function preGenerateVoiceAudio(text: string): Promise<string | null> {
+  try {
+    const response = await fetch(VOICE_CLONE_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+
+    if (!response.ok) {
+      console.log('Voice server not available for pre-generation');
+      return null;
+    }
+
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  } catch (err) {
+    console.log('Voice pre-generation skipped:', err);
+    return null;
+  }
+}
+
+// Voice Button Component - uses pre-generated audio
+function VoiceButton({
+  audioUrl,
+  isGenerating
+}: {
+  audioUrl: string | null;
+  isGenerating: boolean;
+}) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const stopPlayback = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setIsPlaying(false);
+  };
+
+  const playBriefing = () => {
+    if (isPlaying) {
+      stopPlayback();
+      return;
+    }
+
+    if (!audioUrl) return;
+
+    const audio = new Audio(audioUrl);
+
+    audio.onended = () => {
+      setIsPlaying(false);
+      audioRef.current = null;
+    };
+
+    audio.onerror = () => {
+      setIsPlaying(false);
+      audioRef.current = null;
+    };
+
+    audioRef.current = audio;
+    audio.play();
+    setIsPlaying(true);
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, []);
+
+  const isReady = audioUrl !== null;
+  const showButton = isReady || isGenerating;
+
+  if (!showButton) return null;
+
+  return (
+    <div style={{ marginTop: 16, textAlign: 'center' }}>
+      <button
+        onClick={playBriefing}
+        disabled={!isReady || isGenerating}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '8px 16px',
+          background: isPlaying ? 'rgba(0,0,0,0.08)' : 'transparent',
+          border: `1px solid ${isPlaying ? '#666' : '#ccc'}`,
+          borderRadius: 4,
+          cursor: isReady ? 'pointer' : 'default',
+          fontSize: 11,
+          color: isPlaying ? '#333' : '#666',
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          transition: 'all 0.2s ease',
+          opacity: isReady ? 1 : 0.5,
+        }}
+      >
+        {isPlaying ? <VolumeX size={14} /> : <Volume2 size={14} />}
+        {isGenerating ? 'Preparing...' : isPlaying ? 'Stop' : 'Listen'}
+      </button>
+    </div>
+  );
+}
+
 export function DailyProphetScreen() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [habits, setHabits] = useState<DailyHabit[]>([]);
@@ -460,6 +574,9 @@ export function DailyProphetScreen() {
   const [currentProverb, setCurrentProverb] = useState(proverbs[0]);
   const [articles, setArticles] = useState<NewspaperArticles | null>(null);
   const [isLoadingArticles, setIsLoadingArticles] = useState(true);
+  const [voiceAudioUrl, setVoiceAudioUrl] = useState<string | null>(null);
+  const [isGeneratingVoice, setIsGeneratingVoice] = useState(false);
+  const voiceAudioUrlRef = useRef<string | null>(null);
   const lastAlertRef = useRef<string | null>(null);
   const articleRefreshRef = useRef<number>(0);
 
@@ -576,8 +693,21 @@ export function DailyProphetScreen() {
     try {
       const newArticles = await generateNewspaperArticles(data, GROQ_API_KEY);
       setArticles(newArticles);
+
+      // Pre-generate voice audio for the headline and greeting
+      setIsGeneratingVoice(true);
+      // Revoke old audio URL to prevent memory leak
+      if (voiceAudioUrlRef.current) {
+        URL.revokeObjectURL(voiceAudioUrlRef.current);
+      }
+      const textToRead = `${newArticles.headline}. ${newArticles.greeting}`;
+      const audioUrl = await preGenerateVoiceAudio(textToRead);
+      voiceAudioUrlRef.current = audioUrl;
+      setVoiceAudioUrl(audioUrl);
+      setIsGeneratingVoice(false);
     } catch (error) {
       console.error('Failed to generate articles:', error);
+      setIsGeneratingVoice(false);
     } finally {
       setIsLoadingArticles(false);
     }
@@ -662,46 +792,67 @@ export function DailyProphetScreen() {
       `}</style>
 
       {/* Masthead */}
-      <div style={{ padding: '16px 24px 12px', borderBottom: '3px double #000', background: 'rgba(255,255,255,0.5)' }}>
+      <div style={{ padding: '16px 24px 12px', borderBottom: '1px solid #ccc', background: 'rgba(255,255,255,0.5)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingBottom: 4, borderBottom: '1px solid #ddd' }}>
           <span style={{ fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#666' }}>{dateStr}</span>
           <span style={{ fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#666' }}>{timeStr}</span>
         </div>
         <div style={{ textAlign: 'center' }}>
           <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0, color: '#000', fontFamily: '"Playfair Display", Georgia, serif' }}>
-            The Daily Prophet
+            Daily Briefing
           </h1>
           <div style={{ fontSize: 9, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#888', marginTop: 4 }}>
-            All the news that matters, magically curated for you
+            Your personalized morning update
           </div>
         </div>
       </div>
 
       {/* Main Headline */}
-      {articles && (
-        <div style={{ padding: '16px 24px', borderBottom: '2px solid #000', background: 'rgba(255,255,255,0.3)' }}>
-          <MagicalText
-            text={articles.headline}
-            revealDuration={12000}
-                        style={{
-              fontSize: 24,
-              fontWeight: 700,
-              color: '#000',
-              fontFamily: '"Playfair Display", Georgia, serif',
-              lineHeight: 1.2,
-              display: 'block',
-              textAlign: 'center',
-            }}
-          />
-          <div style={{ marginTop: 12, textAlign: 'center' }}>
-            <MagicalText
-              text={articles.greeting}
-              revealDuration={18000}
-                            style={{ fontSize: 14, color: '#444', fontStyle: 'italic' }}
-            />
+      <div style={{
+        padding: '20px 24px',
+        borderBottom: '1px solid #ddd',
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(245,240,225,0.3) 100%)',
+        minHeight: 100,
+      }}>
+        {articles ? (
+          <>
+            {/* Headline */}
+            <div style={{ textAlign: 'center', marginBottom: 12 }}>
+              <MagicalText
+                text={articles.headline}
+                revealDuration={3000}
+                variant="headline"
+                style={{
+                  fontSize: 24,
+                  fontWeight: 700,
+                  color: '#000',
+                  fontFamily: '"Playfair Display", Georgia, serif',
+                  lineHeight: 1.3,
+                }}
+              />
+            </div>
+
+            {/* Greeting */}
+            <div style={{ textAlign: 'center' }}>
+              <MagicalText
+                text={articles.greeting}
+                revealDuration={4000}
+                variant="subtle"
+                style={{ fontSize: 14, color: '#444', fontStyle: 'italic', lineHeight: 1.6 }}
+              />
+            </div>
+
+            {/* Voice Playback Button */}
+            <VoiceButton audioUrl={voiceAudioUrl} isGenerating={isGeneratingVoice} />
+          </>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{ fontSize: 14, color: '#888', fontStyle: 'italic' }}>
+              Preparing your briefing...
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Content Grid */}
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1.2fr 1fr', gap: 0 }}>

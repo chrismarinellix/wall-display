@@ -1,0 +1,644 @@
+# ============================================
+# GLASSMORPHIC HOME ASSISTANT DASHBOARD
+# ============================================
+# Requires: Mushroom Cards, Card Mod, Button Card (optional)
+# Install via HACS before using this dashboard
+# ============================================
+
+title: Home
+views:
+  # -----------------------------------------
+  # MAIN HOME VIEW
+  # -----------------------------------------
+  - title: Home
+    path: home
+    icon: mdi:home
+    type: custom:vertical-stack-in-card
+    cards:
+      # Welcome Header with Chips
+      - type: custom:mushroom-chips-card
+        chips:
+          - type: weather
+            entity: weather.home
+            show_temperature: true
+            show_conditions: true
+          - type: template
+            icon: mdi:thermometer
+            content: "{{ states('sensor.hallway_temperature') }}°C"
+            icon_color: >
+              {% set temp = states('sensor.hallway_temperature') | float %}
+              {% if temp > 26 %}red
+              {% elif temp > 22 %}orange
+              {% else %}blue{% endif %}
+          - type: template
+            icon: mdi:water-percent
+            content: "{{ states('sensor.hallway_humidity') }}%"
+            icon_color: blue
+          - type: entity
+            entity: sensor.chriss_iphone_battery_level
+            icon: mdi:cellphone
+        alignment: center
+        card_mod:
+          style: |
+            ha-card {
+              background: rgba(255, 255, 255, 0.1) !important;
+              backdrop-filter: blur(10px) !important;
+              -webkit-backdrop-filter: blur(10px) !important;
+              border: 1px solid rgba(255, 255, 255, 0.2) !important;
+              border-radius: 20px !important;
+            }
+
+      # Thermostat - Glassmorphic
+      - type: custom:mushroom-climate-card
+        entity: climate.hallway
+        name: Nest Thermostat
+        icon: mdi:thermostat
+        show_temperature_control: true
+        hvac_modes:
+          - heat
+          - cool
+          - "off"
+        card_mod:
+          style: |
+            ha-card {
+              background: rgba(255, 255, 255, 0.1) !important;
+              backdrop-filter: blur(20px) !important;
+              -webkit-backdrop-filter: blur(20px) !important;
+              border: 1px solid rgba(255, 255, 255, 0.18) !important;
+              border-radius: 24px !important;
+              box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+            }
+            mushroom-state-info {
+              --primary-text-color: white;
+              --secondary-text-color: rgba(255,255,255,0.7);
+            }
+
+      # Temperature Gauges Row
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-template-card
+            primary: Hallway
+            secondary: "{{ states('sensor.hallway_temperature') }}°C"
+            icon: mdi:home-thermometer
+            icon_color: >
+              {% set temp = states('sensor.hallway_temperature') | float %}
+              {% if temp > 26 %}red{% elif temp > 22 %}orange{% else %}cyan{% endif %}
+            card_mod:
+              style: |
+                ha-card {
+                  background: rgba(255, 255, 255, 0.08) !important;
+                  backdrop-filter: blur(15px) !important;
+                  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                  border-radius: 20px !important;
+                }
+          - type: custom:mushroom-template-card
+            primary: Master
+            secondary: "{{ states('sensor.master_bedroom_temperature') }}°C"
+            icon: mdi:bed-king
+            icon_color: >
+              {% set temp = states('sensor.master_bedroom_temperature') | float %}
+              {% if temp > 26 %}red{% elif temp > 22 %}orange{% else %}cyan{% endif %}
+            card_mod:
+              style: |
+                ha-card {
+                  background: rgba(255, 255, 255, 0.08) !important;
+                  backdrop-filter: blur(15px) !important;
+                  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                  border-radius: 20px !important;
+                }
+          - type: custom:mushroom-template-card
+            primary: Ella
+            secondary: "{{ states('sensor.ella_temperature_2') }}°C"
+            icon: mdi:account-child
+            icon_color: >
+              {% set temp = states('sensor.ella_temperature_2') | float %}
+              {% if temp > 26 %}red{% elif temp > 22 %}orange{% else %}cyan{% endif %}
+            card_mod:
+              style: |
+                ha-card {
+                  background: rgba(255, 255, 255, 0.08) !important;
+                  backdrop-filter: blur(15px) !important;
+                  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                  border-radius: 20px !important;
+                }
+          - type: custom:mushroom-template-card
+            primary: Olivier
+            secondary: "{{ states('sensor.olivier_temperature') }}°C"
+            icon: mdi:account-child
+            icon_color: >
+              {% set temp = states('sensor.olivier_temperature') | float %}
+              {% if temp > 26 %}red{% elif temp > 22 %}orange{% else %}cyan{% endif %}
+            card_mod:
+              style: |
+                ha-card {
+                  background: rgba(255, 255, 255, 0.08) !important;
+                  backdrop-filter: blur(15px) !important;
+                  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                  border-radius: 20px !important;
+                }
+
+      # Fans Section Title
+      - type: custom:mushroom-title-card
+        title: Ceiling Fans
+        subtitle: Tap to toggle, hold for speed
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 24px;
+              --subtitle-font-size: 14px;
+              --title-color: white;
+              --subtitle-color: rgba(255,255,255,0.6);
+            }
+
+      # Fans Grid - Glassmorphic
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: custom:mushroom-fan-card
+            entity: fan.master_bedroom
+            name: Master Bedroom
+            icon: mdi:ceiling-fan
+            show_percentage_control: true
+            show_oscillate_control: false
+            collapsible_controls: true
+            card_mod:
+              style: |
+                ha-card {
+                  background: rgba(255, 255, 255, 0.1) !important;
+                  backdrop-filter: blur(20px) !important;
+                  -webkit-backdrop-filter: blur(20px) !important;
+                  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+                  border-radius: 24px !important;
+                  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+                }
+          - type: custom:mushroom-fan-card
+            entity: fan.ella_2
+            name: Ella's Room
+            icon: mdi:ceiling-fan
+            show_percentage_control: true
+            collapsible_controls: true
+            card_mod:
+              style: |
+                ha-card {
+                  background: rgba(255, 255, 255, 0.1) !important;
+                  backdrop-filter: blur(20px) !important;
+                  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+                  border-radius: 24px !important;
+                  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+                }
+          - type: custom:mushroom-fan-card
+            entity: fan.olivier
+            name: Olivier's Room
+            icon: mdi:ceiling-fan
+            show_percentage_control: true
+            collapsible_controls: true
+            card_mod:
+              style: |
+                ha-card {
+                  background: rgba(255, 255, 255, 0.1) !important;
+                  backdrop-filter: blur(20px) !important;
+                  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+                  border-radius: 24px !important;
+                  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+                }
+          - type: custom:mushroom-fan-card
+            entity: fan.ella
+            name: Sitting Room
+            icon: mdi:ceiling-fan
+            show_percentage_control: true
+            collapsible_controls: true
+            card_mod:
+              style: |
+                ha-card {
+                  background: rgba(255, 255, 255, 0.1) !important;
+                  backdrop-filter: blur(20px) !important;
+                  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+                  border-radius: 24px !important;
+                  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+                }
+
+      # Lights Section
+      - type: custom:mushroom-title-card
+        title: Lights
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 24px;
+              --title-color: white;
+            }
+
+      - type: grid
+        columns: 3
+        square: false
+        cards:
+          - type: custom:mushroom-light-card
+            entity: light.master_bedroom
+            name: Master
+            icon: mdi:ceiling-light
+            use_light_color: true
+            show_brightness_control: true
+            collapsible_controls: true
+            card_mod:
+              style: |
+                ha-card {
+                  background: rgba(255, 255, 255, 0.1) !important;
+                  backdrop-filter: blur(20px) !important;
+                  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+                  border-radius: 24px !important;
+                }
+          - type: custom:mushroom-light-card
+            entity: light.ella
+            name: Ella
+            icon: mdi:ceiling-light
+            use_light_color: true
+            show_brightness_control: true
+            collapsible_controls: true
+            card_mod:
+              style: |
+                ha-card {
+                  background: rgba(255, 255, 255, 0.1) !important;
+                  backdrop-filter: blur(20px) !important;
+                  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+                  border-radius: 24px !important;
+                }
+          - type: custom:mushroom-light-card
+            entity: light.olivier
+            name: Olivier
+            icon: mdi:ceiling-light
+            use_light_color: true
+            show_brightness_control: true
+            collapsible_controls: true
+            card_mod:
+              style: |
+                ha-card {
+                  background: rgba(255, 255, 255, 0.1) !important;
+                  backdrop-filter: blur(20px) !important;
+                  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+                  border-radius: 24px !important;
+                }
+
+  # -----------------------------------------
+  # CAMERAS VIEW
+  # -----------------------------------------
+  - title: Cameras
+    path: cameras
+    icon: mdi:cctv
+    cards:
+      - type: custom:mushroom-title-card
+        title: Security Cameras
+        subtitle: Live feeds
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 28px;
+              --title-color: white;
+              --subtitle-color: rgba(255,255,255,0.6);
+            }
+
+      # Nest Camera
+      - type: picture-entity
+        entity: camera.upstairs
+        name: Upstairs (Nest)
+        camera_view: live
+        show_state: false
+        card_mod:
+          style: |
+            ha-card {
+              background: rgba(255, 255, 255, 0.1) !important;
+              backdrop-filter: blur(10px) !important;
+              border: 1px solid rgba(255, 255, 255, 0.2) !important;
+              border-radius: 24px !important;
+              overflow: hidden;
+            }
+
+      # Reolink Camera
+      - type: picture-entity
+        entity: camera.rlc_823a_snapshots_clear
+        name: Outdoor (Reolink)
+        camera_view: auto
+        show_state: false
+        card_mod:
+          style: |
+            ha-card {
+              background: rgba(255, 255, 255, 0.1) !important;
+              backdrop-filter: blur(10px) !important;
+              border: 1px solid rgba(255, 255, 255, 0.2) !important;
+              border-radius: 24px !important;
+              overflow: hidden;
+            }
+
+      # PTZ Controls - Glassmorphic
+      - type: custom:mushroom-chips-card
+        chips:
+          - type: action
+            icon: mdi:arrow-left
+            tap_action:
+              action: call-service
+              service: button.press
+              target:
+                entity_id: button.rlc_823a_ptz_left
+          - type: action
+            icon: mdi:arrow-up
+            tap_action:
+              action: call-service
+              service: button.press
+              target:
+                entity_id: button.rlc_823a_ptz_up
+          - type: action
+            icon: mdi:arrow-down
+            tap_action:
+              action: call-service
+              service: button.press
+              target:
+                entity_id: button.rlc_823a_ptz_down
+          - type: action
+            icon: mdi:arrow-right
+            tap_action:
+              action: call-service
+              service: button.press
+              target:
+                entity_id: button.rlc_823a_ptz_right
+          - type: action
+            icon: mdi:lightbulb
+            tap_action:
+              action: toggle
+              target:
+                entity_id: light.rlc_823a_floodlight
+        alignment: center
+        card_mod:
+          style: |
+            ha-card {
+              background: rgba(255, 255, 255, 0.1) !important;
+              backdrop-filter: blur(20px) !important;
+              border: 1px solid rgba(255, 255, 255, 0.2) !important;
+              border-radius: 50px !important;
+            }
+
+      # Detection Status
+      - type: custom:mushroom-chips-card
+        chips:
+          - type: entity
+            entity: binary_sensor.rlc_823a_motion
+            icon: mdi:motion-sensor
+          - type: entity
+            entity: binary_sensor.rlc_823a_person
+            icon: mdi:walk
+          - type: entity
+            entity: binary_sensor.rlc_823a_vehicle
+            icon: mdi:car
+          - type: entity
+            entity: binary_sensor.rlc_823a_pet
+            icon: mdi:dog
+        alignment: center
+        card_mod:
+          style: |
+            ha-card {
+              background: rgba(255, 255, 255, 0.08) !important;
+              backdrop-filter: blur(15px) !important;
+              border: 1px solid rgba(255, 255, 255, 0.15) !important;
+              border-radius: 30px !important;
+            }
+
+  # -----------------------------------------
+  # CLIMATE VIEW
+  # -----------------------------------------
+  - title: Climate
+    path: climate
+    icon: mdi:thermostat
+    cards:
+      - type: custom:mushroom-title-card
+        title: Climate Control
+        subtitle: "Hallway: {{ states('sensor.hallway_temperature') }}°C / {{ states('sensor.hallway_humidity') }}%"
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 28px;
+              --title-color: white;
+              --subtitle-color: rgba(255,255,255,0.7);
+            }
+
+      # Big Thermostat Card
+      - type: custom:mushroom-climate-card
+        entity: climate.hallway
+        name: Nest Thermostat
+        show_temperature_control: true
+        hvac_modes:
+          - heat
+          - cool
+          - heat_cool
+          - "off"
+        layout: vertical
+        card_mod:
+          style: |
+            ha-card {
+              background: linear-gradient(135deg, rgba(255,100,50,0.2) 0%, rgba(50,150,255,0.2) 100%) !important;
+              backdrop-filter: blur(25px) !important;
+              -webkit-backdrop-filter: blur(25px) !important;
+              border: 1px solid rgba(255, 255, 255, 0.25) !important;
+              border-radius: 30px !important;
+              box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
+              padding: 20px !important;
+            }
+
+      # Temperature History
+      - type: history-graph
+        title: 24hr Temperature History
+        hours_to_show: 24
+        entities:
+          - entity: sensor.hallway_temperature
+            name: Hallway
+          - entity: sensor.master_bedroom_temperature
+            name: Master
+          - entity: sensor.ella_temperature_2
+            name: Ella
+          - entity: sensor.olivier_temperature
+            name: Olivier
+        card_mod:
+          style: |
+            ha-card {
+              background: rgba(255, 255, 255, 0.1) !important;
+              backdrop-filter: blur(20px) !important;
+              border: 1px solid rgba(255, 255, 255, 0.2) !important;
+              border-radius: 24px !important;
+            }
+
+      # Auto Comfort Modes
+      - type: custom:mushroom-title-card
+        title: Auto Comfort
+        card_mod:
+          style: |
+            ha-card { --title-color: white; }
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: custom:mushroom-climate-card
+            entity: climate.master_bedroom_auto_comfort
+            name: Master
+            icon: mdi:fan-auto
+            card_mod:
+              style: |
+                ha-card {
+                  background: rgba(255, 255, 255, 0.08) !important;
+                  backdrop-filter: blur(15px) !important;
+                  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                  border-radius: 20px !important;
+                }
+          - type: custom:mushroom-climate-card
+            entity: climate.ella_auto_comfort_2
+            name: Ella
+            icon: mdi:fan-auto
+            card_mod:
+              style: |
+                ha-card {
+                  background: rgba(255, 255, 255, 0.08) !important;
+                  backdrop-filter: blur(15px) !important;
+                  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                  border-radius: 20px !important;
+                }
+          - type: custom:mushroom-climate-card
+            entity: climate.olivier_auto_comfort
+            name: Olivier
+            icon: mdi:fan-auto
+            card_mod:
+              style: |
+                ha-card {
+                  background: rgba(255, 255, 255, 0.08) !important;
+                  backdrop-filter: blur(15px) !important;
+                  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                  border-radius: 20px !important;
+                }
+          - type: custom:mushroom-climate-card
+            entity: climate.ella_auto_comfort
+            name: Sitting Room
+            icon: mdi:fan-auto
+            card_mod:
+              style: |
+                ha-card {
+                  background: rgba(255, 255, 255, 0.08) !important;
+                  backdrop-filter: blur(15px) !important;
+                  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                  border-radius: 20px !important;
+                }
+
+  # -----------------------------------------
+  # DEVICES VIEW
+  # -----------------------------------------
+  - title: Devices
+    path: devices
+    icon: mdi:devices
+    cards:
+      - type: custom:mushroom-title-card
+        title: Devices & Status
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 28px;
+              --title-color: white;
+            }
+
+      # Phone Status
+      - type: custom:mushroom-template-card
+        primary: Chris's iPhone
+        secondary: "{{ states('sensor.chriss_iphone_battery_level') }}% • {{ states('sensor.chriss_iphone_battery_state') }}"
+        icon: mdi:cellphone
+        icon_color: >
+          {% set level = states('sensor.chriss_iphone_battery_level') | int %}
+          {% if level > 60 %}green
+          {% elif level > 20 %}orange
+          {% else %}red{% endif %}
+        card_mod:
+          style: |
+            ha-card {
+              background: rgba(255, 255, 255, 0.1) !important;
+              backdrop-filter: blur(20px) !important;
+              border: 1px solid rgba(255, 255, 255, 0.2) !important;
+              border-radius: 24px !important;
+            }
+
+      # Person Card
+      - type: custom:mushroom-person-card
+        entity: person.chris
+        icon_type: entity-picture
+        layout: horizontal
+        card_mod:
+          style: |
+            ha-card {
+              background: rgba(255, 255, 255, 0.1) !important;
+              backdrop-filter: blur(20px) !important;
+              border: 1px solid rgba(255, 255, 255, 0.2) !important;
+              border-radius: 24px !important;
+            }
+
+      # Sun Info
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-template-card
+            primary: Sunrise
+            secondary: "{{ as_timestamp(states('sensor.sun_next_rising')) | timestamp_custom('%H:%M') }}"
+            icon: mdi:weather-sunset-up
+            icon_color: orange
+            card_mod:
+              style: |
+                ha-card {
+                  background: rgba(255, 200, 100, 0.15) !important;
+                  backdrop-filter: blur(15px) !important;
+                  border: 1px solid rgba(255, 200, 100, 0.3) !important;
+                  border-radius: 20px !important;
+                }
+          - type: custom:mushroom-template-card
+            primary: Sunset
+            secondary: "{{ as_timestamp(states('sensor.sun_next_setting')) | timestamp_custom('%H:%M') }}"
+            icon: mdi:weather-sunset-down
+            icon_color: deep-orange
+            card_mod:
+              style: |
+                ha-card {
+                  background: rgba(255, 100, 50, 0.15) !important;
+                  backdrop-filter: blur(15px) !important;
+                  border: 1px solid rgba(255, 100, 50, 0.3) !important;
+                  border-radius: 20px !important;
+                }
+
+      # System Status
+      - type: custom:mushroom-chips-card
+        chips:
+          - type: entity
+            entity: binary_sensor.remote_ui
+            icon: mdi:cloud-check
+          - type: entity
+            entity: sun.sun
+        alignment: center
+        card_mod:
+          style: |
+            ha-card {
+              background: rgba(255, 255, 255, 0.08) !important;
+              backdrop-filter: blur(15px) !important;
+              border: 1px solid rgba(255, 255, 255, 0.15) !important;
+              border-radius: 30px !important;
+            }
+
+
+# ============================================
+# THEME CONFIGURATION (Add to configuration.yaml)
+# ============================================
+# For best glassmorphic effect, create a dark theme:
+#
+# frontend:
+#   themes:
+#     glassmorphic:
+#       modes:
+#         dark:
+#           primary-color: "#7c4dff"
+#           accent-color: "#7c4dff"
+#           primary-background-color: "#0a0a0f"
+#           secondary-background-color: "#12121a"
+#           card-background-color: "rgba(255, 255, 255, 0.05)"
+#           paper-card-background-color: "rgba(255, 255, 255, 0.05)"
+#           ha-card-background: "transparent"
+#           lovelace-background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)"
+#
+# Then select the theme in your profile settings
+# ============================================

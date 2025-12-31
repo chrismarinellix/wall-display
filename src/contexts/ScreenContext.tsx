@@ -22,14 +22,15 @@ const NON_CYCLE_SCREENS: ScreenType[] = ['video'];
 // How many screens to auto-cycle between (first N screens in screenOrder)
 const AUTO_CYCLE_COUNT = 4;
 
-// Per-screen display durations (in ms) - weather stays longest
+// Per-screen display durations (in ms)
 const SCREEN_DURATIONS: Record<string, number> = {
-  'weather': 300000,   // 5 minutes - most prominent
+  'summary': 300000,   // 5 minutes - daily briefing first
+  'weather': 180000,   // 3 minutes - weather
   'japanese': 120000,  // 2 minutes - proverbs
   'moments': 120000,   // 2 minutes - history
   'quotes': 120000,    // 2 minutes - quotes
 };
-const DEFAULT_DURATION = 180000; // 3 minutes default
+const DEFAULT_DURATION = 120000; // 2 minutes default
 
 export function ScreenProvider({ children }: { children: ReactNode }) {
   const { settings } = useSettings();

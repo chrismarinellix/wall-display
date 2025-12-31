@@ -1,90 +1,78 @@
 import { useState, useEffect, useRef } from 'react';
 import { historicalMoments, HistoricalMoment } from '../../data/moments';
 
-// Floating text that dissolves and reappears in different positions
-function FloatingText({
+// Mist fade text - appears, then slowly dissolves into mist and stays gone
+function MistFadeText({
   text,
   style = {},
-  moveInterval = 5000,
+  appearDuration = 2000,
+  visibleDuration = 8000,
+  fadeDuration = 4000,
+  initialX = 50,
+  initialY = 50,
 }: {
   text: string;
   style?: React.CSSProperties;
-  moveInterval?: number;
+  appearDuration?: number;
+  visibleDuration?: number;
+  fadeDuration?: number;
+  initialX?: number;
+  initialY?: number;
 }) {
-  const [position, setPosition] = useState({ x: 50, y: 50 }); // percent from center
-  const [phase, setPhase] = useState<'visible' | 'dissolving' | 'moving' | 'appearing'>('appearing');
-  const [key, setKey] = useState(0);
+  const [phase, setPhase] = useState<'appearing' | 'visible' | 'fading' | 'gone'>('appearing');
+  const [progress, setProgress] = useState(0);
+  const startTimeRef = useRef<number>(0);
+  const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const cycle = () => {
-      // Dissolve
-      setPhase('dissolving');
+    startTimeRef.current = performance.now();
 
-      setTimeout(() => {
-        // Move to new position
-        setPhase('moving');
-        setPosition({
-          x: 20 + Math.random() * 60, // 20-80% of width
-          y: 20 + Math.random() * 60, // 20-80% of height
-        });
-        setKey(k => k + 1);
+    const animate = (timestamp: number) => {
+      const elapsed = timestamp - startTimeRef.current;
 
-        setTimeout(() => {
-          // Appear at new position
-          setPhase('appearing');
+      if (elapsed < appearDuration) {
+        setPhase('appearing');
+        setProgress(elapsed / appearDuration);
+      } else if (elapsed < appearDuration + visibleDuration) {
+        setPhase('visible');
+        setProgress(1);
+      } else if (elapsed < appearDuration + visibleDuration + fadeDuration) {
+        setPhase('fading');
+        setProgress(1 - (elapsed - appearDuration - visibleDuration) / fadeDuration);
+      } else {
+        setPhase('gone');
+        setProgress(0);
+        return; // Stop animating
+      }
 
-          setTimeout(() => {
-            setPhase('visible');
-          }, 800);
-        }, 100);
-      }, 800);
+      animationRef.current = requestAnimationFrame(animate);
     };
 
-    // Initial appear
-    setTimeout(() => setPhase('visible'), 800);
+    animationRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+  }, [appearDuration, visibleDuration, fadeDuration]);
 
-    const timer = setInterval(cycle, moveInterval);
-    return () => clearInterval(timer);
-  }, [moveInterval]);
+  if (phase === 'gone') return null;
 
-  const getOpacity = () => {
-    switch (phase) {
-      case 'dissolving': return 0;
-      case 'moving': return 0;
-      case 'appearing': return 1;
-      case 'visible': return 1;
-    }
-  };
+  const eased = progress * progress * (3 - 2 * progress);
 
-  const getBlur = () => {
-    switch (phase) {
-      case 'dissolving': return 20;
-      case 'moving': return 20;
-      case 'appearing': return 0;
-      case 'visible': return 0;
-    }
-  };
-
-  const getScale = () => {
-    switch (phase) {
-      case 'dissolving': return 1.1;
-      case 'moving': return 0.9;
-      case 'appearing': return 1;
-      case 'visible': return 1;
-    }
-  };
+  // Mist effect during fade
+  const blur = phase === 'fading' ? (1 - eased) * 15 : phase === 'appearing' ? (1 - eased) * 8 : 0;
+  const drift = phase === 'fading' ? (1 - eased) * 20 : 0;
+  const scale = phase === 'fading' ? 1 + (1 - eased) * 0.1 : 1;
 
   return (
     <div
-      key={key}
       style={{
         position: 'absolute',
-        left: `${position.x}%`,
-        top: `${position.y}%`,
-        transform: `translate(-50%, -50%) scale(${getScale()})`,
-        opacity: getOpacity(),
-        filter: `blur(${getBlur()}px)`,
-        transition: phase === 'moving' ? 'none' : 'all 0.8s ease-in-out',
+        left: `${initialX}%`,
+        top: `${initialY}%`,
+        transform: `translate(-50%, -50%) translateY(${-drift}px) scale(${scale})`,
+        opacity: eased,
+        filter: `blur(${blur}px)`,
+        transition: 'none',
         ...style,
       }}
     >
@@ -429,12 +417,16 @@ export function MomentsScreen() {
         }}
       />
 
-      {/* Floating Giant Year - dissolves and reappears in different positions */}
-      <FloatingText
+      {/* Giant Year - fades into mist and stays gone, positioned higher */}
+      <MistFadeText
         text={moment.year}
-        moveInterval={8000}
+        appearDuration={2500}
+        visibleDuration={8000}
+        fadeDuration={4000}
+        initialX={50}
+        initialY={35}
         style={{
-          fontSize: 320,
+          fontSize: 300,
           fontWeight: 100,
           fontFamily: '"Playfair Display", Georgia, serif',
           color: 'rgba(255,255,255,0.25)',
@@ -447,21 +439,25 @@ export function MomentsScreen() {
         }}
       />
 
-      {/* Floating Title - dissolves and reappears */}
-      <FloatingText
+      {/* Title - fades into mist and stays gone */}
+      <MistFadeText
         text={moment.title}
-        moveInterval={8000}
+        appearDuration={3000}
+        visibleDuration={9000}
+        fadeDuration={3500}
+        initialX={50}
+        initialY={52}
         style={{
           fontSize: 42,
           fontWeight: 300,
           fontFamily: '"Playfair Display", Georgia, serif',
           color: 'rgba(255,255,255,0.85)',
           letterSpacing: '0.02em',
-          lineHeight: 1.2,
+          lineHeight: 1.3,
           textShadow: '0 0 50px rgba(0,0,0,0.6)',
           pointerEvents: 'none',
           userSelect: 'none',
-          maxWidth: '70%',
+          maxWidth: '65%',
           textAlign: 'center',
           zIndex: 2,
         }}
@@ -478,22 +474,22 @@ export function MomentsScreen() {
           padding: '60px 50px 70px',
         }}
       >
-        {/* Section label - minimal */}
+        {/* Section label */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 16,
-            marginBottom: 20,
+            marginBottom: 24,
             animation: 'fadeInUp 1s ease 0.2s both',
           }}
         >
           <span
             style={{
-              fontSize: 9,
+              fontSize: 11,
               fontWeight: 600,
-              letterSpacing: '0.5em',
-              color: 'rgba(255,255,255,0.4)',
+              letterSpacing: '0.4em',
+              color: 'rgba(255,255,255,0.5)',
               textTransform: 'uppercase',
             }}
           >
@@ -502,23 +498,23 @@ export function MomentsScreen() {
           <div
             style={{
               height: 1,
-              width: 80,
-              background: 'linear-gradient(to right, rgba(255,255,255,0.3), transparent)',
+              width: 100,
+              background: 'linear-gradient(to right, rgba(255,255,255,0.4), transparent)',
             }}
           />
         </div>
 
-        {/* Description only - clean and minimal */}
+        {/* Description - larger and more prominent */}
         <p
           style={{
-            fontSize: 16,
+            fontSize: 26,
             fontWeight: 300,
-            lineHeight: 1.9,
-            color: 'rgba(255,255,255,0.85)',
+            lineHeight: 1.7,
+            color: 'rgba(255,255,255,0.95)',
             margin: 0,
-            maxWidth: 550,
+            maxWidth: 700,
             fontFamily: 'Georgia, serif',
-            textShadow: '0 1px 20px rgba(0,0,0,0.4)',
+            textShadow: '0 2px 30px rgba(0,0,0,0.5)',
             animation: 'fadeInUp 1s ease 0.4s both',
           }}
         >
