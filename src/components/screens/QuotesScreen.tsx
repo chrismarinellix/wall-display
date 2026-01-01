@@ -164,61 +164,52 @@ function AnimatedQuote({
                   position: 'relative',
                 }}
               >
-                {/* Ink dots layer */}
-                {char !== ' ' && (phase === 'dots' || (phase === 'morphing' && morphProgress < 0.8)) && (
+                {/* Ink dots layer - appear instantly during dots phase */}
+                {char !== ' ' && (phase === 'dots' || (phase === 'morphing' && morphProgress < 0.5)) && (
                   <span style={{
                     position: 'absolute',
                     top: '50%',
                     left: '50%',
                     transform: 'translate(-50%, -50%)',
-                    opacity: phase === 'morphing' ? 1 - easedMorph : 1,
+                    opacity: phase === 'morphing' ? 1 - easedMorph * 2 : (dotsProgress > 0.1 ? 1 : 0),
                   }}>
-                    {charProp.inkDots.map((dot, dotIndex) => {
-                      const dotProgress = Math.max(0, Math.min(1, (easedDots - dot.delay) / 0.3));
-                      const spreadX = dot.x * (phase === 'morphing' ? (1 - easedMorph * 0.8) : 1);
-                      const spreadY = dot.y * (phase === 'morphing' ? (1 - easedMorph * 0.8) : 1);
-
-                      return (
-                        <span
-                          key={dotIndex}
-                          style={{
-                            position: 'absolute',
-                            width: dot.size * dotProgress,
-                            height: dot.size * dotProgress,
-                            borderRadius: '50%',
-                            background: `radial-gradient(circle, rgba(25,25,25,${0.9 * dotProgress}) 0%, rgba(40,35,30,${0.6 * dotProgress}) 70%, transparent 100%)`,
-                            transform: `translate(${spreadX}px, ${spreadY}px)`,
-                            transition: 'none',
-                          }}
-                        />
-                      );
-                    })}
+                    {charProp.inkDots.slice(0, 5).map((dot, dotIndex) => (
+                      <span
+                        key={dotIndex}
+                        style={{
+                          position: 'absolute',
+                          width: dot.size,
+                          height: dot.size,
+                          borderRadius: '50%',
+                          background: 'rgba(30, 25, 20, 0.7)',
+                          transform: `translate(${dot.x * 0.6}px, ${dot.y * 0.6}px)`,
+                        }}
+                      />
+                    ))}
                   </span>
                 )}
 
-                {/* Character layer - calligraphy style */}
+                {/* Character layer - calligraphy style with watercolor ink bleeding */}
                 <span
                   style={{
                     opacity: charOpacity,
-                    color: phase === 'visible' ? '#2a2520' : '#1a1a1a',
+                    color: phase === 'visible' ? '#1a1512' : '#1a1a1a',
                     textShadow: phase === 'visible'
                       ? `
-                        0 0 ${3 + (charProp.inkSpread * 2)}px rgba(60, 50, 40, ${0.15 + charProp.brushStroke * 0.1}),
-                        ${-1 + charProp.brushStroke}px ${1 + charProp.randomDelay * 2}px ${2 + charProp.inkSpread}px rgba(40, 35, 30, 0.25),
-                        0 ${1 + charProp.randomDelay}px ${4 + charProp.inkSpread * 3}px rgba(80, 60, 40, 0.1)
+                        0 0 8px rgba(40, 30, 20, 0.4),
+                        0 0 16px rgba(60, 45, 30, 0.25),
+                        2px 2px 4px rgba(30, 25, 20, 0.3),
+                        -1px 1px 6px rgba(80, 60, 40, 0.2),
+                        0 0 24px rgba(100, 80, 60, 0.15)
                       `
                       : textShadow,
                     transform: phase === 'morphing'
                       ? `scale(${0.95 + easedMorph * 0.05})`
                       : phase === 'visible'
-                        ? `rotate(${(charProp.randomDelay - 0.075) * 2}deg)`
+                        ? `rotate(${(charProp.randomDelay - 0.075) * 3}deg)`
                         : 'none',
-                    transition: phase === 'visible' ? 'all 0.8s ease-out' : 'none',
+                    transition: phase === 'visible' ? 'all 1.2s ease-out' : 'none',
                     willChange: 'transform, opacity',
-                    // Watercolor ink bleeding effect for final state
-                    filter: phase === 'visible'
-                      ? `blur(${charProp.brushStroke * 0.3}px)`
-                      : 'none',
                   }}
                 >
                   {char === ' ' ? '\u00A0' : char}

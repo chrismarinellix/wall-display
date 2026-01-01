@@ -6,6 +6,7 @@ import { SettingsProvider } from './contexts/SettingsContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { ScreenProvider } from './contexts/ScreenContext';
 import { ScreenContainer } from './components/layout/ScreenContainer';
+import { AnnouncementProvider } from './components/AnnouncementProvider';
 import './index.css';
 
 function App() {
