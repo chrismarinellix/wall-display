@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Plus, GripVertical, Check, Trash2, Calendar, DollarSign, Clock, FileText, ChevronDown, ChevronUp, X, Hammer, Home, Car, Paintbrush, Wrench, Package, Sparkles } from 'lucide-react';
+import { Plus, GripVertical, Check, Trash2, Calendar, DollarSign, Clock, FileText, ChevronDown, ChevronUp, X, Hammer, Home, Car, Paintbrush, Wrench, Package, Sparkles, User, HardHat, Pencil, Save } from 'lucide-react';
 import { getProjects, addProject, updateProject, deleteProject, reorderProjects, subscribeToProjects, Project } from '../../services/supabase';
 import { format, differenceInDays, startOfYear, endOfYear, isWithinInterval, addMonths } from 'date-fns';
 
@@ -21,12 +21,21 @@ export function ProjectsScreen() {
     dragOverIndex: null,
   });
 
-  // Form state
+  // Form state for adding
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newWhen, setNewWhen] = useState('');
   const [newCost, setNewCost] = useState('');
   const [newDate, setNewDate] = useState('');
+  const [newAssignedTo, setNewAssignedTo] = useState<'Chris' | 'Contractor'>('Chris');
+
+  // Edit form state
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editWhen, setEditWhen] = useState('');
+  const [editCost, setEditCost] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editAssignedTo, setEditAssignedTo] = useState<'Chris' | 'Contractor'>('Chris');
 
   // Load projects
   useEffect(() => {
@@ -83,6 +92,7 @@ export function ProjectsScreen() {
       when: newWhen.trim() || undefined,
       cost: newCost ? parseFloat(newCost) : undefined,
       target_date: newDate || undefined,
+      assigned_to: newAssignedTo,
       status: 'pending',
     });
 
@@ -92,11 +102,44 @@ export function ProjectsScreen() {
     setNewWhen('');
     setNewCost('');
     setNewDate('');
+    setNewAssignedTo('Chris');
     setShowAddForm(false);
 
     // Refresh
     const updated = await getProjects();
     setProjects(updated);
+  };
+
+  // Start editing a project
+  const handleStartEdit = (project: Project) => {
+    setEditingId(project.id);
+    setEditTitle(project.title);
+    setEditDescription(project.description || '');
+    setEditWhen(project.when || '');
+    setEditCost(project.cost?.toString() || '');
+    setEditDate(project.target_date || '');
+    setEditAssignedTo(project.assigned_to || 'Chris');
+  };
+
+  // Save edits
+  const handleSaveEdit = async (id: string) => {
+    await updateProject(id, {
+      title: editTitle.trim(),
+      description: editDescription.trim() || undefined,
+      when: editWhen.trim() || undefined,
+      cost: editCost ? parseFloat(editCost) : undefined,
+      target_date: editDate || undefined,
+      assigned_to: editAssignedTo,
+    });
+
+    setEditingId(null);
+    const updated = await getProjects();
+    setProjects(updated);
+  };
+
+  // Cancel editing
+  const handleCancelEdit = () => {
+    setEditingId(null);
   };
 
   // Handle status toggle
@@ -388,24 +431,77 @@ export function ProjectsScreen() {
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#666', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  <Calendar size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-                  Target Date (shows in calendar)
-                </label>
-                <input
-                  type="date"
-                  value={newDate}
-                  onChange={(e) => setNewDate(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: '1px solid #ddd',
-                    borderRadius: 6,
-                    fontSize: 14,
-                    outline: 'none',
-                  }}
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#666', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <Calendar size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                    Target Date
+                  </label>
+                  <input
+                    type="date"
+                    value={newDate}
+                    onChange={(e) => setNewDate(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: 6,
+                      fontSize: 14,
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#666', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <User size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                    Who's doing it?
+                  </label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => setNewAssignedTo('Chris')}
+                      style={{
+                        flex: 1,
+                        padding: '10px 12px',
+                        border: `2px solid ${newAssignedTo === 'Chris' ? '#1a1a1a' : '#ddd'}`,
+                        borderRadius: 6,
+                        fontSize: 12,
+                        fontWeight: newAssignedTo === 'Chris' ? 600 : 400,
+                        background: newAssignedTo === 'Chris' ? '#1a1a1a' : '#fff',
+                        color: newAssignedTo === 'Chris' ? '#fff' : '#666',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <User size={12} /> Chris
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewAssignedTo('Contractor')}
+                      style={{
+                        flex: 1,
+                        padding: '10px 12px',
+                        border: `2px solid ${newAssignedTo === 'Contractor' ? '#1a1a1a' : '#ddd'}`,
+                        borderRadius: 6,
+                        fontSize: 12,
+                        fontWeight: newAssignedTo === 'Contractor' ? 600 : 400,
+                        background: newAssignedTo === 'Contractor' ? '#1a1a1a' : '#fff',
+                        color: newAssignedTo === 'Contractor' ? '#fff' : '#666',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <HardHat size={12} /> Contractor
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <button
@@ -572,6 +668,22 @@ export function ProjectsScreen() {
                             <DollarSign size={10} /> ${project.cost.toLocaleString()}
                           </span>
                         )}
+                        {project.assigned_to && (
+                          <span style={{
+                            fontSize: 10,
+                            color: project.assigned_to === 'Contractor' ? '#7b5d2e' : '#2e5d7b',
+                            background: project.assigned_to === 'Contractor' ? '#fff8e8' : '#e8f4ff',
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            fontWeight: 500,
+                          }}>
+                            {project.assigned_to === 'Contractor' ? <HardHat size={10} /> : <User size={10} />}
+                            {project.assigned_to}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -609,7 +721,7 @@ export function ProjectsScreen() {
                     </button>
                   </div>
 
-                  {/* Expanded Details */}
+                  {/* Expanded Details / Edit Form */}
                   {expandedId === project.id && (
                     <div style={{
                       padding: '12px 14px 14px',
@@ -617,36 +729,186 @@ export function ProjectsScreen() {
                       borderTop: '1px solid #f0f0f0',
                       background: '#fafafa',
                     }}>
-                      {project.description && (
-                        <div style={{ marginBottom: 12 }}>
-                          <div style={{ fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            How / Details
+                      {editingId === project.id ? (
+                        /* Edit Form */
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase' }}>Title</label>
+                            <input
+                              type="text"
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                              style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 4, fontSize: 13 }}
+                            />
                           </div>
-                          <div style={{ fontSize: 13, color: '#444', lineHeight: 1.5 }}>
-                            {project.description}
+                          <div>
+                            <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase' }}>Details</label>
+                            <textarea
+                              value={editDescription}
+                              onChange={(e) => setEditDescription(e.target.value)}
+                              rows={2}
+                              style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 4, fontSize: 13, fontFamily: 'inherit' }}
+                            />
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                            <div>
+                              <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase' }}>When</label>
+                              <input
+                                type="text"
+                                value={editWhen}
+                                onChange={(e) => setEditWhen(e.target.value)}
+                                placeholder="This weekend..."
+                                style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 4, fontSize: 13 }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase' }}>Cost ($)</label>
+                              <input
+                                type="number"
+                                value={editCost}
+                                onChange={(e) => setEditCost(e.target.value)}
+                                style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 4, fontSize: 13 }}
+                              />
+                            </div>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                            <div>
+                              <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase' }}>Target Date</label>
+                              <input
+                                type="date"
+                                value={editDate}
+                                onChange={(e) => setEditDate(e.target.value)}
+                                style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 4, fontSize: 13 }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase' }}>Assigned To</label>
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditAssignedTo('Chris')}
+                                  style={{
+                                    flex: 1,
+                                    padding: '8px',
+                                    border: `2px solid ${editAssignedTo === 'Chris' ? '#1a1a1a' : '#ddd'}`,
+                                    borderRadius: 4,
+                                    fontSize: 11,
+                                    background: editAssignedTo === 'Chris' ? '#1a1a1a' : '#fff',
+                                    color: editAssignedTo === 'Chris' ? '#fff' : '#666',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  Chris
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditAssignedTo('Contractor')}
+                                  style={{
+                                    flex: 1,
+                                    padding: '8px',
+                                    border: `2px solid ${editAssignedTo === 'Contractor' ? '#1a1a1a' : '#ddd'}`,
+                                    borderRadius: 4,
+                                    fontSize: 11,
+                                    background: editAssignedTo === 'Contractor' ? '#1a1a1a' : '#fff',
+                                    color: editAssignedTo === 'Contractor' ? '#fff' : '#666',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  Contractor
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                            <button
+                              onClick={() => handleSaveEdit(project.id)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                padding: '8px 14px',
+                                background: '#1a1a1a',
+                                border: 'none',
+                                borderRadius: 4,
+                                fontSize: 12,
+                                fontWeight: 500,
+                                color: '#fff',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <Save size={12} /> Save
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                padding: '8px 14px',
+                                background: '#fff',
+                                border: '1px solid #ddd',
+                                borderRadius: 4,
+                                fontSize: 12,
+                                color: '#666',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Cancel
+                            </button>
                           </div>
                         </div>
-                      )}
+                      ) : (
+                        /* View Mode */
+                        <>
+                          {project.description && (
+                            <div style={{ marginBottom: 12 }}>
+                              <div style={{ fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                How / Details
+                              </div>
+                              <div style={{ fontSize: 13, color: '#444', lineHeight: 1.5 }}>
+                                {project.description}
+                              </div>
+                            </div>
+                          )}
 
-                      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                        <button
-                          onClick={() => handleDelete(project.id)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            padding: '6px 10px',
-                            background: '#fff',
-                            border: '1px solid #ddd',
-                            borderRadius: 4,
-                            fontSize: 11,
-                            color: '#c44',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <Trash2 size={12} /> Delete
-                        </button>
-                      </div>
+                          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                            <button
+                              onClick={() => handleStartEdit(project)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                padding: '6px 10px',
+                                background: '#1a1a1a',
+                                border: 'none',
+                                borderRadius: 4,
+                                fontSize: 11,
+                                color: '#fff',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <Pencil size={12} /> Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(project.id)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                padding: '6px 10px',
+                                background: '#fff',
+                                border: '1px solid #ddd',
+                                borderRadius: 4,
+                                fontSize: 11,
+                                color: '#c44',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <Trash2 size={12} /> Delete
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>

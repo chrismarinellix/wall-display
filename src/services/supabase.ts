@@ -1243,6 +1243,7 @@ export interface Project {
   when?: string; // When it will be done
   target_date?: string; // ISO date for calendar integration
   cost?: number;
+  assigned_to?: 'Chris' | 'Contractor'; // Who will do it
   status: 'pending' | 'in_progress' | 'completed';
   position: number; // For drag-and-drop ordering
   created_at: string;
@@ -1282,6 +1283,7 @@ export async function getProjects(): Promise<Project[]> {
       when: d.when,
       target_date: d.target_date,
       cost: d.cost,
+      assigned_to: d.assigned_to || 'Chris',
       status: d.status || 'pending',
       position: d.position,
       created_at: d.created_at,
@@ -1339,6 +1341,7 @@ export async function addProject(project: Omit<Project, 'id' | 'created_at' | 'p
         when: newProject.when,
         target_date: newProject.target_date,
         cost: newProject.cost,
+        assigned_to: newProject.assigned_to || 'Chris',
         status: newProject.status,
         position: newProject.position,
         created_at: newProject.created_at,
