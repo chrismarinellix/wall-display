@@ -509,6 +509,75 @@ function getTodayKey(): string {
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 }
 
+// Get last 60 days for heatmap
+function getLast60Days(): string[] {
+  const days: string[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = 59; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    days.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`);
+  }
+  return days;
+}
+
+const STACK_HEIGHT = 5;
+
+// 60-day Pomodoro Heatmap Grid
+function PomodoroHeatmapGrid({ history }: { history: PomodoroHistory }) {
+  const days = getLast60Days();
+  const counts = days.map(d => history[d]?.count || 0);
+  const totalPomodoros = counts.reduce((a, b) => a + b, 0);
+
+  const getBoxColor = (dayCount: number, boxIndex: number) => {
+    const pomodoroNumber = STACK_HEIGHT - boxIndex;
+    if (dayCount >= pomodoroNumber) {
+      const darkness = Math.round(204 - (pomodoroNumber - 1) * 40);
+      return `rgb(${darkness}, ${darkness}, ${darkness})`;
+    }
+    return '#e8e8e8';
+  };
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 8, color: '#888' }}>
+        <span>60 days</span>
+        <span>{totalPomodoros} total</span>
+      </div>
+      <div style={{ display: 'flex', gap: 1 }}>
+        {days.map((day) => {
+          const count = history[day]?.count || 0;
+          return (
+            <div
+              key={day}
+              title={`${day}: ${count} pomodoro${count !== 1 ? 's' : ''}`}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+              }}
+            >
+              {Array.from({ length: STACK_HEIGHT }).map((_, boxIndex) => (
+                <div
+                  key={boxIndex}
+                  style={{
+                    height: 4,
+                    background: getBoxColor(count, boxIndex),
+                    borderRadius: 1,
+                  }}
+                />
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // Local voice clone API URL (auto-started via launchd)
 const VOICE_CLONE_API = 'http://localhost:5123/synthesize';
 
@@ -1248,6 +1317,8 @@ export function DailyProphetScreen() {
                 />
               </div>
             )}
+            {/* 60-day Pomodoro Heatmap */}
+            <PomodoroHeatmapGrid history={pomodoroHistory} />
           </div>
 
           {/* Quick Stats */}

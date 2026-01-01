@@ -149,10 +149,23 @@ function InkDotsText({
 
           if (!dot.settled) allSettled = false;
 
-          // Draw dot with slight blur effect for ink feel
+          // Draw dot with ink bleeding effect - multiple layers for wet paper look
+          // Outer bleed layer (lighter, larger)
+          ctx.beginPath();
+          ctx.arc(dot.x, dot.y, currentSize * 1.8, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(60, 50, 40, ${dot.opacity * 0.15})`;
+          ctx.fill();
+
+          // Middle bleed layer
+          ctx.beginPath();
+          ctx.arc(dot.x, dot.y, currentSize * 1.3, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(40, 35, 30, ${dot.opacity * 0.35})`;
+          ctx.fill();
+
+          // Core ink dot
           ctx.beginPath();
           ctx.arc(dot.x, dot.y, currentSize, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(26, 26, 26, ${dot.opacity})`;
+          ctx.fillStyle = `rgba(15, 12, 10, ${dot.opacity * 0.95})`;
           ctx.fill();
         } else {
           allSettled = false;
@@ -162,13 +175,25 @@ function InkDotsText({
       if (progress < 1 || !allSettled) {
         animationRef.current = requestAnimationFrame(animate);
       } else {
-        // Final state - keep the ink dots, don't switch to crisp text
-        // Draw final dots one more time to ensure they're rendered
+        // Final state - keep the ink dots with bleeding effect
         ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
         dotsRef.current.forEach(dot => {
+          // Outer bleed layer
+          ctx.beginPath();
+          ctx.arc(dot.finalX, dot.finalY, dot.finalSize * 1.8, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(60, 50, 40, 0.12)';
+          ctx.fill();
+
+          // Middle bleed layer
+          ctx.beginPath();
+          ctx.arc(dot.finalX, dot.finalY, dot.finalSize * 1.3, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(40, 35, 30, 0.3)';
+          ctx.fill();
+
+          // Core ink dot
           ctx.beginPath();
           ctx.arc(dot.finalX, dot.finalY, dot.finalSize, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(26, 26, 26, 0.92)`;
+          ctx.fillStyle = 'rgba(15, 12, 10, 0.92)';
           ctx.fill();
         });
         setIsComplete(true);
@@ -207,6 +232,7 @@ function InkDotsText({
           width: canvasSize.width,
           height: canvasSize.height,
           display: 'block',
+          filter: 'blur(0.3px)', // Subtle blur for ink bleeding into paper
         }}
       />
     </div>
