@@ -193,23 +193,34 @@ function AnimatedQuote({
                 <span
                   style={{
                     opacity: charOpacity,
-                    color: phase === 'visible' ? '#1a1512' : '#1a1a1a',
+                    color: phase === 'visible' ? '#0a0806' : '#1a1a1a',
                     textShadow: phase === 'visible'
                       ? `
-                        0 0 8px rgba(40, 30, 20, 0.4),
-                        0 0 16px rgba(60, 45, 30, 0.25),
-                        2px 2px 4px rgba(30, 25, 20, 0.3),
-                        -1px 1px 6px rgba(80, 60, 40, 0.2),
-                        0 0 24px rgba(100, 80, 60, 0.15)
+                        0 0 1px rgba(10, 8, 6, 0.9),
+                        0 0 2px rgba(20, 15, 10, 0.7),
+                        0 0 4px rgba(30, 20, 15, 0.5),
+                        0 0 8px rgba(40, 30, 20, 0.35),
+                        0 0 12px rgba(60, 45, 30, 0.25),
+                        1px 1px 2px rgba(20, 15, 10, 0.4),
+                        -1px 0 3px rgba(40, 30, 20, 0.2),
+                        0 2px 6px rgba(50, 40, 30, 0.15)
                       `
                       : textShadow,
                     transform: phase === 'morphing'
                       ? `scale(${0.95 + easedMorph * 0.05})`
                       : phase === 'visible'
-                        ? `rotate(${(charProp.randomDelay - 0.075) * 3}deg)`
+                        ? `rotate(${(charProp.randomDelay - 0.075) * 2}deg) scale(${1 + charProp.brushStroke * 0.03})`
                         : 'none',
                     transition: phase === 'visible' ? 'all 1.2s ease-out' : 'none',
                     willChange: 'transform, opacity',
+                    // Ink bleeding blur effect - varies per character
+                    filter: phase === 'visible'
+                      ? `blur(${0.2 + charProp.inkSpread * 0.15}px)`
+                      : 'none',
+                    // Slight opacity variation for uneven ink
+                    WebkitTextStroke: phase === 'visible'
+                      ? `${0.3 + charProp.brushStroke * 0.4}px rgba(20, 15, 10, 0.3)`
+                      : 'none',
                   }}
                 >
                   {char === ' ' ? '\u00A0' : char}
@@ -242,16 +253,14 @@ function AnimatedQuote({
       }}>
         <span style={{
           fontSize: 'clamp(28px, 6vw, 52px)',
-          fontWeight: phase === 'visible' ? 400 : 300,
-          lineHeight: 1.6,
-          letterSpacing: phase === 'visible' ? '0.05em' : '0.02em',
-          color: '#1a1a1a',
-          fontFamily: phase === 'visible'
-            ? '"Noto Serif JP", "Hiragino Mincho Pro", "Yu Mincho", "Shippori Mincho", Georgia, serif'
-            : '"Noto Serif JP", "Hiragino Mincho Pro", "Yu Mincho", "Playfair Display", Georgia, serif',
+          fontWeight: phase === 'visible' ? 500 : 300,
+          lineHeight: 1.7,
+          letterSpacing: phase === 'visible' ? '0.08em' : '0.02em',
+          color: '#0a0806',
+          fontFamily: '"Noto Serif JP", "Hiragino Mincho Pro", "Yu Mincho", "Shippori Mincho", Georgia, serif',
           fontStyle: 'normal',
-          // Subtle watercolor wash effect on container
-          filter: phase === 'visible' ? 'contrast(1.05)' : 'none',
+          // Enhance ink contrast
+          filter: phase === 'visible' ? 'contrast(1.1) saturate(0.9)' : 'none',
           transition: 'all 1s ease-out',
         }}>
           {renderText(quote)}
@@ -362,13 +371,25 @@ export function QuotesScreen() {
         pointerEvents: 'none',
       }} />
 
-      {/* Subtle paper grain */}
+      {/* Paper grain and fiber texture */}
       <div style={{
         position: 'absolute',
         inset: 0,
-        opacity: 0.3,
-        background: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")',
-        backgroundSize: '150px 150px',
+        opacity: 0.4,
+        background: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'5\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")',
+        backgroundSize: '120px 120px',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Subtle ink absorption areas - darker patches where ink would bleed more */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: `
+          radial-gradient(ellipse at 30% 40%, rgba(180, 160, 140, 0.08) 0%, transparent 30%),
+          radial-gradient(ellipse at 70% 60%, rgba(170, 150, 130, 0.06) 0%, transparent 25%),
+          radial-gradient(ellipse at 50% 80%, rgba(160, 140, 120, 0.05) 0%, transparent 35%)
+        `,
         pointerEvents: 'none',
       }} />
 
