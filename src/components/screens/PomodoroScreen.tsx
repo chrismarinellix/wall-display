@@ -882,7 +882,12 @@ export function PomodoroScreen() {
         </div>
       </div>
 
-      <SessionHistoryGrid sessions={sessions} />
+      {/* Show session history if we have sessions, otherwise show daily heatmap */}
+      {sessions.length > 0 ? (
+        <SessionHistoryGrid sessions={sessions} />
+      ) : (
+        <HeatmapGrid history={history} />
+      )}
     </div>
   );
 }

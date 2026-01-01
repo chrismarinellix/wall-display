@@ -360,9 +360,7 @@ function HabitHistoryGrid({
               borderRadius: 2,
               background: isCompleted
                 ? '#333'  // Dark for completed
-                : isMissed
-                  ? '#ffcdd2'  // Light red for missed
-                  : '#e8e8e8',  // Gray for no data
+                : '#e8e8e8',  // Light gray for missed or no data
               border: day.isToday ? '2px solid #666' : '1px solid #ddd',
               cursor: day.isToday ? 'pointer' : 'default',
               transition: 'all 0.2s ease',
@@ -1216,12 +1214,8 @@ export function DailyProphetScreen() {
                 <span>Done</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                <div style={{ width: 8, height: 8, background: '#ffcdd2', borderRadius: 2 }} />
+                <div style={{ width: 8, height: 8, background: '#e8e8e8', borderRadius: 2 }} />
                 <span>Missed</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                <div style={{ width: 8, height: 8, background: '#e8e8e8', borderRadius: 2, opacity: 0.4 }} />
-                <span>No data</span>
               </div>
             </div>
           </div>

@@ -200,13 +200,25 @@ function AnimatedQuote({
                 <span
                   style={{
                     opacity: charOpacity,
-                    color: '#1a1a1a',
-                    textShadow,
+                    color: phase === 'visible' ? '#2a2520' : '#1a1a1a',
+                    textShadow: phase === 'visible'
+                      ? `
+                        0 0 ${3 + (charProp.inkSpread * 2)}px rgba(60, 50, 40, ${0.15 + charProp.brushStroke * 0.1}),
+                        ${-1 + charProp.brushStroke}px ${1 + charProp.randomDelay * 2}px ${2 + charProp.inkSpread}px rgba(40, 35, 30, 0.25),
+                        0 ${1 + charProp.randomDelay}px ${4 + charProp.inkSpread * 3}px rgba(80, 60, 40, 0.1)
+                      `
+                      : textShadow,
                     transform: phase === 'morphing'
                       ? `scale(${0.95 + easedMorph * 0.05})`
-                      : 'none',
-                    transition: 'none',
+                      : phase === 'visible'
+                        ? `rotate(${(charProp.randomDelay - 0.075) * 2}deg)`
+                        : 'none',
+                    transition: phase === 'visible' ? 'all 0.8s ease-out' : 'none',
                     willChange: 'transform, opacity',
+                    // Watercolor ink bleeding effect for final state
+                    filter: phase === 'visible'
+                      ? `blur(${charProp.brushStroke * 0.3}px)`
+                      : 'none',
                   }}
                 >
                   {char === ' ' ? '\u00A0' : char}
@@ -239,12 +251,17 @@ function AnimatedQuote({
       }}>
         <span style={{
           fontSize: 'clamp(28px, 6vw, 52px)',
-          fontWeight: 300,
+          fontWeight: phase === 'visible' ? 400 : 300,
           lineHeight: 1.6,
-          letterSpacing: '0.02em',
+          letterSpacing: phase === 'visible' ? '0.05em' : '0.02em',
           color: '#1a1a1a',
-          fontFamily: '"Noto Serif JP", "Hiragino Mincho Pro", "Yu Mincho", "Playfair Display", Georgia, serif',
+          fontFamily: phase === 'visible'
+            ? '"Noto Serif JP", "Hiragino Mincho Pro", "Yu Mincho", "Shippori Mincho", Georgia, serif'
+            : '"Noto Serif JP", "Hiragino Mincho Pro", "Yu Mincho", "Playfair Display", Georgia, serif',
           fontStyle: 'normal',
+          // Subtle watercolor wash effect on container
+          filter: phase === 'visible' ? 'contrast(1.05)' : 'none',
+          transition: 'all 1s ease-out',
         }}>
           {renderText(quote)}
         </span>
