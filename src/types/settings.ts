@@ -30,6 +30,8 @@ export interface Settings {
   cryptoSymbols: string[];
   rssFeeds: RssFeed[];
   alphaVantageApiKey: string;
+  // Display mode
+  einkMode: boolean; // Disable animations for e-ink displays
 }
 
 export const defaultSettings: Settings = {
@@ -49,4 +51,5 @@ export const defaultSettings: Settings = {
     { url: 'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml', name: 'NYT Tech' },
   ],
   alphaVantageApiKey: '',
+  einkMode: false,
 };

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Play, Pause, RotateCcw, Coffee, Brain, SkipForward, Volume2, VolumeX, Target } from 'lucide-react';
-import { supabase, getPomodoroHistory, incrementPomodoro, addMinutes, PomodoroHistory } from '../../services/supabase';
+import { supabase, getPomodoroHistory, incrementPomodoro, addMinutes, PomodoroHistory, recordSession, getRecentSessions, PomodoroSession, SessionType } from '../../services/supabase';
 
 type TimerMode = 'work' | 'shortBreak' | 'longBreak';
 
@@ -161,6 +161,79 @@ function saveSettings(settings: any) {
 
 const STACK_HEIGHT = 5; // 5 boxes per day
 
+// Session symbols for display
+const SESSION_SYMBOLS: Record<SessionType, { symbol: string; color: string; label: string }> = {
+  work: { symbol: '●', color: '#000', label: 'Focus' },
+  shortBreak: { symbol: '○', color: '#888', label: 'Short' },
+  longBreak: { symbol: '◎', color: '#666', label: 'Long' },
+};
+
+// Format time for tooltip (e.g., "2:30 PM")
+function formatSessionTime(isoString: string): string {
+  const date = new Date(isoString);
+  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+// Session history grid - shows last 60 sessions with symbols
+function SessionHistoryGrid({ sessions }: { sessions: PomodoroSession[] }) {
+  const workCount = sessions.filter(s => s.type === 'work').length;
+  const breakCount = sessions.filter(s => s.type !== 'work').length;
+
+  return (
+    <div style={{ marginTop: 'auto', paddingTop: 24, width: '100%' }}>
+      <div className="flex flex--between" style={{ marginBottom: 12, alignItems: 'center' }}>
+        <div className="label label--gray">Last 60 Sessions</div>
+        <div style={{ fontSize: 11, color: '#666' }}>
+          {workCount} focus · {breakCount} breaks
+        </div>
+      </div>
+
+      {/* Session grid */}
+      <div style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 4,
+        justifyContent: 'flex-start',
+      }}>
+        {sessions.length === 0 ? (
+          <div style={{ fontSize: 11, color: '#999', fontStyle: 'italic' }}>
+            No sessions yet. Start your first focus session!
+          </div>
+        ) : (
+          sessions.map((session, idx) => {
+            const { symbol, color, label } = SESSION_SYMBOLS[session.type];
+            const time = formatSessionTime(session.completed_at);
+            return (
+              <div
+                key={session.id || idx}
+                title={`${label} (${session.duration_minutes}min) at ${time}`}
+                style={{
+                  fontSize: 14,
+                  color,
+                  cursor: 'default',
+                  lineHeight: 1,
+                }}
+              >
+                {symbol}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Legend */}
+      <div className="flex gap--medium" style={{ marginTop: 12, justifyContent: 'center' }}>
+        {Object.entries(SESSION_SYMBOLS).map(([type, { symbol, color, label }]) => (
+          <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 12, color }}>{symbol}</span>
+            <span style={{ fontSize: 10, color: '#999' }}>{label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function HeatmapGrid({ history }: { history: PomodoroHistory }) {
   const days = getLast60Days();
   const counts = days.map(d => history[d]?.count || 0);
@@ -229,12 +302,15 @@ function HeatmapGrid({ history }: { history: PomodoroHistory }) {
 
 export function PomodoroScreen() {
   const settings = getSettings();
-  const [preset, setPreset] = useState<string>(settings.preset);
+  // Ensure preset is valid, fallback to 'standard' if not
+  const initialPreset = PRESETS[settings.preset] ? settings.preset : 'standard';
+  const [preset, setPreset] = useState<string>(initialPreset);
   const [soundEnabled, setSoundEnabled] = useState(settings.soundEnabled);
   const [dailyGoal] = useState<number>(settings.dailyGoal);
   const [history, setHistory] = useState<PomodoroHistory>({});
+  const [sessions, setSessions] = useState<PomodoroSession[]>([]);
 
-  const config = PRESETS[preset];
+  const config = PRESETS[preset] || PRESETS['standard'];
   const times = {
     work: config.work * 60,
     shortBreak: config.shortBreak * 60,
@@ -282,9 +358,9 @@ export function PomodoroScreen() {
     requestNotificationPermission();
   }, []);
 
-  // Load history from Supabase (refreshes on mount, visibility change, and periodically)
+  // Load history and sessions (refreshes on mount, visibility change, and periodically)
   useEffect(() => {
-    async function loadHistory() {
+    async function loadData() {
       if (supabase) {
         console.log('Loading pomodoro history from Supabase...');
         const cloudHistory = await getPomodoroHistory();
@@ -295,21 +371,25 @@ export function PomodoroScreen() {
         console.log('Supabase not configured, using localStorage');
         setHistory(getLocalHistory());
       }
+
+      // Load recent sessions
+      const recentSessions = await getRecentSessions(60);
+      setSessions(recentSessions);
     }
 
     // Load immediately
-    loadHistory();
+    loadData();
 
     // Refresh when page becomes visible (user switches back to tab/screen)
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        loadHistory();
+        loadData();
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Also refresh every 30 seconds to pick up changes from other devices
-    const refreshInterval = setInterval(loadHistory, 30000);
+    const refreshInterval = setInterval(loadData, 30000);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -384,12 +464,14 @@ export function PomodoroScreen() {
   // Store current values in refs to avoid effect dependency issues
   const timerStateRef = useRef(timerState);
   const historyRef = useRef(history);
+  const sessionsRef = useRef(sessions);
   const configRef = useRef(config);
   const timesRef = useRef(times);
   const soundEnabledRef = useRef(soundEnabled);
 
   useEffect(() => { timerStateRef.current = timerState; }, [timerState]);
   useEffect(() => { historyRef.current = history; }, [history]);
+  useEffect(() => { sessionsRef.current = sessions; }, [sessions]);
   useEffect(() => { configRef.current = config; }, [config]);
   useEffect(() => { timesRef.current = times; }, [times]);
   useEffect(() => { soundEnabledRef.current = soundEnabled; }, [soundEnabled]);
@@ -436,6 +518,7 @@ export function PomodoroScreen() {
       // Timer complete
       if (remaining <= 0) {
         if (sound) playNotificationSound();
+        const currentSessions = sessionsRef.current;
 
         if (state.mode === 'work') {
           const newCount = state.completedPomodoros + 1;
@@ -456,6 +539,15 @@ export function PomodoroScreen() {
             incrementPomodoro(todayKey);
           }
 
+          // Record work session
+          const workSession: Omit<PomodoroSession, 'id'> = {
+            type: 'work',
+            duration_minutes: cfg.work,
+            completed_at: new Date().toISOString(),
+          };
+          recordSession(workSession);
+          setSessions([...currentSessions, { ...workSession, id: crypto.randomUUID() }].slice(-60));
+
           showNotification('Focus Complete!', `Time for a ${isLongBreak ? 'long' : 'short'} break.`);
 
           setTimerState({
@@ -468,6 +560,15 @@ export function PomodoroScreen() {
           });
           setTimeLeft(nextDuration);
         } else {
+          // Record break session
+          const breakSession: Omit<PomodoroSession, 'id'> = {
+            type: state.mode as SessionType,
+            duration_minutes: state.mode === 'longBreak' ? cfg.longBreak : cfg.shortBreak,
+            completed_at: new Date().toISOString(),
+          };
+          recordSession(breakSession);
+          setSessions([...currentSessions, { ...breakSession, id: crypto.randomUUID() }].slice(-60));
+
           showNotification('Break Over!', 'Time to focus.');
           setTimerState({
             mode: 'work',
@@ -781,7 +882,7 @@ export function PomodoroScreen() {
         </div>
       </div>
 
-      <HeatmapGrid history={history} />
+      <SessionHistoryGrid sessions={sessions} />
     </div>
   );
 }

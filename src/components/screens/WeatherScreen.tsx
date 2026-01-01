@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { Sun, Cloud, CloudRain, CloudSnow, Wind, CloudDrizzle, CloudLightning, CloudFog, Cloudy, Snowflake, CloudSun, CloudMoon, Moon } from 'lucide-react';
 import { motion, useSpring, useTransform } from 'framer-motion';
 import { useWeather } from '../../hooks/useWeather';
+import { useSettings } from '../../contexts/SettingsContext';
 import { ParticleSystem } from '../effects/ParticleSystem';
 
 // Determine temperature condition for styling
@@ -46,17 +47,19 @@ const temperatureColors = {
 function DynamicTemperature({
   temp,
   weatherCode,
+  einkMode = false,
   style = {},
 }: {
   temp: number;
   weatherCode: number;
+  einkMode?: boolean;
   style?: React.CSSProperties;
 }) {
   const [time, setTime] = useState(0);
   const animationRef = useRef<number | null>(null);
 
   const tempCondition = getTemperatureCondition(temp);
-  const weatherEffect = getWeatherEffect(temp, weatherCode);
+  const weatherEffect = einkMode ? 'normal' : getWeatherEffect(temp, weatherCode);
   const colors = temperatureColors[tempCondition];
 
   // Spring animation for smooth temperature changes
@@ -65,13 +68,14 @@ function DynamicTemperature({
   const [animatedTemp, setAnimatedTemp] = useState(Math.round(temp));
 
   useEffect(() => {
+    if (einkMode) return;
     const unsubscribe = displayTemp.on('change', (v) => setAnimatedTemp(v));
     return unsubscribe;
-  }, [displayTemp]);
+  }, [displayTemp, einkMode]);
 
   // Animation loop for dynamic effects
   useEffect(() => {
-    if (weatherEffect === 'normal') return;
+    if (einkMode || weatherEffect === 'normal') return;
 
     const animate = () => {
       setTime(performance.now());
@@ -82,7 +86,7 @@ function DynamicTemperature({
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [weatherEffect]);
+  }, [weatherEffect, einkMode]);
 
   const text = `${animatedTemp}°`;
   const t = time / 1000;
@@ -179,6 +183,15 @@ function DynamicTemperature({
   };
 
   const particleType = getParticleType();
+
+  // E-ink mode: simple static display
+  if (einkMode) {
+    return (
+      <div style={{ display: 'inline-flex', ...style }}>
+        {`${Math.round(temp)}°`}
+      </div>
+    );
+  }
 
   return (
     <div style={{ position: 'relative', display: 'inline-flex', ...style }}>
@@ -308,18 +321,22 @@ function isDaytime(): boolean {
 function DynamicWeatherIcon({
   code,
   temp,
+  einkMode = false,
   style = {}
 }: {
   code: number;
   temp: number;
+  einkMode?: boolean;
   style?: React.CSSProperties;
 }) {
   const [time, setTime] = useState(0);
   const animationRef = useRef<number | null>(null);
   const daytime = isDaytime();
 
-  // Animation loop
+  // Animation loop (skip in e-ink mode)
   useEffect(() => {
+    if (einkMode) return;
+
     const animate = () => {
       setTime(performance.now());
       animationRef.current = requestAnimationFrame(animate);
@@ -328,7 +345,7 @@ function DynamicWeatherIcon({
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, []);
+  }, [einkMode]);
 
   const t = time / 1000;
   const iconSize = 'clamp(120px, 40vw, 200px)';
@@ -611,6 +628,27 @@ function DynamicWeatherIcon({
     );
   };
 
+  // E-ink mode: simple static icon
+  if (einkMode) {
+    const iconSize = 120;
+    const getStaticIcon = () => {
+      if (code === 0 || code === 1) return daytime ? <Sun size={iconSize} strokeWidth={1} /> : <Moon size={iconSize} strokeWidth={1} />;
+      if (code === 2) return daytime ? <CloudSun size={iconSize} strokeWidth={1} /> : <CloudMoon size={iconSize} strokeWidth={1} />;
+      if (code === 3) return <Cloudy size={iconSize} strokeWidth={1} />;
+      if (code >= 45 && code <= 48) return <CloudFog size={iconSize} strokeWidth={1} />;
+      if (code >= 51 && code <= 57) return <CloudDrizzle size={iconSize} strokeWidth={1} />;
+      if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return <CloudRain size={iconSize} strokeWidth={1} />;
+      if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return <CloudSnow size={iconSize} strokeWidth={1} />;
+      if (code >= 95 && code <= 99) return <CloudLightning size={iconSize} strokeWidth={1} />;
+      return <Wind size={iconSize} strokeWidth={1} />;
+    };
+    return (
+      <div style={{ color: '#333', ...style }}>
+        {getStaticIcon()}
+      </div>
+    );
+  }
+
   const weatherEffect = getWeatherEffect(temp, code);
   const particleType = (() => {
     switch (weatherEffect) {
@@ -656,6 +694,7 @@ function DynamicWeatherIcon({
 
 export function WeatherScreen() {
   const { current, forecast } = useWeather();
+  const { settings } = useSettings();
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -664,6 +703,7 @@ export function WeatherScreen() {
   }, []);
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 600;
+  const einkMode = settings.einkMode;
 
   if (!current) {
     return <div className="flex flex--center flex-1"><span className="description">Loading weather...</span></div>;
@@ -682,6 +722,7 @@ export function WeatherScreen() {
             <DynamicWeatherIcon
               code={current.weatherCode}
               temp={current.temperature}
+              einkMode={einkMode}
             />
           </div>
 
@@ -704,6 +745,7 @@ export function WeatherScreen() {
             <DynamicTemperature
               temp={current.temperature}
               weatherCode={current.weatherCode}
+              einkMode={einkMode}
             />
           </div>
 

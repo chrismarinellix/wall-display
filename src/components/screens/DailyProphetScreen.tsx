@@ -4,8 +4,9 @@ import { Dumbbell, Bike, Beef, Salad, Droplet, Moon, Check, AlertTriangle, Clock
 import { useWeather } from '../../hooks/useWeather';
 import { useCalendar } from '../../hooks/useCalendar';
 import { useStocks } from '../../hooks/useStocks';
+import { useSettings } from '../../contexts/SettingsContext';
 import { weatherCodeToDescription } from '../../types/weather';
-import { getDailyHabits, toggleHabit, subscribeToHabits, DailyHabit, getCountdowns, CountdownEvent, getTodos, toggleTodo, TodoItem, subscribeToTodos, getPomodoroHistory, PomodoroHistory } from '../../services/supabase';
+import { getDailyHabits, toggleHabit, subscribeToHabits, DailyHabit, getCountdowns, CountdownEvent, getTodos, toggleTodo, TodoItem, subscribeToTodos, getPomodoroHistory, PomodoroHistory, getHabitHistory } from '../../services/supabase';
 import { generateNewspaperArticles, NewspaperArticles, NewspaperData } from '../../services/aiService';
 import { getVoiceSettings, saveVoiceSettings, generateSpeech, generateBriefingScript, audioPlayer, VoiceSettings } from '../../services/voiceService';
 import { proverbs } from '../../data/proverbs';
@@ -133,19 +134,22 @@ function getWeatherImageUrl(condition: string): string {
 
 // Magical Prophet Text - ink materializing on parchment with quill animation
 // Professional NY Post meets Hogwarts - clean, fast, magical
+// E-ink mode: skip animation entirely and show final text immediately
 function MagicalText({
   text,
   style = {},
   revealDuration = 3000,
   variant = 'default', // 'default' | 'headline' | 'subtle'
+  einkMode = false,
 }: {
   text: string;
   style?: React.CSSProperties;
   revealDuration?: number;
   variant?: 'default' | 'headline' | 'subtle';
+  einkMode?: boolean;
 }) {
   const [progress, setProgress] = useState(0);
-  const [isRevealed, setIsRevealed] = useState(false);
+  const [isRevealed, setIsRevealed] = useState(einkMode); // Start revealed in e-ink mode
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
 
@@ -155,8 +159,10 @@ function MagicalText({
     [text]
   );
 
-  // Animation loop
+  // Animation loop - skip entirely in e-ink mode
   useEffect(() => {
+    if (einkMode) return; // No animation for e-ink
+
     startTimeRef.current = performance.now();
 
     const animate = (timestamp: number) => {
@@ -175,19 +181,11 @@ function MagicalText({
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [revealDuration]);
+  }, [revealDuration, einkMode]);
 
-  // Static text once revealed (no animation overhead)
-  if (isRevealed) {
-    return (
-      <motion.span
-        style={{ display: 'inline', ...style }}
-        initial={{ opacity: 0.95 }}
-        animate={{ opacity: 1 }}
-      >
-        {text}
-      </motion.span>
-    );
+  // E-ink mode or animation complete: show static text
+  if (isRevealed || einkMode) {
+    return <span style={{ display: 'inline', ...style }}>{text}</span>;
   }
 
   return (
@@ -253,6 +251,7 @@ function Article({
   startDelay = 0,
   headlineStyle = {},
   bodyStyle = {},
+  einkMode = false,
 }: {
   headline: string;
   body: string;
@@ -260,17 +259,19 @@ function Article({
   startDelay?: number;
   headlineStyle?: React.CSSProperties;
   bodyStyle?: React.CSSProperties;
+  einkMode?: boolean;
 }) {
-  const [started, setStarted] = useState(false);
-  const [bylineOpacity, setBylineOpacity] = useState(0);
+  const [started, setStarted] = useState(einkMode); // Start immediately in e-ink mode
+  const [bylineOpacity, setBylineOpacity] = useState(einkMode ? 0.6 : 0);
 
   useEffect(() => {
+    if (einkMode) return; // Skip delay in e-ink mode
     const startTimer = setTimeout(() => {
       setStarted(true);
       setTimeout(() => setBylineOpacity(0.6), 2000);
     }, startDelay);
     return () => clearTimeout(startTimer);
-  }, [startDelay]);
+  }, [startDelay, einkMode]);
 
   if (!started) return <div style={{ minHeight: 80 }} />;
 
@@ -284,6 +285,7 @@ function Article({
         <MagicalText
           text={headline}
           revealDuration={headlineDuration}
+          einkMode={einkMode}
           style={{
             fontSize: 16,
             fontWeight: 700,
@@ -298,6 +300,7 @@ function Article({
         <MagicalText
           text={body}
           revealDuration={bodyDuration}
+          einkMode={einkMode}
           style={{
             fontSize: 13,
             color: '#333',
@@ -308,10 +311,66 @@ function Article({
         />
       </div>
       {byline && (
-        <div style={{ marginTop: 6, opacity: bylineOpacity, transition: 'opacity 2s ease' }}>
+        <div style={{ marginTop: 6, opacity: bylineOpacity, transition: einkMode ? 'none' : 'opacity 2s ease' }}>
           <span style={{ fontSize: 10, fontStyle: 'italic', color: '#666' }}>{byline}</span>
         </div>
       )}
+    </div>
+  );
+}
+
+// Habit history grid - shows 14 days of completion status
+function HabitHistoryGrid({
+  habitHistory,
+  onToggleToday,
+}: {
+  habitHistory: { [date: string]: boolean };
+  onToggleToday: () => void;
+}) {
+  const today = new Date();
+  const days: { date: string; completed: boolean | undefined; isToday: boolean }[] = [];
+
+  // Generate 14 days from oldest to newest (left to right)
+  for (let i = 13; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toISOString().split('T')[0];
+    days.push({
+      date: dateStr,
+      completed: habitHistory[dateStr],
+      isToday: i === 0,
+    });
+  }
+
+  return (
+    <div style={{ display: 'flex', gap: 2, marginTop: 4 }}>
+      {days.map((day) => {
+        const isCompleted = day.completed === true;
+        const isMissed = day.completed === false;
+        const isNoData = day.completed === undefined;
+
+        return (
+          <div
+            key={day.date}
+            onClick={day.isToday ? onToggleToday : undefined}
+            title={`${day.date}${isCompleted ? ' ✓' : isMissed ? ' ✗' : ''}`}
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: 2,
+              background: isCompleted
+                ? '#333'  // Dark for completed
+                : isMissed
+                  ? '#ffcdd2'  // Light red for missed
+                  : '#e8e8e8',  // Gray for no data
+              border: day.isToday ? '2px solid #666' : '1px solid #ddd',
+              cursor: day.isToday ? 'pointer' : 'default',
+              transition: 'all 0.2s ease',
+              opacity: isNoData && !day.isToday ? 0.4 : 1,
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -477,10 +536,10 @@ async function preGenerateVoiceAudio(text: string): Promise<string | null> {
   }
 }
 
-// Voice Button Component - uses pre-generated audio
+// Voice Button Component - uses pre-generated audio from local voice clone server
 function VoiceButton({
   audioUrl,
-  isGenerating
+  isGenerating,
 }: {
   audioUrl: string | null;
   isGenerating: boolean;
@@ -531,15 +590,43 @@ function VoiceButton({
   }, []);
 
   const isReady = audioUrl !== null;
-  const showButton = isReady || isGenerating;
 
-  if (!showButton) return null;
+  // Show progress indicator while generating
+  if (isGenerating) {
+    return (
+      <div style={{ marginTop: 16, textAlign: 'center' }}>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '6px 12px',
+          fontSize: 10,
+          color: '#888',
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+        }}>
+          <div style={{
+            width: 12,
+            height: 12,
+            border: '2px solid #ddd',
+            borderTopColor: '#888',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }} />
+          Generating voice...
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // Show button only when audio is ready
+  if (!isReady) return null;
 
   return (
     <div style={{ marginTop: 16, textAlign: 'center' }}>
       <button
         onClick={playBriefing}
-        disabled={!isReady || isGenerating}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -548,17 +635,16 @@ function VoiceButton({
           background: isPlaying ? 'rgba(0,0,0,0.08)' : 'transparent',
           border: `1px solid ${isPlaying ? '#666' : '#ccc'}`,
           borderRadius: 4,
-          cursor: isReady ? 'pointer' : 'default',
+          cursor: 'pointer',
           fontSize: 11,
           color: isPlaying ? '#333' : '#666',
           letterSpacing: '0.1em',
           textTransform: 'uppercase',
           transition: 'all 0.2s ease',
-          opacity: isReady ? 1 : 0.5,
         }}
       >
         {isPlaying ? <VolumeX size={14} /> : <Volume2 size={14} />}
-        {isGenerating ? 'Preparing...' : isPlaying ? 'Stop' : 'Listen'}
+        {isPlaying ? 'Stop' : 'Listen'}
       </button>
     </div>
   );
@@ -567,6 +653,7 @@ function VoiceButton({
 export function DailyProphetScreen() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [habits, setHabits] = useState<DailyHabit[]>([]);
+  const [habitHistory, setHabitHistory] = useState<{ [habitId: string]: { [date: string]: boolean } }>({});
   const [countdowns, setCountdowns] = useState<CountdownEvent[]>([]);
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [pomodoroHistory, setPomodoroHistory] = useState<PomodoroHistory>({});
@@ -579,9 +666,12 @@ export function DailyProphetScreen() {
   const voiceAudioUrlRef = useRef<string | null>(null);
   const lastAlertRef = useRef<string | null>(null);
   const articleRefreshRef = useRef<number>(0);
+  const { settings } = useSettings();
+  const einkMode = settings.einkMode;
 
   // Load data
   useEffect(() => { getDailyHabits().then(setHabits); }, []);
+  useEffect(() => { getHabitHistory(14).then(setHabitHistory); }, []);
   useEffect(() => { getCountdowns().then(setCountdowns); }, []);
   useEffect(() => { getTodos().then(setTodos); }, []);
   useEffect(() => { getPomodoroHistory().then(setPomodoroHistory); }, []);
@@ -727,6 +817,9 @@ export function DailyProphetScreen() {
   const handleHabitToggle = async (habitId: string) => {
     const updated = await toggleHabit(habitId, habits);
     setHabits(updated);
+    // Refresh habit history after toggle
+    const newHistory = await getHabitHistory(14);
+    setHabitHistory(newHistory);
   };
 
   // Handle todo toggle
@@ -822,6 +915,7 @@ export function DailyProphetScreen() {
                 text={articles.headline}
                 revealDuration={3000}
                 variant="headline"
+                einkMode={einkMode}
                 style={{
                   fontSize: 24,
                   fontWeight: 700,
@@ -838,6 +932,7 @@ export function DailyProphetScreen() {
                 text={articles.greeting}
                 revealDuration={4000}
                 variant="subtle"
+                einkMode={einkMode}
                 style={{ fontSize: 14, color: '#444', fontStyle: 'italic', lineHeight: 1.6 }}
               />
             </div>
@@ -868,7 +963,8 @@ export function DailyProphetScreen() {
                   headline={articles.weatherArticle.headline}
                   body={articles.weatherArticle.body}
                   byline={articles.weatherArticle.advice}
-                  startDelay={2000}
+                  startDelay={einkMode ? 0 : 2000}
+                  einkMode={einkMode}
                 />
               ) : weather ? (
                 <div style={{ fontSize: 13, color: '#333', lineHeight: 1.6 }}>
@@ -890,7 +986,8 @@ export function DailyProphetScreen() {
               <Article
                 headline={articles.marketsArticle.headline}
                 body={articles.marketsArticle.body}
-                startDelay={15000}
+                startDelay={einkMode ? 0 : 15000}
+                einkMode={einkMode}
               />
             </div>
           )}
@@ -902,7 +999,8 @@ export function DailyProphetScreen() {
               <MagicalText
                 text={articles.wisdomCorner}
                 revealDuration={15000}
-                                style={{ fontSize: 12, fontStyle: 'italic', color: '#555', lineHeight: 1.5 }}
+                einkMode={einkMode}
+                style={{ fontSize: 12, fontStyle: 'italic', color: '#555', lineHeight: 1.5 }}
               />
             </div>
           )}
@@ -924,9 +1022,10 @@ export function DailyProphetScreen() {
                   <Article
                     headline={articles.historyArticle.headline}
                     body={articles.historyArticle.body}
-                    startDelay={5000}
+                    startDelay={einkMode ? 0 : 5000}
                     headlineStyle={{ fontSize: 18 }}
                     bodyStyle={{ fontSize: 13, lineHeight: 1.7 }}
+                    einkMode={einkMode}
                   />
                 ) : (
                   <>
@@ -989,7 +1088,8 @@ export function DailyProphetScreen() {
                         <MagicalText
                           text={event.description}
                           revealDuration={20000}
-                                                    style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5, fontStyle: 'italic' }}
+                          einkMode={einkMode}
+                          style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5, fontStyle: 'italic' }}
                         />
                       )}
                     </div>
@@ -1024,7 +1124,8 @@ export function DailyProphetScreen() {
               <Article
                 headline={articles.dayArticle.headline}
                 body={articles.dayArticle.body}
-                startDelay={8000}
+                startDelay={einkMode ? 0 : 8000}
+                einkMode={einkMode}
               />
             </div>
           )}
@@ -1035,7 +1136,8 @@ export function DailyProphetScreen() {
               <MagicalText
                 text={articles.closingThought}
                 revealDuration={12000}
-                                style={{ fontSize: 13, fontStyle: 'italic', color: '#666' }}
+                einkMode={einkMode}
+                style={{ fontSize: 13, fontStyle: 'italic', color: '#666' }}
               />
             </div>
           )}
@@ -1087,20 +1189,40 @@ export function DailyProphetScreen() {
             </div>
           )}
 
-          {/* Habits */}
+          {/* Habits with History */}
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 10, paddingBottom: 4, borderBottom: '2px solid #000', display: 'inline-block' }}>
               Daily Rituals
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {habits.map((habit, i) => (
-                <AnimatedHabit
-                  key={habit.id}
-                  habit={habit}
-                  onToggle={() => handleHabitToggle(habit.id)}
-                  animationDelay={i * 80}
-                />
+                <div key={habit.id} style={{ animation: `prophetSlideIn 0.8s ease ${i * 80}ms both` }}>
+                  <AnimatedHabit
+                    habit={habit}
+                    onToggle={() => handleHabitToggle(habit.id)}
+                    animationDelay={0}
+                  />
+                  <HabitHistoryGrid
+                    habitHistory={habitHistory[habit.id] || {}}
+                    onToggleToday={() => handleHabitToggle(habit.id)}
+                  />
+                </div>
               ))}
+            </div>
+            {/* History Legend */}
+            <div style={{ display: 'flex', gap: 12, marginTop: 10, fontSize: 8, color: '#888' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <div style={{ width: 8, height: 8, background: '#333', borderRadius: 2 }} />
+                <span>Done</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <div style={{ width: 8, height: 8, background: '#ffcdd2', borderRadius: 2 }} />
+                <span>Missed</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <div style={{ width: 8, height: 8, background: '#e8e8e8', borderRadius: 2, opacity: 0.4 }} />
+                <span>No data</span>
+              </div>
             </div>
           </div>
 
@@ -1127,7 +1249,8 @@ export function DailyProphetScreen() {
                 <MagicalText
                   text={articles.productivityNote}
                   revealDuration={10000}
-                                    style={{ fontSize: 10, color: '#666', fontStyle: 'italic' }}
+                  einkMode={einkMode}
+                  style={{ fontSize: 10, color: '#666', fontStyle: 'italic' }}
                 />
               </div>
             )}

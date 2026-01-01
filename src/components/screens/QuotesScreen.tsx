@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { quotes } from '../../data/quotes';
+import { useSettings } from '../../contexts/SettingsContext';
 
 // Generate ink splatter dots for a character
 function generateInkDots(charIndex: number, totalChars: number) {
@@ -20,26 +21,47 @@ function generateInkDots(charIndex: number, totalChars: number) {
   return dots;
 }
 
-// Cycling quote with ink dots morphing into calligraphy
-function CyclingQuote({
+// Split text into words while preserving spaces
+function splitIntoWords(text: string): { word: string; isSpace: boolean }[] {
+  const result: { word: string; isSpace: boolean }[] = [];
+  let current = '';
+  let isCurrentSpace = false;
+
+  for (const char of text) {
+    const charIsSpace = char === ' ';
+    if (current === '') {
+      current = char;
+      isCurrentSpace = charIsSpace;
+    } else if (charIsSpace === isCurrentSpace) {
+      current += char;
+    } else {
+      result.push({ word: current, isSpace: isCurrentSpace });
+      current = char;
+      isCurrentSpace = charIsSpace;
+    }
+  }
+  if (current) {
+    result.push({ word: current, isSpace: isCurrentSpace });
+  }
+  return result;
+}
+
+// Animated quote with ink dots morphing into calligraphy - stays visible after animation
+function AnimatedQuote({
   quote,
   author,
-  onCycleComplete,
+  einkMode = false,
   dotsDuration = 2500,
   morphDuration = 3000,
-  visibleDuration = 5000,
-  dissolveDuration = 2500,
 }: {
   quote: string;
   author: string;
-  onCycleComplete: () => void;
+  einkMode?: boolean;
   dotsDuration?: number;
   morphDuration?: number;
-  visibleDuration?: number;
-  dissolveDuration?: number;
 }) {
-  const [phase, setPhase] = useState<'dots' | 'morphing' | 'visible' | 'dissolving'>('dots');
-  const [progress, setProgress] = useState(0);
+  const [phase, setPhase] = useState<'dots' | 'morphing' | 'visible'>(einkMode ? 'visible' : 'dots');
+  const [progress, setProgress] = useState(einkMode ? 1 : 0);
   const startTimeRef = useRef<number>(0);
   const animationRef = useRef<number | null>(null);
 
@@ -48,17 +70,21 @@ function CyclingQuote({
       revealStart: (i / quote.length) * 0.6,
       randomDelay: Math.random() * 0.15,
       inkDots: generateInkDots(i, quote.length),
-      brushStroke: Math.random() * 0.3, // Slight variation in brush stroke timing
-      inkSpread: 0.8 + Math.random() * 0.4, // How much the ink spreads
+      brushStroke: Math.random() * 0.3,
+      inkSpread: 0.8 + Math.random() * 0.4,
     })), [quote]
   );
 
   useEffect(() => {
+    // E-ink mode: just show static text
+    if (einkMode) {
+      return;
+    }
+
     startTimeRef.current = performance.now();
 
     const animate = (timestamp: number) => {
       const elapsed = timestamp - startTimeRef.current;
-      const totalDuration = dotsDuration + morphDuration + visibleDuration + dissolveDuration;
 
       if (elapsed < dotsDuration) {
         setPhase('dots');
@@ -66,15 +92,11 @@ function CyclingQuote({
       } else if (elapsed < dotsDuration + morphDuration) {
         setPhase('morphing');
         setProgress((elapsed - dotsDuration) / morphDuration);
-      } else if (elapsed < dotsDuration + morphDuration + visibleDuration) {
+      } else {
+        // Animation complete - stay visible (no more cycling)
         setPhase('visible');
         setProgress(1);
-      } else if (elapsed < totalDuration) {
-        setPhase('dissolving');
-        setProgress(1 - (elapsed - dotsDuration - morphDuration - visibleDuration) / dissolveDuration);
-      } else {
-        onCycleComplete();
-        return;
+        return; // Stop animation loop
       }
 
       animationRef.current = requestAnimationFrame(animate);
@@ -84,111 +106,124 @@ function CyclingQuote({
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [dotsDuration, morphDuration, visibleDuration, dissolveDuration, onCycleComplete]);
+  }, [dotsDuration, morphDuration, einkMode]);
 
   const renderText = (text: string, isAuthor = false) => {
+    // E-ink mode: simple static text
+    if (einkMode) {
+      return <span>{text}</span>;
+    }
+
     const props = isAuthor ? charProps.slice(0, text.length) : charProps;
+    const words = splitIntoWords(text);
+    let globalCharIndex = 0;
 
     return (
       <span style={{ display: 'inline' }}>
-        {text.split('').map((char, i) => {
-          const charProp = props[i % props.length];
-          const charStart = charProp.revealStart + charProp.randomDelay;
+        {words.map((wordObj, wordIndex) => {
+          const wordChars = wordObj.word.split('').map((char, localIndex) => {
+            const i = globalCharIndex + localIndex;
+            const charProp = props[i % props.length];
+            const charStart = charProp.revealStart + charProp.randomDelay;
 
-          // Calculate phase-specific progress for this character
-          let dotsProgress = 0;
-          let morphProgress = 0;
-          let charOpacity = 0;
+            // Calculate phase-specific progress for this character
+            let dotsProgress = 0;
+            let morphProgress = 0;
+            let charOpacity = 0;
 
-          if (phase === 'dots') {
-            dotsProgress = Math.max(0, Math.min(1, (progress - charStart) / 0.4));
-            charOpacity = 0;
-          } else if (phase === 'morphing') {
-            dotsProgress = 1;
-            morphProgress = Math.max(0, Math.min(1, (progress - charProp.brushStroke) / 0.7));
-            charOpacity = morphProgress;
-          } else if (phase === 'visible') {
-            dotsProgress = 1;
-            morphProgress = 1;
-            charOpacity = 1;
-          } else {
-            // Dissolving
-            dotsProgress = progress;
-            morphProgress = progress;
-            charOpacity = progress;
-          }
+            if (phase === 'dots') {
+              dotsProgress = Math.max(0, Math.min(1, (progress - charStart) / 0.4));
+              charOpacity = 0;
+            } else if (phase === 'morphing') {
+              dotsProgress = 1;
+              morphProgress = Math.max(0, Math.min(1, (progress - charProp.brushStroke) / 0.7));
+              charOpacity = morphProgress;
+            } else {
+              // Visible
+              dotsProgress = 1;
+              morphProgress = 1;
+              charOpacity = 1;
+            }
 
-          // Smooth easing
-          const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
-          const easedDots = easeOut(dotsProgress);
-          const easedMorph = easeOut(morphProgress);
+            // Smooth easing
+            const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+            const easedDots = easeOut(dotsProgress);
+            const easedMorph = easeOut(morphProgress);
 
-          // Ink bleeding effect during morphing
-          const inkBleed = phase === 'morphing' ? Math.sin(morphProgress * Math.PI) * 0.5 : 0;
-          const textShadow = phase === 'morphing' || phase === 'visible'
-            ? `0 0 ${2 + inkBleed * 3}px rgba(20, 20, 20, ${0.3 + inkBleed * 0.3})`
-            : 'none';
+            // Ink bleeding effect during morphing
+            const inkBleed = phase === 'morphing' ? Math.sin(morphProgress * Math.PI) * 0.5 : 0;
+            const textShadow = phase === 'morphing' || phase === 'visible'
+              ? `0 0 ${2 + inkBleed * 3}px rgba(20, 20, 20, ${0.3 + inkBleed * 0.3})`
+              : 'none';
 
-          return (
-            <span
-              key={i}
-              style={{
-                display: 'inline-block',
-                position: 'relative',
-                whiteSpace: char === ' ' ? 'pre' : 'normal',
-                width: char === ' ' ? '0.3em' : 'auto',
-              }}
-            >
-              {/* Ink dots layer */}
-              {char !== ' ' && (phase === 'dots' || (phase === 'morphing' && morphProgress < 0.8)) && (
-                <span style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  opacity: phase === 'morphing' ? 1 - easedMorph : 1,
-                }}>
-                  {charProp.inkDots.map((dot, dotIndex) => {
-                    const dotProgress = Math.max(0, Math.min(1, (easedDots - dot.delay) / 0.3));
-                    const spreadX = dot.x * (phase === 'morphing' ? (1 - easedMorph * 0.8) : 1);
-                    const spreadY = dot.y * (phase === 'morphing' ? (1 - easedMorph * 0.8) : 1);
-
-                    return (
-                      <span
-                        key={dotIndex}
-                        style={{
-                          position: 'absolute',
-                          width: dot.size * dotProgress,
-                          height: dot.size * dotProgress,
-                          borderRadius: '50%',
-                          background: `radial-gradient(circle, rgba(25,25,25,${0.9 * dotProgress}) 0%, rgba(40,35,30,${0.6 * dotProgress}) 70%, transparent 100%)`,
-                          transform: `translate(${spreadX}px, ${spreadY}px)`,
-                          transition: 'none',
-                        }}
-                      />
-                    );
-                  })}
-                </span>
-              )}
-
-              {/* Character layer - calligraphy style */}
+            return (
               <span
+                key={i}
                 style={{
-                  opacity: charOpacity,
-                  color: '#1a1a1a',
-                  textShadow,
-                  filter: phase === 'dissolving' ? `blur(${(1 - progress) * 3}px)` : 'none',
-                  transform: phase === 'dissolving'
-                    ? `translateY(${(1 - progress) * -10}px)`
-                    : phase === 'morphing'
-                    ? `scale(${0.95 + easedMorph * 0.05})`
-                    : 'none',
-                  transition: 'none',
-                  willChange: 'transform, opacity, filter',
+                  display: 'inline-block',
+                  position: 'relative',
                 }}
               >
-                {char === ' ' ? '\u00A0' : char}
+                {/* Ink dots layer */}
+                {char !== ' ' && (phase === 'dots' || (phase === 'morphing' && morphProgress < 0.8)) && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    opacity: phase === 'morphing' ? 1 - easedMorph : 1,
+                  }}>
+                    {charProp.inkDots.map((dot, dotIndex) => {
+                      const dotProgress = Math.max(0, Math.min(1, (easedDots - dot.delay) / 0.3));
+                      const spreadX = dot.x * (phase === 'morphing' ? (1 - easedMorph * 0.8) : 1);
+                      const spreadY = dot.y * (phase === 'morphing' ? (1 - easedMorph * 0.8) : 1);
+
+                      return (
+                        <span
+                          key={dotIndex}
+                          style={{
+                            position: 'absolute',
+                            width: dot.size * dotProgress,
+                            height: dot.size * dotProgress,
+                            borderRadius: '50%',
+                            background: `radial-gradient(circle, rgba(25,25,25,${0.9 * dotProgress}) 0%, rgba(40,35,30,${0.6 * dotProgress}) 70%, transparent 100%)`,
+                            transform: `translate(${spreadX}px, ${spreadY}px)`,
+                            transition: 'none',
+                          }}
+                        />
+                      );
+                    })}
+                  </span>
+                )}
+
+                {/* Character layer - calligraphy style */}
+                <span
+                  style={{
+                    opacity: charOpacity,
+                    color: '#1a1a1a',
+                    textShadow,
+                    transform: phase === 'morphing'
+                      ? `scale(${0.95 + easedMorph * 0.05})`
+                      : 'none',
+                    transition: 'none',
+                    willChange: 'transform, opacity',
+                  }}
+                >
+                  {char === ' ' ? '\u00A0' : char}
+                </span>
               </span>
+            );
+          });
+
+          globalCharIndex += wordObj.word.length;
+
+          // Wrap words (non-spaces) in nowrap spans to prevent breaking within words
+          if (wordObj.isSpace) {
+            return <span key={wordIndex} style={{ display: 'inline' }}>{wordChars}</span>;
+          }
+          return (
+            <span key={wordIndex} style={{ display: 'inline-block', whiteSpace: 'nowrap' }}>
+              {wordChars}
             </span>
           );
         })}
@@ -199,13 +234,13 @@ function CyclingQuote({
   return (
     <>
       <div style={{
-        maxWidth: 750,
+        maxWidth: '90%',
         textAlign: 'center',
       }}>
         <span style={{
-          fontSize: 'clamp(24px, 5vw, 36px)',
+          fontSize: 'clamp(28px, 6vw, 52px)',
           fontWeight: 300,
-          lineHeight: 1.7,
+          lineHeight: 1.6,
           letterSpacing: '0.02em',
           color: '#1a1a1a',
           fontFamily: '"Noto Serif JP", "Hiragino Mincho Pro", "Yu Mincho", "Playfair Display", Georgia, serif',
@@ -222,7 +257,7 @@ function CyclingQuote({
         justifyContent: 'center',
         gap: 20,
         marginTop: 'clamp(24px, 5vw, 40px)',
-        opacity: phase === 'visible' ? 1 : phase === 'dissolving' ? progress : Math.min(1, progress * 2),
+        opacity: phase === 'visible' ? 1 : Math.min(1, progress * 2),
         transition: 'opacity 0.8s ease',
       }}>
         <div style={{
@@ -247,9 +282,9 @@ function CyclingQuote({
       </div>
 
       {/* Author with brush stroke aesthetic */}
-      <div style={{ marginTop: 'clamp(16px, 3vw, 24px)' }}>
+      <div style={{ marginTop: 'clamp(16px, 3vw, 28px)' }}>
         <span style={{
-          fontSize: 'clamp(11px, 2vw, 14px)',
+          fontSize: 'clamp(14px, 2.5vw, 20px)',
           fontWeight: 500,
           letterSpacing: '0.2em',
           color: '#555',
@@ -271,25 +306,13 @@ function getRandomQuote() {
 export function QuotesScreen() {
   const [quoteData, setQuoteData] = useState(getRandomQuote);
   const [key, setKey] = useState(0);
+  const { settings } = useSettings();
 
   // Get a new random quote each time the component mounts (screen shown)
   useEffect(() => {
     setQuoteData(getRandomQuote());
     setKey(k => k + 1);
   }, []);
-
-  // Handle cycling to next quote
-  const handleCycleComplete = () => {
-    setQuoteData(prev => {
-      // Get a new quote, avoiding the current one
-      let newData;
-      do {
-        newData = getRandomQuote();
-      } while (newData.index === prev.index && quotes.length > 1);
-      return newData;
-    });
-    setKey(k => k + 1);
-  };
 
   return (
     <div
@@ -422,16 +445,14 @@ export function QuotesScreen() {
           "
         </div>
 
-        {/* Cycling quote with ink dots morphing to calligraphy */}
-        <CyclingQuote
+        {/* Animated quote with ink dots morphing to calligraphy - stays visible */}
+        <AnimatedQuote
           key={key}
           quote={quoteData.quote.text}
           author={quoteData.quote.author}
-          onCycleComplete={handleCycleComplete}
+          einkMode={settings.einkMode}
           dotsDuration={2500}
           morphDuration={3000}
-          visibleDuration={5000}
-          dissolveDuration={2500}
         />
       </div>
 

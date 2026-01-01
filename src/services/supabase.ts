@@ -20,6 +20,18 @@ export interface PomodoroHistory {
   [date: string]: { count: number; minutes: number };
 }
 
+// Individual pomodoro session record
+export type SessionType = 'work' | 'shortBreak' | 'longBreak';
+
+export interface PomodoroSession {
+  id?: string;
+  type: SessionType;
+  duration_minutes: number;
+  completed_at: string; // ISO timestamp
+}
+
+const SESSIONS_STORAGE_KEY = 'pomodoro-sessions';
+
 // Get all pomodoro history (with minutes if available)
 export async function getPomodoroHistory(): Promise<PomodoroHistory> {
   if (!supabase) {
@@ -134,6 +146,131 @@ export async function addMinutes(date: string, minutesToAdd: number): Promise<vo
     }
   } catch (e) {
     console.error('Failed to add minutes:', e);
+  }
+}
+
+// Record a completed pomodoro session (work or break)
+export async function recordSession(session: Omit<PomodoroSession, 'id'>): Promise<void> {
+  const newSession: PomodoroSession = {
+    ...session,
+    id: crypto.randomUUID(),
+  };
+
+  if (!supabase) {
+    // Save to localStorage
+    const stored = localStorage.getItem(SESSIONS_STORAGE_KEY);
+    const sessions = stored ? JSON.parse(stored) : [];
+    sessions.push(newSession);
+    // Keep only last 200 sessions
+    if (sessions.length > 200) {
+      sessions.splice(0, sessions.length - 200);
+    }
+    localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(sessions));
+    console.log(`[Sessions] Saved session to localStorage: ${session.type} (${session.duration_minutes}min)`);
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('pomodoro_sessions')
+      .insert({
+        id: newSession.id,
+        type: newSession.type,
+        duration_minutes: newSession.duration_minutes,
+        completed_at: newSession.completed_at,
+      });
+
+    if (error) {
+      // If table doesn't exist, fall back to localStorage
+      if (error.code === '42P01') {
+        console.log('[Sessions] Table not found, using localStorage');
+        const stored = localStorage.getItem(SESSIONS_STORAGE_KEY);
+        const sessions = stored ? JSON.parse(stored) : [];
+        sessions.push(newSession);
+        if (sessions.length > 200) {
+          sessions.splice(0, sessions.length - 200);
+        }
+        localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(sessions));
+        return;
+      }
+      throw error;
+    }
+
+    // Also save to localStorage as backup
+    const stored = localStorage.getItem(SESSIONS_STORAGE_KEY);
+    const sessions = stored ? JSON.parse(stored) : [];
+    sessions.push(newSession);
+    if (sessions.length > 200) {
+      sessions.splice(0, sessions.length - 200);
+    }
+    localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(sessions));
+
+    console.log(`[Sessions] Saved session: ${session.type} (${session.duration_minutes}min)`);
+  } catch (e) {
+    console.error('Failed to record session:', e);
+    // Fallback to localStorage
+    const stored = localStorage.getItem(SESSIONS_STORAGE_KEY);
+    const sessions = stored ? JSON.parse(stored) : [];
+    sessions.push(newSession);
+    if (sessions.length > 200) {
+      sessions.splice(0, sessions.length - 200);
+    }
+    localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(sessions));
+  }
+}
+
+// Get recent sessions (for history display)
+export async function getRecentSessions(limit: number = 60): Promise<PomodoroSession[]> {
+  if (!supabase) {
+    // Get from localStorage
+    const stored = localStorage.getItem(SESSIONS_STORAGE_KEY);
+    if (stored) {
+      try {
+        const sessions = JSON.parse(stored) as PomodoroSession[];
+        return sessions.slice(-limit);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('pomodoro_sessions')
+      .select('*')
+      .order('completed_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      // If table doesn't exist, fall back to localStorage
+      if (error.code === '42P01') {
+        console.log('[Sessions] Table not found, using localStorage');
+        const stored = localStorage.getItem(SESSIONS_STORAGE_KEY);
+        if (stored) {
+          const sessions = JSON.parse(stored) as PomodoroSession[];
+          return sessions.slice(-limit);
+        }
+        return [];
+      }
+      throw error;
+    }
+
+    // Reverse to get oldest first (for display)
+    return (data || []).reverse();
+  } catch (e) {
+    console.error('Failed to get sessions:', e);
+    // Fallback to localStorage
+    const stored = localStorage.getItem(SESSIONS_STORAGE_KEY);
+    if (stored) {
+      try {
+        const sessions = JSON.parse(stored) as PomodoroSession[];
+        return sessions.slice(-limit);
+      } catch {
+        return [];
+      }
+    }
+    return [];
   }
 }
 
@@ -564,6 +701,68 @@ export function subscribeToHabits(callback: (habits: DailyHabit[]) => void): (()
   return () => {
     supabase.removeChannel(channel);
   };
+}
+
+// Get habit history for past N days (per habit)
+export async function getHabitHistory(days: number = 14): Promise<{ [habitId: string]: { [date: string]: boolean } }> {
+  const history: { [habitId: string]: { [date: string]: boolean } } = {};
+  const today = new Date();
+
+  // Initialize all default habits
+  DEFAULT_HABITS.forEach(h => {
+    history[h.id] = {};
+  });
+
+  if (!supabase) {
+    // Fallback to localStorage
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+
+      const stored = localStorage.getItem(`habits-${dateStr}`);
+      if (stored) {
+        try {
+          const habits = JSON.parse(stored) as DailyHabit[];
+          habits.forEach(h => {
+            if (history[h.id]) {
+              history[h.id][dateStr] = h.completed;
+            }
+          });
+        } catch {
+          // Skip invalid data
+        }
+      }
+    }
+    return history;
+  }
+
+  try {
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - (days - 1));
+
+    const { data, error } = await supabase
+      .from('daily_habits')
+      .select('date, habits')
+      .gte('date', startDate.toISOString().split('T')[0])
+      .lte('date', today.toISOString().split('T')[0]);
+
+    if (error) throw error;
+
+    // Process each day's habits
+    data?.forEach((row: { date: string; habits: DailyHabit[] }) => {
+      row.habits.forEach(h => {
+        if (history[h.id]) {
+          history[h.id][row.date] = h.completed;
+        }
+      });
+    });
+
+    return history;
+  } catch (e) {
+    console.error('Failed to fetch habit history:', e);
+    return history;
+  }
 }
 
 // Get habit completion stats for the week (async)

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Settings, Lock, Unlock, ExternalLink, Copy, Check } from 'lucide-react';
+import { Settings, Lock, Unlock, ExternalLink, Copy, Check, Monitor } from 'lucide-react';
+import { useSettings } from '../../contexts/SettingsContext';
 
 const SETUP_PASSWORD = '1234'; // Simple PIN for access
 
@@ -7,6 +8,7 @@ export function SetupScreen() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [pin, setPin] = useState('');
   const [copied, setCopied] = useState<string | null>(null);
+  const { settings, updateSettings } = useSettings();
 
   const haUrl = import.meta.env.VITE_HOME_ASSISTANT_URL || 'Not configured';
 
@@ -252,6 +254,70 @@ export function SetupScreen() {
           <div style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.6 }}>
             After accepting the Home Assistant certificate, refresh this page.
             The smart home controls should now appear on the home screen.
+          </div>
+        </div>
+
+        {/* Display Settings */}
+        <div
+          style={{
+            marginTop: 24,
+            padding: 24,
+            background: '#111',
+            borderRadius: 12,
+            border: '1px solid #222',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <Monitor size={20} color="#666" />
+            <div style={{ fontSize: 16, fontWeight: 500 }}>Display Settings</div>
+          </div>
+
+          {/* E-ink Mode Toggle */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '16px 20px',
+              background: '#000',
+              borderRadius: 8,
+              border: '1px solid #333',
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>
+                E-ink Display Mode
+              </div>
+              <div style={{ fontSize: 12, color: '#666' }}>
+                Disables animations for e-ink/e-paper displays
+              </div>
+            </div>
+            <button
+              onClick={() => updateSettings({ einkMode: !settings.einkMode })}
+              style={{
+                width: 52,
+                height: 28,
+                borderRadius: 14,
+                border: 'none',
+                background: settings.einkMode ? '#22c55e' : '#333',
+                cursor: 'pointer',
+                position: 'relative',
+                transition: 'background 0.2s',
+              }}
+            >
+              <div
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: '50%',
+                  background: '#fff',
+                  position: 'absolute',
+                  top: 3,
+                  left: settings.einkMode ? 27 : 3,
+                  transition: 'left 0.2s',
+                }}
+              />
+            </button>
           </div>
         </div>
       </div>
