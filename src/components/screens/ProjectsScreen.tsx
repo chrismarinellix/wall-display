@@ -53,10 +53,30 @@ export function ProjectsScreen() {
           status: 'pending',
         });
         await addProject({
-          title: 'Glass bathroom',
-          description: 'Get quotes from 3 glaziers. Measure the space accurately first.',
+          title: 'Get glass for bathroom',
+          description: 'Measure the space. Get quotes from 3 glaziers. Choose one and schedule install.',
           when: 'Next month',
           cost: 2500,
+          status: 'pending',
+        });
+        await addProject({
+          title: 'Bathroom plumbing fix',
+          description: 'Call plumber to fix the leaky tap and check drainage.',
+          when: 'This week',
+          cost: 350,
+          status: 'pending',
+        });
+        await addProject({
+          title: 'Remove paint tins from garage',
+          description: 'Take old paint tins to the tip. Check what can be recycled vs disposed.',
+          when: 'Saturday morning',
+          status: 'pending',
+        });
+        await addProject({
+          title: 'Paint the laundry floor',
+          description: 'Clean and prep surface. Apply floor paint (2 coats). Let dry 24hrs between coats.',
+          when: 'Next weekend',
+          cost: 80,
           status: 'pending',
         });
         const updated = await getProjects();
@@ -268,23 +288,43 @@ export function ProjectsScreen() {
             maxWidth: 400,
             boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>New Project</h2>
               <button onClick={() => setShowAddForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
                 <X size={20} color="#666" />
               </button>
             </div>
 
+            {/* Guidance Box */}
+            <div style={{
+              background: '#f0f7ff',
+              border: '1px solid #d0e3ff',
+              borderRadius: 8,
+              padding: '12px 14px',
+              marginBottom: 16,
+              fontSize: 12,
+              lineHeight: 1.5,
+              color: '#1a4a7a',
+            }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Be specific and actionable</div>
+              <div style={{ color: '#4a6a8a' }}>
+                Break big ideas into small, completable tasks. Instead of "renovate bathroom", add specific items like "paint bathroom ceiling" or "replace tap washers".
+              </div>
+              <div style={{ marginTop: 8, fontSize: 11, color: '#6a8aaa' }}>
+                Good: "Paint the laundry floor" • Bad: "Fix up the house"
+              </div>
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#666', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Title *
+                  What specifically needs doing? *
                 </label>
                 <input
                   type="text"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="What needs to be done?"
+                  placeholder="e.g. Paint the laundry floor"
                   style={{
                     width: '100%',
                     padding: '10px 12px',
@@ -300,12 +340,12 @@ export function ProjectsScreen() {
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#666', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   <FileText size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-                  How / Details
+                  Steps / Materials / Notes
                 </label>
                 <textarea
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="Steps, notes, considerations..."
+                  placeholder="e.g. Buy floor paint from Bunnings. Clean surface first. Apply 2 coats, 24hrs between each."
                   rows={3}
                   style={{
                     width: '100%',
