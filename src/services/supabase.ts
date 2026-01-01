@@ -1248,7 +1248,20 @@ export interface Project {
   position: number; // For drag-and-drop ordering
   created_at: string;
   updated_at?: string;
+  updated_by?: 'Chris' | 'Caroline'; // Who last modified
   completed_at?: string;
+  // Priority flags
+  chris_priority?: boolean;
+  caroline_priority?: boolean;
+  // Status checkboxes
+  needs_quote?: boolean;
+  quote_received?: boolean;
+  materials_needed?: boolean;
+  materials_ordered?: boolean;
+  scheduled?: boolean;
+  blocked?: boolean;
+  requires_permit?: boolean;
+  permit_approved?: boolean;
 }
 
 const PROJECTS_STORAGE_KEY = 'wall-display-projects';
@@ -1288,7 +1301,18 @@ export async function getProjects(): Promise<Project[]> {
       position: d.position,
       created_at: d.created_at,
       updated_at: d.updated_at,
+      updated_by: d.updated_by,
       completed_at: d.completed_at,
+      chris_priority: d.chris_priority || false,
+      caroline_priority: d.caroline_priority || false,
+      needs_quote: d.needs_quote || false,
+      quote_received: d.quote_received || false,
+      materials_needed: d.materials_needed || false,
+      materials_ordered: d.materials_ordered || false,
+      scheduled: d.scheduled || false,
+      blocked: d.blocked || false,
+      requires_permit: d.requires_permit || false,
+      permit_approved: d.permit_approved || false,
     }));
 
     // Cache to localStorage

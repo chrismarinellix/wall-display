@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Plus, GripVertical, Check, Trash2, Calendar, DollarSign, Clock, FileText, ChevronDown, ChevronUp, X, Hammer, Home, Car, Paintbrush, Wrench, Package, Sparkles, User, HardHat, Pencil, Save } from 'lucide-react';
+import { Plus, GripVertical, Check, Trash2, Calendar, DollarSign, Clock, FileText, ChevronDown, ChevronUp, X, Hammer, Home, Car, Paintbrush, Wrench, Package, Sparkles, User, HardHat, Pencil, Save, Star, Flag, AlertCircle, ShoppingCart, CalendarCheck, FileCheck, Ban } from 'lucide-react';
 import { getProjects, addProject, updateProject, deleteProject, reorderProjects, subscribeToProjects, Project } from '../../services/supabase';
 import { format, differenceInDays, startOfYear, endOfYear, isWithinInterval, addMonths } from 'date-fns';
 
@@ -36,6 +36,19 @@ export function ProjectsScreen() {
   const [editCost, setEditCost] = useState('');
   const [editDate, setEditDate] = useState('');
   const [editAssignedTo, setEditAssignedTo] = useState<'Chris' | 'Contractor'>('Chris');
+  const [editChrisPriority, setEditChrisPriority] = useState(false);
+  const [editCarolinePriority, setEditCarolinePriority] = useState(false);
+  const [editNeedsQuote, setEditNeedsQuote] = useState(false);
+  const [editQuoteReceived, setEditQuoteReceived] = useState(false);
+  const [editMaterialsNeeded, setEditMaterialsNeeded] = useState(false);
+  const [editMaterialsOrdered, setEditMaterialsOrdered] = useState(false);
+  const [editScheduled, setEditScheduled] = useState(false);
+  const [editBlocked, setEditBlocked] = useState(false);
+  const [editRequiresPermit, setEditRequiresPermit] = useState(false);
+  const [editPermitApproved, setEditPermitApproved] = useState(false);
+
+  // Current user (for tracking who made changes)
+  const [currentUser, setCurrentUser] = useState<'Chris' | 'Caroline'>('Chris');
 
   // Load projects
   useEffect(() => {
@@ -119,6 +132,16 @@ export function ProjectsScreen() {
     setEditCost(project.cost?.toString() || '');
     setEditDate(project.target_date || '');
     setEditAssignedTo(project.assigned_to || 'Chris');
+    setEditChrisPriority(project.chris_priority || false);
+    setEditCarolinePriority(project.caroline_priority || false);
+    setEditNeedsQuote(project.needs_quote || false);
+    setEditQuoteReceived(project.quote_received || false);
+    setEditMaterialsNeeded(project.materials_needed || false);
+    setEditMaterialsOrdered(project.materials_ordered || false);
+    setEditScheduled(project.scheduled || false);
+    setEditBlocked(project.blocked || false);
+    setEditRequiresPermit(project.requires_permit || false);
+    setEditPermitApproved(project.permit_approved || false);
   };
 
   // Save edits
@@ -130,6 +153,17 @@ export function ProjectsScreen() {
       cost: editCost ? parseFloat(editCost) : undefined,
       target_date: editDate || undefined,
       assigned_to: editAssignedTo,
+      updated_by: currentUser,
+      chris_priority: editChrisPriority,
+      caroline_priority: editCarolinePriority,
+      needs_quote: editNeedsQuote,
+      quote_received: editQuoteReceived,
+      materials_needed: editMaterialsNeeded,
+      materials_ordered: editMaterialsOrdered,
+      scheduled: editScheduled,
+      blocked: editBlocked,
+      requires_permit: editRequiresPermit,
+      permit_approved: editPermitApproved,
     });
 
     setEditingId(null);
@@ -253,12 +287,14 @@ export function ProjectsScreen() {
     }}>
       {/* Header */}
       <div style={{
-        padding: '16px 20px',
+        padding: '12px 20px',
         borderBottom: '2px solid #1a1a1a',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         background: '#fff',
+        flexWrap: 'wrap',
+        gap: 10,
       }}>
         <div>
           <h1 style={{
@@ -274,25 +310,65 @@ export function ProjectsScreen() {
             {pendingProjects.length} active, {completedProjects.length} completed
           </div>
         </div>
-        <button
-          onClick={() => setShowAddForm(true)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '8px 14px',
-            background: '#1a1a1a',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 6,
-            fontSize: 12,
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}
-        >
-          <Plus size={14} />
-          Add Project
-        </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* User Selector */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Editing as:</span>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button
+                onClick={() => setCurrentUser('Chris')}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  fontWeight: currentUser === 'Chris' ? 600 : 400,
+                  background: currentUser === 'Chris' ? '#3498db' : '#f0f0f0',
+                  color: currentUser === 'Chris' ? '#fff' : '#666',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                }}
+              >
+                Chris
+              </button>
+              <button
+                onClick={() => setCurrentUser('Caroline')}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  fontWeight: currentUser === 'Caroline' ? 600 : 400,
+                  background: currentUser === 'Caroline' ? '#e74c3c' : '#f0f0f0',
+                  color: currentUser === 'Caroline' ? '#fff' : '#666',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                }}
+              >
+                Caroline
+              </button>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowAddForm(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 14px',
+              background: '#1a1a1a',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            <Plus size={14} />
+            Add Project
+          </button>
+        </div>
       </div>
 
       {/* Add Form Modal */}
@@ -602,17 +678,37 @@ export function ProjectsScreen() {
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
                   style={{
-                    background: '#fff',
-                    border: '1px solid #e5e5e5',
+                    background: project.caroline_priority ? '#fff5f5' : '#fff',
+                    border: project.caroline_priority ? '2px solid #e74c3c' : '1px solid #e5e5e5',
                     borderRadius: 8,
                     marginBottom: 8,
                     overflow: 'hidden',
                     opacity: dragState.isDragging && dragState.dragIndex === index ? 0.5 : 1,
                     transform: dragState.dragOverIndex === index ? 'translateY(4px)' : 'none',
                     transition: 'transform 0.15s ease, opacity 0.15s ease',
-                    boxShadow: dragState.dragOverIndex === index ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
+                    boxShadow: project.caroline_priority
+                      ? '0 2px 8px rgba(231, 76, 60, 0.2)'
+                      : dragState.dragOverIndex === index ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
                   }}
                 >
+                  {/* Caroline Priority Banner */}
+                  {project.caroline_priority && (
+                    <div style={{
+                      background: 'linear-gradient(90deg, #e74c3c, #c0392b)',
+                      color: '#fff',
+                      padding: '4px 14px',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.1em',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}>
+                      <Flag size={10} /> Caroline's Priority
+                    </div>
+                  )}
+
                   {/* Main Row */}
                   <div style={{
                     display: 'flex',
@@ -630,7 +726,7 @@ export function ProjectsScreen() {
                       width: 28,
                       height: 28,
                       borderRadius: '50%',
-                      background: '#1a1a1a',
+                      background: project.caroline_priority ? '#e74c3c' : '#1a1a1a',
                       color: '#fff',
                       display: 'flex',
                       alignItems: 'center',
@@ -642,12 +738,28 @@ export function ProjectsScreen() {
                       {index + 1}
                     </div>
 
+                    {/* Priority Stars */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {project.chris_priority && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Star size={10} fill="#3498db" color="#3498db" />
+                          <span style={{ fontSize: 8, color: '#3498db', fontWeight: 600 }}>C</span>
+                        </div>
+                      )}
+                      {project.caroline_priority && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Star size={10} fill="#e74c3c" color="#e74c3c" />
+                          <span style={{ fontSize: 8, color: '#e74c3c', fontWeight: 600 }}>CL</span>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Content */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{
-                        fontSize: 14,
-                        fontWeight: 500,
-                        color: '#1a1a1a',
+                        fontSize: project.caroline_priority ? 15 : 14,
+                        fontWeight: project.caroline_priority ? 700 : 500,
+                        color: project.caroline_priority ? '#c0392b' : '#1a1a1a',
                         marginBottom: 4,
                       }}>
                         {project.title}
@@ -819,7 +931,81 @@ export function ProjectsScreen() {
                               </div>
                             </div>
                           </div>
-                          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                          {/* Priority Flags */}
+                          <div style={{ marginTop: 8, padding: 10, background: '#f8f8f8', borderRadius: 6 }}>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 8, textTransform: 'uppercase' }}>Priority Flags</div>
+                            <div style={{ display: 'flex', gap: 12 }}>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={editChrisPriority}
+                                  onChange={(e) => setEditChrisPriority(e.target.checked)}
+                                  style={{ width: 16, height: 16, accentColor: '#3498db' }}
+                                />
+                                <Star size={12} color="#3498db" fill={editChrisPriority ? '#3498db' : 'none'} />
+                                <span style={{ fontSize: 12, color: '#3498db', fontWeight: 500 }}>Chris Priority</span>
+                              </label>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={editCarolinePriority}
+                                  onChange={(e) => setEditCarolinePriority(e.target.checked)}
+                                  style={{ width: 16, height: 16, accentColor: '#e74c3c' }}
+                                />
+                                <Flag size={12} color="#e74c3c" fill={editCarolinePriority ? '#e74c3c' : 'none'} />
+                                <span style={{ fontSize: 12, color: '#e74c3c', fontWeight: 600 }}>Caroline Priority</span>
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Status Checkboxes */}
+                          <div style={{ marginTop: 8, padding: 10, background: '#f8f8f8', borderRadius: 6 }}>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 8, textTransform: 'uppercase' }}>Project Status</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11 }}>
+                                <input type="checkbox" checked={editNeedsQuote} onChange={(e) => setEditNeedsQuote(e.target.checked)} style={{ width: 14, height: 14 }} />
+                                <FileText size={11} color="#666" /> Needs Quote
+                              </label>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11 }}>
+                                <input type="checkbox" checked={editQuoteReceived} onChange={(e) => setEditQuoteReceived(e.target.checked)} style={{ width: 14, height: 14 }} />
+                                <FileCheck size={11} color="#27ae60" /> Quote Received
+                              </label>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11 }}>
+                                <input type="checkbox" checked={editMaterialsNeeded} onChange={(e) => setEditMaterialsNeeded(e.target.checked)} style={{ width: 14, height: 14 }} />
+                                <ShoppingCart size={11} color="#666" /> Materials Needed
+                              </label>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11 }}>
+                                <input type="checkbox" checked={editMaterialsOrdered} onChange={(e) => setEditMaterialsOrdered(e.target.checked)} style={{ width: 14, height: 14 }} />
+                                <ShoppingCart size={11} color="#27ae60" /> Materials Ordered
+                              </label>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11 }}>
+                                <input type="checkbox" checked={editScheduled} onChange={(e) => setEditScheduled(e.target.checked)} style={{ width: 14, height: 14 }} />
+                                <CalendarCheck size={11} color="#27ae60" /> Scheduled
+                              </label>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11 }}>
+                                <input type="checkbox" checked={editBlocked} onChange={(e) => setEditBlocked(e.target.checked)} style={{ width: 14, height: 14 }} />
+                                <Ban size={11} color="#e74c3c" /> Blocked
+                              </label>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11 }}>
+                                <input type="checkbox" checked={editRequiresPermit} onChange={(e) => setEditRequiresPermit(e.target.checked)} style={{ width: 14, height: 14 }} />
+                                <AlertCircle size={11} color="#f39c12" /> Requires Permit
+                              </label>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11 }}>
+                                <input type="checkbox" checked={editPermitApproved} onChange={(e) => setEditPermitApproved(e.target.checked)} style={{ width: 14, height: 14 }} />
+                                <Check size={11} color="#27ae60" /> Permit Approved
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Last updated info */}
+                          {project.updated_by && (
+                            <div style={{ fontSize: 10, color: '#aaa', marginTop: 8, fontStyle: 'italic' }}>
+                              Last updated by {project.updated_by}
+                              {project.updated_at && ` on ${format(new Date(project.updated_at), 'MMM d, h:mm a')}`}
+                            </div>
+                          )}
+
+                          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                             <button
                               onClick={() => handleSaveEdit(project.id)}
                               style={{
