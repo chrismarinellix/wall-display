@@ -13,6 +13,7 @@ const screenLabels: Record<ScreenType, string> = {
   homeassistant: 'Home',
   moments: 'History',
   summary: 'Brief',
+  projects: 'Projects',
   setup: 'Setup',
   video: 'Camera',
 };

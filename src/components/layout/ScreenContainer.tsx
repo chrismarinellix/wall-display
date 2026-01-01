@@ -14,6 +14,7 @@ import { MomentsScreen } from '../screens/MomentsScreen';
 import { DailyProphetScreen } from '../screens/DailyProphetScreen';
 import { SetupScreen } from '../screens/SetupScreen';
 import { VideoScreen } from '../screens/VideoScreen';
+import { ProjectsScreen } from '../screens/ProjectsScreen';
 import { ScreenType } from '../../types/settings';
 import {
   Cloud,
@@ -29,6 +30,7 @@ import {
   LayoutGrid,
   Settings,
   Video,
+  ClipboardList,
 } from 'lucide-react';
 
 const screens: Record<ScreenType, React.ComponentType> = {
@@ -42,6 +44,7 @@ const screens: Record<ScreenType, React.ComponentType> = {
   homeassistant: HomeAssistantScreen,
   moments: MomentsScreen,
   summary: DailyProphetScreen,
+  projects: ProjectsScreen,
   setup: SetupScreen,
   video: VideoScreen,
 };
@@ -57,6 +60,7 @@ const screenInfo: Record<ScreenType, { title: string; shortTitle: string; Icon: 
   homeassistant: { title: 'Home', shortTitle: 'Home', Icon: Home },
   moments: { title: 'Moments', shortTitle: 'History', Icon: Image },
   summary: { title: 'Daily Brief', shortTitle: 'Brief', Icon: LayoutGrid },
+  projects: { title: 'Projects', shortTitle: 'Projects', Icon: ClipboardList },
   setup: { title: 'Setup', shortTitle: 'Setup', Icon: Settings },
   video: { title: 'Camera', shortTitle: 'Cam', Icon: Video },
 };

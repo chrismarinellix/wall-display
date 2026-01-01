@@ -23,7 +23,11 @@ import {
   updateCalendarEvent,
   subscribeToCalendarEvents,
   CalendarEventRecord,
+  getProjects,
+  subscribeToProjects,
+  Project,
 } from '../../services/supabase';
+import { ClipboardList } from 'lucide-react';
 
 // Common event templates with family members
 const COMMON_EVENTS = [
@@ -62,6 +66,7 @@ interface CalendarEvent {
   allDay: boolean;
   rrule?: string;
   isCustom?: boolean;
+  isProject?: boolean;
 }
 
 // Parse iCal date format
@@ -338,6 +343,7 @@ export function CalendarScreen() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [googleEvents, setGoogleEvents] = useState<CalendarEvent[]>([]);
   const [customEvents, setCustomEvents] = useState<CalendarEventRecord[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -398,9 +404,14 @@ export function CalendarScreen() {
     setCustomEvents(events);
   };
 
+  const loadProjects = async () => {
+    const projectList = await getProjects();
+    setProjects(projectList.filter(p => p.target_date && p.status !== 'completed'));
+  };
+
   const loadAllEvents = async () => {
     setLoading(true);
-    await Promise.all([loadGoogleEvents(), loadCustomEvents()]);
+    await Promise.all([loadGoogleEvents(), loadCustomEvents(), loadProjects()]);
     setLoading(false);
   };
 
@@ -412,6 +423,16 @@ export function CalendarScreen() {
   useEffect(() => {
     const unsubscribe = subscribeToCalendarEvents((events) => {
       setCustomEvents(events);
+    });
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  // Subscribe to project changes
+  useEffect(() => {
+    const unsubscribe = subscribeToProjects((projectList) => {
+      setProjects(projectList.filter(p => p.target_date && p.status !== 'completed'));
     });
     return () => {
       if (unsubscribe) unsubscribe();
@@ -504,7 +525,7 @@ export function CalendarScreen() {
     loadCustomEvents();
   };
 
-  // Merge Google Calendar events with custom events
+  // Merge Google Calendar events, custom events, and projects
   const allEvents: CalendarEvent[] = [
     ...googleEvents,
     ...customEvents.map((e) => ({
@@ -515,6 +536,15 @@ export function CalendarScreen() {
       location: e.location,
       allDay: e.all_day,
       isCustom: true,
+    })),
+    // Add projects with target dates
+    ...projects.map((p) => ({
+      id: `project-${p.id}`,
+      title: p.title,
+      start: new Date(p.target_date!),
+      end: new Date(p.target_date!),
+      allDay: true,
+      isProject: true,
     })),
   ];
 
@@ -710,6 +740,7 @@ export function CalendarScreen() {
                 const customEventRecord = event.isCustom
                   ? customEvents.find(e => e.id === event.id)
                   : null;
+                const isProjectEvent = event.isProject === true;
 
                 return (
                   <div
@@ -721,17 +752,21 @@ export function CalendarScreen() {
                     }}
                     style={{
                       ...styles.eventTag,
-                      background: isCurrentDay
-                        ? (event.isCustom ? 'rgba(255,255,255,0.85)' : '#fff')
-                        : (event.isCustom ? '#333' : '#000'),
-                      color: isCurrentDay ? '#000' : '#fff',
+                      background: isProjectEvent
+                        ? (isCurrentDay ? 'rgba(100, 149, 237, 0.9)' : '#6495ed')
+                        : isCurrentDay
+                          ? (event.isCustom ? 'rgba(255,255,255,0.85)' : '#fff')
+                          : (event.isCustom ? '#333' : '#000'),
+                      color: isProjectEvent ? '#fff' : (isCurrentDay ? '#000' : '#fff'),
                       cursor: event.isCustom && !isMobile ? 'grab' : 'default',
+                      border: isProjectEvent ? '1px solid rgba(255,255,255,0.3)' : 'none',
                     }}
-                    title={`${event.title}${event.allDay ? '' : ` - ${format(event.start, 'h:mm a')}`}${event.isCustom ? ' (drag to move)' : ''}`}
+                    title={`${event.title}${event.allDay ? '' : ` - ${format(event.start, 'h:mm a')}`}${event.isCustom ? ' (drag to move)' : ''}${isProjectEvent ? ' (Project)' : ''}`}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
-                      {!event.allDay && !isMobile && <Clock size={8} style={{ marginRight: 2, opacity: 0.7 }} />}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, display: 'flex', alignItems: 'center', gap: 3 }}>
+                      {isProjectEvent && <ClipboardList size={8} style={{ flexShrink: 0 }} />}
+                      {!event.allDay && !isMobile && !isProjectEvent && <Clock size={8} style={{ marginRight: 2, opacity: 0.7 }} />}
                       {event.title}
                     </span>
                     {event.isCustom && customEventRecord && !isMobile && (

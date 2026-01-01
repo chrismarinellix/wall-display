@@ -1233,3 +1233,264 @@ export function getBirthdayMessage(): string | null {
 
   return messages.join(' ');
 }
+
+// ============ PROJECTS ============
+
+export interface Project {
+  id: string;
+  title: string;
+  description?: string; // How/details
+  when?: string; // When it will be done
+  target_date?: string; // ISO date for calendar integration
+  cost?: number;
+  status: 'pending' | 'in_progress' | 'completed';
+  position: number; // For drag-and-drop ordering
+  created_at: string;
+  updated_at?: string;
+  completed_at?: string;
+}
+
+const PROJECTS_STORAGE_KEY = 'wall-display-projects';
+
+// Get all projects ordered by position
+export async function getProjects(): Promise<Project[]> {
+  if (!supabase) {
+    // Fallback to localStorage
+    const stored = localStorage.getItem(PROJECTS_STORAGE_KEY);
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .order('position', { ascending: true });
+
+    if (error) throw error;
+
+    const projects = (data || []).map(d => ({
+      id: d.id,
+      title: d.title,
+      description: d.description,
+      when: d.when,
+      target_date: d.target_date,
+      cost: d.cost,
+      status: d.status || 'pending',
+      position: d.position,
+      created_at: d.created_at,
+      updated_at: d.updated_at,
+      completed_at: d.completed_at,
+    }));
+
+    // Cache to localStorage
+    localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(projects));
+    return projects;
+  } catch (e) {
+    console.error('Failed to fetch projects:', e);
+    // Try localStorage fallback
+    const stored = localStorage.getItem(PROJECTS_STORAGE_KEY);
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }
+}
+
+// Add a new project
+export async function addProject(project: Omit<Project, 'id' | 'created_at' | 'position'>): Promise<Project | null> {
+  // Get current projects to determine next position
+  const currentProjects = await getProjects();
+  const maxPosition = currentProjects.reduce((max, p) => Math.max(max, p.position), -1);
+
+  const newProject: Project = {
+    ...project,
+    id: crypto.randomUUID(),
+    position: maxPosition + 1,
+    created_at: new Date().toISOString(),
+  };
+
+  if (!supabase) {
+    // Fallback to localStorage
+    const stored = localStorage.getItem(PROJECTS_STORAGE_KEY);
+    const projects = stored ? JSON.parse(stored) : [];
+    projects.push(newProject);
+    localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(projects));
+    return newProject;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('projects')
+      .insert({
+        id: newProject.id,
+        title: newProject.title,
+        description: newProject.description,
+        when: newProject.when,
+        target_date: newProject.target_date,
+        cost: newProject.cost,
+        status: newProject.status,
+        position: newProject.position,
+        created_at: newProject.created_at,
+      });
+
+    if (error) throw error;
+
+    // Update localStorage cache
+    const stored = localStorage.getItem(PROJECTS_STORAGE_KEY);
+    const projects = stored ? JSON.parse(stored) : [];
+    projects.push(newProject);
+    localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(projects));
+
+    return newProject;
+  } catch (e) {
+    console.error('Failed to add project:', e);
+    return null;
+  }
+}
+
+// Update a project
+export async function updateProject(id: string, updates: Partial<Omit<Project, 'id' | 'created_at'>>): Promise<void> {
+  const updatesWithTimestamp = {
+    ...updates,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (!supabase) {
+    // Fallback to localStorage
+    const stored = localStorage.getItem(PROJECTS_STORAGE_KEY);
+    if (stored) {
+      const projects = JSON.parse(stored) as Project[];
+      const updated = projects.map(p => p.id === id ? { ...p, ...updatesWithTimestamp } : p);
+      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
+    }
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('projects')
+      .update(updatesWithTimestamp)
+      .eq('id', id);
+
+    if (error) throw error;
+
+    // Update localStorage cache
+    const stored = localStorage.getItem(PROJECTS_STORAGE_KEY);
+    if (stored) {
+      const projects = JSON.parse(stored) as Project[];
+      const updated = projects.map(p => p.id === id ? { ...p, ...updatesWithTimestamp } : p);
+      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
+    }
+  } catch (e) {
+    console.error('Failed to update project:', e);
+  }
+}
+
+// Reorder projects (after drag-and-drop)
+export async function reorderProjects(projectIds: string[]): Promise<void> {
+  const updates = projectIds.map((id, index) => ({ id, position: index }));
+
+  if (!supabase) {
+    // Fallback to localStorage
+    const stored = localStorage.getItem(PROJECTS_STORAGE_KEY);
+    if (stored) {
+      const projects = JSON.parse(stored) as Project[];
+      const reordered = projects.map(p => {
+        const update = updates.find(u => u.id === p.id);
+        return update ? { ...p, position: update.position } : p;
+      }).sort((a, b) => a.position - b.position);
+      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(reordered));
+    }
+    return;
+  }
+
+  try {
+    // Update each project's position
+    for (const update of updates) {
+      await supabase
+        .from('projects')
+        .update({ position: update.position, updated_at: new Date().toISOString() })
+        .eq('id', update.id);
+    }
+
+    // Update localStorage cache
+    const stored = localStorage.getItem(PROJECTS_STORAGE_KEY);
+    if (stored) {
+      const projects = JSON.parse(stored) as Project[];
+      const reordered = projects.map(p => {
+        const update = updates.find(u => u.id === p.id);
+        return update ? { ...p, position: update.position } : p;
+      }).sort((a, b) => a.position - b.position);
+      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(reordered));
+    }
+  } catch (e) {
+    console.error('Failed to reorder projects:', e);
+  }
+}
+
+// Delete a project
+export async function deleteProject(id: string): Promise<void> {
+  if (!supabase) {
+    // Fallback to localStorage
+    const stored = localStorage.getItem(PROJECTS_STORAGE_KEY);
+    if (stored) {
+      const projects = JSON.parse(stored) as Project[];
+      const filtered = projects.filter(p => p.id !== id);
+      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(filtered));
+    }
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    // Update localStorage cache
+    const stored = localStorage.getItem(PROJECTS_STORAGE_KEY);
+    if (stored) {
+      const projects = JSON.parse(stored) as Project[];
+      const filtered = projects.filter(p => p.id !== id);
+      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(filtered));
+    }
+  } catch (e) {
+    console.error('Failed to delete project:', e);
+  }
+}
+
+// Subscribe to project changes
+export function subscribeToProjects(callback: (projects: Project[]) => void): (() => void) | null {
+  if (!supabase) {
+    return null;
+  }
+
+  const channel = supabase
+    .channel('projects-changes')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'projects' },
+      async () => {
+        const projects = await getProjects();
+        callback(projects);
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
