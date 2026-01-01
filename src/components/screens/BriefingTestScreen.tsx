@@ -1,5 +1,106 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Cloud, TrendingUp, Calendar, Clock } from 'lucide-react';
+import { supabase, getPomodoroHistory, PomodoroHistory } from '../../services/supabase';
+
+// Pomodoro history helpers
+const STACK_HEIGHT = 5;
+
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getLast60Days(): string[] {
+  const days: string[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = 59; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    days.push(formatLocalDate(date));
+  }
+  return days;
+}
+
+function getLocalHistory(): PomodoroHistory {
+  try {
+    const stored = localStorage.getItem('pomodoro-history');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      const history: PomodoroHistory = {};
+      Object.entries(parsed).forEach(([date, value]) => {
+        if (typeof value === 'number') {
+          history[date] = { count: value, minutes: 0 };
+        } else {
+          history[date] = value as { count: number; minutes: number };
+        }
+      });
+      return history;
+    }
+  } catch {}
+  return {};
+}
+
+function HeatmapGrid({ history }: { history: PomodoroHistory }) {
+  const days = getLast60Days();
+  const counts = days.map(d => history[d]?.count || 0);
+  const totalPomodoros = counts.reduce((a, b) => a + b, 0);
+
+  const getBoxColor = (dayCount: number, boxIndex: number) => {
+    const pomodoroNumber = STACK_HEIGHT - boxIndex;
+    if (dayCount >= pomodoroNumber) {
+      const darkness = Math.round(204 - (pomodoroNumber - 1) * 40);
+      return `rgb(${darkness}, ${darkness}, ${darkness})`;
+    }
+    return '#e5e5e5';
+  };
+
+  return (
+    <div style={{ width: '100%', padding: '0 24px' }}>
+      <div className="flex flex--between" style={{ marginBottom: 12, alignItems: 'center' }}>
+        <div className="label label--gray">Last 60 Days</div>
+        <div style={{ fontSize: 11, color: '#666' }}>
+          {totalPomodoros} pomodoros
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 2, width: '100%' }}>
+        {days.map((day) => {
+          const count = history[day]?.count || 0;
+          return (
+            <div
+              key={day}
+              title={`${day}: ${count} pomodoro${count !== 1 ? 's' : ''}`}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+              }}
+            >
+              {Array.from({ length: STACK_HEIGHT }).map((_, boxIndex) => (
+                <div
+                  key={boxIndex}
+                  style={{
+                    height: 8,
+                    background: getBoxColor(count, boxIndex),
+                    transition: 'background 0.3s ease',
+                  }}
+                />
+              ))}
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex flex--between" style={{ marginTop: 8 }}>
+        <span style={{ fontSize: 10, color: '#999' }}>60 days ago</span>
+        <span style={{ fontSize: 10, color: '#999' }}>Today</span>
+      </div>
+    </div>
+  );
+}
 
 // Dispersion text component - text explodes/coalesces
 function DispersionText({
@@ -59,6 +160,32 @@ interface DataItem {
 export function BriefingTestScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
+  const [pomodoroHistory, setPomodoroHistory] = useState<PomodoroHistory>({});
+
+  // Load pomodoro history
+  useEffect(() => {
+    async function loadHistory() {
+      if (supabase) {
+        const cloudHistory = await getPomodoroHistory();
+        setPomodoroHistory(cloudHistory);
+      } else {
+        setPomodoroHistory(getLocalHistory());
+      }
+    }
+    loadHistory();
+
+    // Refresh when page becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden) loadHistory();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    const refreshInterval = setInterval(loadHistory, 30000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(refreshInterval);
+    };
+  }, []);
 
   // Sample data to cycle through
   const items: DataItem[] = [
@@ -239,7 +366,7 @@ export function BriefingTestScreen() {
       <div
         style={{
           position: 'absolute',
-          bottom: 80,
+          bottom: 140,
           display: 'flex',
           gap: 12,
         }}
@@ -271,6 +398,18 @@ export function BriefingTestScreen() {
         }}
       >
         Daily Briefing
+      </div>
+
+      {/* Pomodoro 60-day timeline */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 24,
+          left: 0,
+          right: 0,
+        }}
+      >
+        <HeatmapGrid history={pomodoroHistory} />
       </div>
     </div>
   );
