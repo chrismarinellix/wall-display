@@ -42,49 +42,36 @@ export function ProjectsScreen() {
     return () => unsubscribe?.();
   }, []);
 
-  // Add initial projects if empty
-  useEffect(() => {
-    const addInitialProjects = async () => {
-      if (!isLoading && projects.length === 0) {
-        await addProject({
-          title: 'Sell the windows',
-          description: 'List on Facebook Marketplace and Gumtree. Take good photos in natural light.',
-          when: 'This weekend',
-          status: 'pending',
-        });
-        await addProject({
-          title: 'Get glass for bathroom',
-          description: 'Measure the space. Get quotes from 3 glaziers. Choose one and schedule install.',
-          when: 'Next month',
-          cost: 2500,
-          status: 'pending',
-        });
-        await addProject({
-          title: 'Bathroom plumbing fix',
-          description: 'Call plumber to fix the leaky tap and check drainage.',
-          when: 'This week',
-          cost: 350,
-          status: 'pending',
-        });
-        await addProject({
-          title: 'Remove paint tins from garage',
-          description: 'Take old paint tins to the tip. Check what can be recycled vs disposed.',
-          when: 'Saturday morning',
-          status: 'pending',
-        });
-        await addProject({
-          title: 'Paint the laundry floor',
-          description: 'Clean and prep surface. Apply floor paint (2 coats). Let dry 24hrs between coats.',
-          when: 'Next weekend',
-          cost: 80,
-          status: 'pending',
-        });
-        const updated = await getProjects();
-        setProjects(updated);
+  // Separate pending and completed projects
+  const pendingProjects = useMemo(() => projects.filter(p => p.status !== 'completed'), [projects]);
+  const completedProjects = useMemo(() => projects.filter(p => p.status === 'completed'), [projects]);
+
+  // Calculate budget by month for floating widget
+  const budgetByMonth = useMemo(() => {
+    const monthlyBudget: { [key: string]: { total: number; projects: Project[] } } = {};
+    let undatedTotal = 0;
+    const undatedProjects: Project[] = [];
+
+    pendingProjects.forEach(p => {
+      if (p.cost && p.cost > 0) {
+        if (p.target_date) {
+          const monthKey = format(new Date(p.target_date), 'MMM yyyy');
+          if (!monthlyBudget[monthKey]) {
+            monthlyBudget[monthKey] = { total: 0, projects: [] };
+          }
+          monthlyBudget[monthKey].total += p.cost;
+          monthlyBudget[monthKey].projects.push(p);
+        } else {
+          undatedTotal += p.cost;
+          undatedProjects.push(p);
+        }
       }
-    };
-    addInitialProjects();
-  }, [isLoading, projects.length]);
+    });
+
+    return { monthlyBudget, undatedTotal, undatedProjects };
+  }, [pendingProjects]);
+
+  const totalBudget = useMemo(() => pendingProjects.reduce((sum, p) => sum + (p.cost || 0), 0), [pendingProjects]);
 
   // Handle add project
   const handleAddProject = async () => {
@@ -201,9 +188,6 @@ export function ProjectsScreen() {
       default: return 'Pending';
     }
   };
-
-  const pendingProjects = projects.filter(p => p.status !== 'completed');
-  const completedProjects = projects.filter(p => p.status === 'completed');
 
   if (isLoading) {
     return (
@@ -446,11 +430,56 @@ export function ProjectsScreen() {
         </div>
       )}
 
+      {/* Floating Budget Widget */}
+      {totalBudget > 0 && (
+        <div style={{
+          position: 'absolute',
+          top: 70,
+          right: 16,
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          borderRadius: 12,
+          padding: '14px 16px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+          border: '1px solid rgba(0,0,0,0.06)',
+          zIndex: 50,
+          minWidth: 180,
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
+            Budget Estimate
+          </div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: '#1a1a1a', marginBottom: 12 }}>
+            ${totalBudget.toLocaleString()}
+          </div>
+
+          {/* Monthly breakdown */}
+          <div style={{ borderTop: '1px solid #eee', paddingTop: 10 }}>
+            {Object.entries(budgetByMonth.monthlyBudget)
+              .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+              .slice(0, 4)
+              .map(([month, data]) => (
+                <div key={month} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, color: '#666' }}>{month}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#1a1a1a' }}>${data.total.toLocaleString()}</span>
+                </div>
+              ))}
+            {budgetByMonth.undatedTotal > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: 11, color: '#999', fontStyle: 'italic' }}>Unscheduled</span>
+                <span style={{ fontSize: 12, fontWeight: 500, color: '#888' }}>${budgetByMonth.undatedTotal.toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Project List */}
       <div style={{
         flex: 1,
         overflow: 'auto',
         padding: '12px 16px',
+        paddingRight: totalBudget > 0 ? 210 : 16, // Make room for floating widget
       }}>
         {pendingProjects.length === 0 && completedProjects.length === 0 ? (
           <div style={{
@@ -710,7 +739,7 @@ export function ProjectsScreen() {
         )}
       </div>
 
-      {/* Fixed Bottom Section - Timeline + Cost Summary */}
+      {/* Fixed Bottom Section - Timeline */}
       <div style={{
         flexShrink: 0,
         background: '#fff',
@@ -718,29 +747,6 @@ export function ProjectsScreen() {
       }}>
         {/* Timeline Progress Bar - Always visible */}
         <TimelineBar projects={projects} />
-
-        {/* Footer with total cost */}
-        {pendingProjects.some(p => p.cost && p.cost > 0) && (
-          <div style={{
-            padding: '12px 20px',
-            borderTop: '1px solid #e5e5e5',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}>
-            <span style={{ fontSize: 11, color: '#888' }}>
-              {pendingProjects.length} projects pending
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Est. Total:
-              </span>
-              <span style={{ fontSize: 16, fontWeight: 600, color: '#1a1a1a' }}>
-                ${pendingProjects.reduce((sum, p) => sum + (p.cost || 0), 0).toLocaleString()}
-              </span>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -816,7 +822,7 @@ function TimelineBar({ projects }: { projects: Project[] }) {
       {/* Timeline track */}
       <div style={{
         position: 'relative',
-        height: 40,
+        height: 56,
         marginBottom: 4,
       }}>
         {/* Background track */}
@@ -824,8 +830,7 @@ function TimelineBar({ projects }: { projects: Project[] }) {
           position: 'absolute',
           left: 0,
           right: 0,
-          top: '50%',
-          transform: 'translateY(-50%)',
+          top: 14,
           height: 4,
           background: '#e5e5e5',
           borderRadius: 2,
@@ -835,7 +840,7 @@ function TimelineBar({ projects }: { projects: Project[] }) {
         <div style={{
           position: 'absolute',
           left: 0,
-          top: '50%',
+          top: 14,
           transform: 'translate(-50%, -50%)',
           width: 8,
           height: 8,
@@ -853,8 +858,17 @@ function TimelineBar({ projects }: { projects: Project[] }) {
             style={{
               position: 'absolute',
               left: `${position}%`,
-              top: '50%',
-              transform: 'translate(-50%, -50%)',
+              top: 0,
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              cursor: 'pointer',
+              zIndex: hoveredProject?.id === project.id ? 10 : 1,
+            }}
+          >
+            {/* The dot */}
+            <div style={{
               width: 28,
               height: 28,
               background: isPast ? '#ffebee' : project.status === 'in_progress' ? '#fff8e1' : '#fff',
@@ -863,13 +877,27 @@ function TimelineBar({ projects }: { projects: Project[] }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: 'pointer',
-              zIndex: hoveredProject?.id === project.id ? 10 : 1,
               transition: 'transform 0.15s ease, box-shadow 0.15s ease',
               boxShadow: hoveredProject?.id === project.id ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
-            }}
-          >
-            <Icon size={12} color={isPast ? '#e57373' : project.status === 'in_progress' ? '#ff8f00' : '#1a1a1a'} />
+            }}>
+              <Icon size={12} color={isPast ? '#e57373' : project.status === 'in_progress' ? '#ff8f00' : '#1a1a1a'} />
+            </div>
+
+            {/* Cost label under dot */}
+            {project.cost && project.cost > 0 && (
+              <div style={{
+                marginTop: 4,
+                fontSize: 9,
+                fontWeight: 600,
+                color: isPast ? '#e57373' : '#4a7a4a',
+                background: isPast ? '#ffebee' : '#e8f5e9',
+                padding: '2px 6px',
+                borderRadius: 4,
+                whiteSpace: 'nowrap',
+              }}>
+                ${project.cost >= 1000 ? `${(project.cost / 1000).toFixed(1)}k` : project.cost}
+              </div>
+            )}
 
             {/* Tooltip */}
             {hoveredProject?.id === project.id && (
