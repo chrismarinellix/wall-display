@@ -1,35 +1,32 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { proverbs } from '../../data/proverbs';
 
-// Ink dots forming text - dots appear scattered and gradually form letters
+// Ink dots appear in place, then morph into calligraphy text
 function InkDotsText({
   text,
   style = {},
-  revealDuration = 5000,
+  dotsDuration = 1500,    // How long dots phase lasts
+  morphDuration = 2000,   // How long morph to text takes
 }: {
   text: string;
   style?: React.CSSProperties;
-  revealDuration?: number;
+  dotsDuration?: number;
+  morphDuration?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number | null>(null);
-  const [isComplete, setIsComplete] = useState(false);
+  const [phase, setPhase] = useState<'dots' | 'morphing' | 'complete'>('dots');
+  const [dotsOpacity, setDotsOpacity] = useState(0);
+  const [textOpacity, setTextOpacity] = useState(0);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
-  // Generate ink dot particles
+  // Dot interface
   interface InkDot {
     x: number;
     y: number;
-    targetX: number;
-    targetY: number;
-    finalX: number; // Slightly offset from target for organic look
-    finalY: number;
     size: number;
-    finalSize: number; // Vary final size slightly
-    opacity: number;
     delay: number;
-    settled: boolean;
   }
 
   const dotsRef = useRef<InkDot[]>([]);
@@ -41,7 +38,7 @@ function InkDotsText({
     setCanvasSize({ width: rect.width + 40, height: rect.height + 40 });
   }, [text]);
 
-  // Initialize dots when canvas is ready
+  // Initialize dots and run animation
   useEffect(() => {
     if (canvasSize.width === 0 || !canvasRef.current) return;
 
@@ -62,10 +59,10 @@ function InkDotsText({
     ctx.fillStyle = '#000';
     ctx.fillText(text, canvasSize.width / 2, canvasSize.height / 2);
 
-    // Sample pixels to create dots
+    // Sample pixels to create dots - dots start at their final positions
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const dots: InkDot[] = [];
-    const sampleStep = 3; // Sample every N pixels
+    const sampleStep = 3;
 
     for (let y = 0; y < canvas.height; y += sampleStep * dpr) {
       for (let x = 0; x < canvas.width; x += sampleStep * dpr) {
@@ -73,131 +70,111 @@ function InkDotsText({
         const alpha = imageData.data[i + 3];
 
         if (alpha > 50) {
-          // This pixel is part of the text
-          const targetX = x / dpr;
-          const targetY = y / dpr;
-
-          // Start position - scattered around
-          const angle = Math.random() * Math.PI * 2;
-          const distance = 50 + Math.random() * 150;
-          const startX = targetX + Math.cos(angle) * distance;
-          const startY = targetY + Math.sin(angle) * distance;
-
-          // Final position - slightly offset from target for organic ink dot look
-          const finalOffsetX = (Math.random() - 0.5) * 2.5;
-          const finalOffsetY = (Math.random() - 0.5) * 2.5;
+          const posX = x / dpr + (Math.random() - 0.5) * 2;
+          const posY = y / dpr + (Math.random() - 0.5) * 2;
           const baseSize = 1.5 + Math.random() * 2;
 
           dots.push({
-            x: startX,
-            y: startY,
-            targetX,
-            targetY,
-            finalX: targetX + finalOffsetX,
-            finalY: targetY + finalOffsetY,
-            size: baseSize,
-            finalSize: baseSize * (0.8 + Math.random() * 0.5), // Vary final size
-            opacity: 0,
-            delay: Math.random() * 0.6, // Stagger over 60% of duration
-            settled: false,
+            x: posX,
+            y: posY,
+            size: baseSize * (0.8 + Math.random() * 0.5),
+            delay: Math.random() * 0.4, // Stagger appearance
           });
         }
       }
     }
 
     dotsRef.current = dots;
-
-    // Clear canvas for animation
     ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
 
     // Animation
     const startTime = performance.now();
+    const totalDuration = dotsDuration + morphDuration;
 
     const animate = (now: number) => {
       const elapsed = now - startTime;
-      const progress = Math.min(1, elapsed / revealDuration);
+      const progress = Math.min(1, elapsed / totalDuration);
 
-      ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
+      // Phase 1: Dots appear (0 to dotsDuration)
+      if (elapsed < dotsDuration) {
+        setPhase('dots');
+        const dotsProgress = elapsed / dotsDuration;
 
-      let allSettled = true;
-
-      dotsRef.current.forEach(dot => {
-        // Calculate dot's individual progress
-        const dotStart = dot.delay;
-        const dotProgress = Math.max(0, Math.min(1, (progress - dotStart) / 0.4));
-
-        if (dotProgress > 0) {
-          // Ease out cubic for smooth deceleration
-          const ease = 1 - Math.pow(1 - dotProgress, 3);
-
-          // Smoother ease for final settling
-          const settleEase = 1 - Math.pow(1 - Math.min(1, dotProgress * 1.2), 4);
-
-          // Move towards final position (slightly offset from target)
-          dot.x = dot.x + (dot.finalX - dot.x) * ease * 0.12;
-          dot.y = dot.y + (dot.finalY - dot.y) * ease * 0.12;
-
-          // Smoothly transition size
-          const currentSize = dot.size + (dot.finalSize - dot.size) * settleEase;
-
-          dot.opacity = Math.min(0.95, dotProgress * 1.8); // Slightly transparent for ink look
-
-          // Check if settled (use finalX/Y)
-          const distX = Math.abs(dot.x - dot.finalX);
-          const distY = Math.abs(dot.y - dot.finalY);
-          dot.settled = distX < 1 && distY < 1;
-
-          if (!dot.settled) allSettled = false;
-
-          // Draw dot with ink bleeding effect - multiple layers for wet paper look
-          // Outer bleed layer (lighter, larger)
-          ctx.beginPath();
-          ctx.arc(dot.x, dot.y, currentSize * 1.8, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(60, 50, 40, ${dot.opacity * 0.15})`;
-          ctx.fill();
-
-          // Middle bleed layer
-          ctx.beginPath();
-          ctx.arc(dot.x, dot.y, currentSize * 1.3, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(40, 35, 30, ${dot.opacity * 0.35})`;
-          ctx.fill();
-
-          // Core ink dot
-          ctx.beginPath();
-          ctx.arc(dot.x, dot.y, currentSize, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(15, 12, 10, ${dot.opacity * 0.95})`;
-          ctx.fill();
-        } else {
-          allSettled = false;
-        }
-      });
-
-      if (progress < 1 || !allSettled) {
-        animationRef.current = requestAnimationFrame(animate);
-      } else {
-        // Final state - keep the ink dots with bleeding effect
         ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
+
         dotsRef.current.forEach(dot => {
-          // Outer bleed layer
+          // Staggered fade in
+          const dotProgress = Math.max(0, Math.min(1, (dotsProgress - dot.delay) / 0.5));
+          if (dotProgress <= 0) return;
+
+          const opacity = dotProgress * 0.9;
+
+          // Draw dot with ink bleeding effect
+          // Outer bleed
           ctx.beginPath();
-          ctx.arc(dot.finalX, dot.finalY, dot.finalSize * 1.8, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(60, 50, 40, 0.12)';
+          ctx.arc(dot.x, dot.y, dot.size * 1.8, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(60, 50, 40, ${opacity * 0.15})`;
           ctx.fill();
 
-          // Middle bleed layer
+          // Middle bleed
           ctx.beginPath();
-          ctx.arc(dot.finalX, dot.finalY, dot.finalSize * 1.3, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(40, 35, 30, 0.3)';
+          ctx.arc(dot.x, dot.y, dot.size * 1.3, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(40, 35, 30, ${opacity * 0.35})`;
           ctx.fill();
 
-          // Core ink dot
+          // Core dot
           ctx.beginPath();
-          ctx.arc(dot.finalX, dot.finalY, dot.finalSize, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(15, 12, 10, 0.92)';
+          ctx.arc(dot.x, dot.y, dot.size, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(15, 12, 10, ${opacity * 0.95})`;
           ctx.fill();
         });
-        setIsComplete(true);
+
+        setDotsOpacity(1);
+        setTextOpacity(0);
       }
+      // Phase 2: Morph - crossfade from dots to text
+      else if (elapsed < totalDuration) {
+        setPhase('morphing');
+        const morphProgress = (elapsed - dotsDuration) / morphDuration;
+        const eased = 1 - Math.pow(1 - morphProgress, 3); // Ease out
+
+        // Fade out dots
+        const dotsAlpha = 1 - eased;
+        ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
+
+        dotsRef.current.forEach(dot => {
+          const opacity = 0.9 * dotsAlpha;
+          if (opacity < 0.01) return;
+
+          ctx.beginPath();
+          ctx.arc(dot.x, dot.y, dot.size * 1.8, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(60, 50, 40, ${opacity * 0.15})`;
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(dot.x, dot.y, dot.size * 1.3, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(40, 35, 30, ${opacity * 0.35})`;
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(dot.x, dot.y, dot.size, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(15, 12, 10, ${opacity * 0.95})`;
+          ctx.fill();
+        });
+
+        setDotsOpacity(dotsAlpha);
+        setTextOpacity(eased);
+      }
+      // Phase 3: Complete - show only text
+      else {
+        setPhase('complete');
+        setDotsOpacity(0);
+        setTextOpacity(1);
+        ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
+        return; // Stop animation
+      }
+
+      animationRef.current = requestAnimationFrame(animate);
     };
 
     animationRef.current = requestAnimationFrame(animate);
@@ -205,34 +182,44 @@ function InkDotsText({
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [canvasSize, text, revealDuration]);
+  }, [canvasSize, text, dotsDuration, morphDuration]);
 
   return (
     <div style={{ position: 'relative', ...style }}>
-      {/* Hidden text for measurement */}
+      {/* Actual text - fades in during morph */}
       <div
         ref={textRef}
         style={{
-          visibility: 'hidden',
-          position: 'absolute',
           fontSize: 80,
           fontWeight: 400,
           fontFamily: '"Shippori Mincho", serif',
           letterSpacing: '0.2em',
           whiteSpace: 'nowrap',
+          color: '#0a0806',
+          opacity: textOpacity,
+          transition: 'none',
+          textShadow: `
+            0 0 1px rgba(10, 8, 6, 0.8),
+            0 0 3px rgba(30, 25, 20, 0.4),
+            0 0 6px rgba(50, 40, 30, 0.2)
+          `,
         }}
       >
         {text}
       </div>
 
-      {/* Canvas for ink dots animation */}
+      {/* Canvas for ink dots - overlaid on text, fades out */}
       <canvas
         ref={canvasRef}
         style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
           width: canvasSize.width,
           height: canvasSize.height,
-          display: 'block',
-          filter: 'blur(0.3px)', // Subtle blur for ink bleeding into paper
+          opacity: dotsOpacity,
+          pointerEvents: 'none',
+          filter: 'blur(0.3px)',
         }}
       />
     </div>
@@ -392,7 +379,7 @@ export function JapaneseScreen() {
             color: '#1a1a1a',
           }}
         >
-          <InkDotsText text={proverbData.proverb.japanese} revealDuration={4000} />
+          <InkDotsText text={proverbData.proverb.japanese} dotsDuration={1500} morphDuration={2000} />
         </div>
 
         {/* Romaji pronunciation */}
