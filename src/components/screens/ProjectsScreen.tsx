@@ -716,22 +716,46 @@ export function ProjectsScreen() {
                     padding: '12px 14px',
                     gap: 12,
                   }}>
+                    {/* Complete Checkbox */}
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleStatus(project);
+                      }}
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: 6,
+                        border: '2px solid #27ae60',
+                        background: project.status === 'completed' ? '#27ae60' : '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        transition: 'all 0.15s ease',
+                      }}
+                      title="Mark complete"
+                    >
+                      {project.status === 'completed' && <Check size={14} color="#fff" strokeWidth={3} />}
+                    </div>
+
                     {/* Drag Handle */}
                     <div style={{ cursor: 'grab', touchAction: 'none', color: '#ccc' }}>
-                      <GripVertical size={18} />
+                      <GripVertical size={16} />
                     </div>
 
                     {/* Priority Number */}
                     <div style={{
-                      width: 28,
-                      height: 28,
+                      width: 24,
+                      height: 24,
                       borderRadius: '50%',
                       background: project.caroline_priority ? '#e74c3c' : '#1a1a1a',
                       color: '#fff',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: 600,
                       flexShrink: 0,
                     }}>
