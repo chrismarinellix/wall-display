@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Plus, GripVertical, Check, Trash2, Calendar, DollarSign, Clock, FileText, ChevronDown, ChevronUp, X, Hammer, Home, Car, Paintbrush, Wrench, Package, Sparkles, User, HardHat, Pencil, Save, Star, Flag, AlertCircle, ShoppingCart, CalendarCheck, FileCheck, Ban } from 'lucide-react';
-import { getProjects, addProject, updateProject, deleteProject, reorderProjects, subscribeToProjects, Project } from '../../services/supabase';
+import { Plus, GripVertical, Check, Trash2, Calendar, DollarSign, Clock, FileText, ChevronDown, ChevronUp, X, Hammer, Home, Car, Paintbrush, Wrench, Package, Sparkles, User, HardHat, Pencil, Save, Star, Flag, AlertCircle, ShoppingCart, CalendarCheck, FileCheck, Ban, MapPin } from 'lucide-react';
+import { getProjects, addProject, updateProject, deleteProject, reorderProjects, subscribeToProjects, Project, PROJECT_ROOMS, ProjectRoom } from '../../services/supabase';
 import { format, differenceInDays, startOfYear, endOfYear, isWithinInterval, addMonths } from 'date-fns';
 
 interface DragState {
@@ -28,6 +28,7 @@ export function ProjectsScreen() {
   const [newCost, setNewCost] = useState('');
   const [newDate, setNewDate] = useState('');
   const [newAssignedTo, setNewAssignedTo] = useState<'Chris' | 'Contractor'>('Chris');
+  const [newRoom, setNewRoom] = useState<ProjectRoom | ''>('');
 
   // Edit form state
   const [editTitle, setEditTitle] = useState('');
@@ -36,6 +37,7 @@ export function ProjectsScreen() {
   const [editCost, setEditCost] = useState('');
   const [editDate, setEditDate] = useState('');
   const [editAssignedTo, setEditAssignedTo] = useState<'Chris' | 'Contractor'>('Chris');
+  const [editRoom, setEditRoom] = useState<ProjectRoom | ''>('');
   const [editChrisPriority, setEditChrisPriority] = useState(false);
   const [editCarolinePriority, setEditCarolinePriority] = useState(false);
   const [editNeedsQuote, setEditNeedsQuote] = useState(false);
@@ -106,6 +108,7 @@ export function ProjectsScreen() {
       cost: newCost ? parseFloat(newCost) : undefined,
       target_date: newDate || undefined,
       assigned_to: newAssignedTo,
+      room: newRoom || undefined,
       status: 'pending',
     });
 
@@ -116,6 +119,7 @@ export function ProjectsScreen() {
     setNewCost('');
     setNewDate('');
     setNewAssignedTo('Chris');
+    setNewRoom('');
     setShowAddForm(false);
 
     // Refresh
@@ -132,6 +136,7 @@ export function ProjectsScreen() {
     setEditCost(project.cost?.toString() || '');
     setEditDate(project.target_date || '');
     setEditAssignedTo(project.assigned_to || 'Chris');
+    setEditRoom(project.room || '');
     setEditChrisPriority(project.chris_priority || false);
     setEditCarolinePriority(project.caroline_priority || false);
     setEditNeedsQuote(project.needs_quote || false);
@@ -153,6 +158,7 @@ export function ProjectsScreen() {
       cost: editCost ? parseFloat(editCost) : undefined,
       target_date: editDate || undefined,
       assigned_to: editAssignedTo,
+      room: editRoom || undefined,
       updated_by: currentUser,
       chris_priority: editChrisPriority,
       caroline_priority: editCarolinePriority,
@@ -264,6 +270,27 @@ export function ProjectsScreen() {
       case 'in_progress': return 'In Progress';
       default: return 'Pending';
     }
+  };
+
+  // Month colors for visual grouping
+  const getMonthColor = (dateStr?: string) => {
+    if (!dateStr) return { bg: '#f8f8f8', border: '#e0e0e0', label: 'No date' };
+    const month = new Date(dateStr).getMonth();
+    const colors = [
+      { bg: '#e3f2fd', border: '#2196f3', label: 'Jan' },  // January - Blue
+      { bg: '#fce4ec', border: '#e91e63', label: 'Feb' },  // February - Pink
+      { bg: '#e8f5e9', border: '#4caf50', label: 'Mar' },  // March - Green
+      { bg: '#fff3e0', border: '#ff9800', label: 'Apr' },  // April - Orange
+      { bg: '#f3e5f5', border: '#9c27b0', label: 'May' },  // May - Purple
+      { bg: '#e0f7fa', border: '#00bcd4', label: 'Jun' },  // June - Cyan
+      { bg: '#fff8e1', border: '#ffc107', label: 'Jul' },  // July - Amber
+      { bg: '#ffebee', border: '#f44336', label: 'Aug' },  // August - Red
+      { bg: '#e8eaf6', border: '#3f51b5', label: 'Sep' },  // September - Indigo
+      { bg: '#fbe9e7', border: '#ff5722', label: 'Oct' },  // October - Deep Orange
+      { bg: '#eceff1', border: '#607d8b', label: 'Nov' },  // November - Blue Grey
+      { bg: '#efebe9', border: '#795548', label: 'Dec' },  // December - Brown
+    ];
+    return colors[month];
   };
 
   if (isLoading) {
@@ -580,6 +607,32 @@ export function ProjectsScreen() {
                 </div>
               </div>
 
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#666', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <MapPin size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                  Room / Location
+                </label>
+                <select
+                  value={newRoom}
+                  onChange={(e) => setNewRoom(e.target.value as ProjectRoom)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #ddd',
+                    borderRadius: 6,
+                    fontSize: 14,
+                    outline: 'none',
+                    background: '#fff',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="">Select a room...</option>
+                  {PROJECT_ROOMS.map(room => (
+                    <option key={room} value={room}>{room}</option>
+                  ))}
+                </select>
+              </div>
+
               <button
                 onClick={handleAddProject}
                 disabled={!newTitle.trim()}
@@ -678,8 +731,16 @@ export function ProjectsScreen() {
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
                   style={{
-                    background: project.caroline_priority ? '#fff5f5' : '#fff',
-                    border: project.caroline_priority ? '2px solid #e74c3c' : '1px solid #e5e5e5',
+                    background: project.caroline_priority
+                      ? '#fff5f5'
+                      : project.target_date
+                        ? getMonthColor(project.target_date).bg
+                        : '#fff',
+                    border: project.caroline_priority
+                      ? '2px solid #e74c3c'
+                      : project.target_date
+                        ? `2px solid ${getMonthColor(project.target_date).border}`
+                        : '1px solid #e5e5e5',
                     borderRadius: 8,
                     marginBottom: 8,
                     overflow: 'hidden',
@@ -795,7 +856,18 @@ export function ProjectsScreen() {
                           </span>
                         )}
                         {project.target_date && (
-                          <span style={{ fontSize: 11, color: '#666', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span style={{
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: getMonthColor(project.target_date).border,
+                            background: getMonthColor(project.target_date).bg,
+                            border: `1px solid ${getMonthColor(project.target_date).border}`,
+                            padding: '2px 8px',
+                            borderRadius: 4,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}>
                             <Calendar size={10} /> {format(new Date(project.target_date), 'MMM d')}
                           </span>
                         )}
@@ -818,6 +890,22 @@ export function ProjectsScreen() {
                           }}>
                             {project.assigned_to === 'Contractor' ? <HardHat size={10} /> : <User size={10} />}
                             {project.assigned_to}
+                          </span>
+                        )}
+                        {project.room && (
+                          <span style={{
+                            fontSize: 10,
+                            color: '#5d5d7b',
+                            background: '#f0f0ff',
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            fontWeight: 500,
+                          }}>
+                            <MapPin size={10} />
+                            {project.room}
                           </span>
                         )}
                       </div>
@@ -954,6 +1042,31 @@ export function ProjectsScreen() {
                                 </button>
                               </div>
                             </div>
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase' }}>
+                              <MapPin size={10} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                              Room / Location
+                            </label>
+                            <select
+                              value={editRoom}
+                              onChange={(e) => setEditRoom(e.target.value as ProjectRoom)}
+                              style={{
+                                width: '100%',
+                                padding: '8px 10px',
+                                border: '1px solid #ddd',
+                                borderRadius: 4,
+                                fontSize: 12,
+                                outline: 'none',
+                                background: '#fff',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <option value="">Select a room...</option>
+                              {PROJECT_ROOMS.map(room => (
+                                <option key={room} value={room}>{room}</option>
+                              ))}
+                            </select>
                           </div>
                           {/* Priority Flags */}
                           <div style={{ marginTop: 8, padding: 10, background: '#f8f8f8', borderRadius: 6 }}>
@@ -1255,13 +1368,22 @@ function TimelineBar({ projects }: { projects: Project[] }) {
   const timelineEnd = addMonths(now, 12);
   const totalDays = differenceInDays(timelineEnd, timelineStart);
 
-  // Month markers
+  // Month colors
+  const monthColors = [
+    '#2196f3', '#e91e63', '#4caf50', '#ff9800', '#9c27b0', '#00bcd4',
+    '#ffc107', '#f44336', '#3f51b5', '#ff5722', '#607d8b', '#795548',
+  ];
+
+  // Month markers with colors
   const months = [];
   for (let i = 0; i <= 12; i++) {
     const monthDate = addMonths(now, i);
+    const monthIndex = monthDate.getMonth();
     months.push({
       label: format(monthDate, 'MMM'),
       position: (differenceInDays(monthDate, timelineStart) / totalDays) * 100,
+      color: monthColors[monthIndex],
+      width: i < 12 ? (differenceInDays(addMonths(monthDate, 1), monthDate) / totalDays) * 100 : 0,
     });
   }
 
@@ -1297,14 +1419,31 @@ function TimelineBar({ projects }: { projects: Project[] }) {
         height: 56,
         marginBottom: 4,
       }}>
-        {/* Background track */}
+        {/* Month color sections */}
+        {months.slice(0, 12).map((month, i) => (
+          <div
+            key={i}
+            style={{
+              position: 'absolute',
+              left: `${month.position}%`,
+              width: `${month.width}%`,
+              top: 12,
+              height: 8,
+              background: month.color,
+              opacity: 0.3,
+              borderRadius: i === 0 ? '4px 0 0 4px' : i === 11 ? '0 4px 4px 0' : 0,
+            }}
+          />
+        ))}
+
+        {/* Background track overlay */}
         <div style={{
           position: 'absolute',
           left: 0,
           right: 0,
           top: 14,
           height: 4,
-          background: '#e5e5e5',
+          background: 'rgba(0,0,0,0.1)',
           borderRadius: 2,
         }} />
 
@@ -1314,11 +1453,13 @@ function TimelineBar({ projects }: { projects: Project[] }) {
           left: 0,
           top: 14,
           transform: 'translate(-50%, -50%)',
-          width: 8,
-          height: 8,
+          width: 10,
+          height: 10,
           background: '#1a1a1a',
           borderRadius: '50%',
           zIndex: 5,
+          border: '2px solid #fff',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
         }} />
 
         {/* Project dots */}

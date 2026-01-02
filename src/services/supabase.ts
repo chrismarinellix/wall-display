@@ -1236,6 +1236,49 @@ export function getBirthdayMessage(): string | null {
 
 // ============ PROJECTS ============
 
+export type ProjectRoom =
+  | 'Bathroom 1'
+  | 'Bathroom 2'
+  | 'Bathroom 3'
+  | 'Kitchen'
+  | 'Laundry'
+  | 'Hall'
+  | 'Master Bedroom'
+  | 'Olivier Room'
+  | 'Ella Room'
+  | 'Upstairs Office'
+  | 'Upstairs Bedroom'
+  | 'Upstairs TV Room'
+  | "Chris's Office"
+  | 'Back Yard'
+  | 'Front Yard'
+  | 'Side of House'
+  | 'Garage'
+  | 'Exterior'
+  | 'General';
+
+export const PROJECT_ROOMS: ProjectRoom[] = [
+  'Bathroom 1',
+  'Bathroom 2',
+  'Bathroom 3',
+  'Kitchen',
+  'Laundry',
+  'Hall',
+  'Master Bedroom',
+  'Olivier Room',
+  'Ella Room',
+  'Upstairs Office',
+  'Upstairs Bedroom',
+  'Upstairs TV Room',
+  "Chris's Office",
+  'Back Yard',
+  'Front Yard',
+  'Side of House',
+  'Garage',
+  'Exterior',
+  'General',
+];
+
 export interface Project {
   id: string;
   title: string;
@@ -1244,6 +1287,7 @@ export interface Project {
   target_date?: string; // ISO date for calendar integration
   cost?: number;
   assigned_to?: 'Chris' | 'Contractor'; // Who will do it
+  room?: ProjectRoom; // Location/room in the house
   status: 'pending' | 'in_progress' | 'completed';
   position: number; // For drag-and-drop ordering
   created_at: string;
@@ -1297,6 +1341,7 @@ export async function getProjects(): Promise<Project[]> {
       target_date: d.target_date,
       cost: d.cost,
       assigned_to: d.assigned_to || 'Chris',
+      room: d.room,
       status: d.status || 'pending',
       position: d.position,
       created_at: d.created_at,
@@ -1366,6 +1411,7 @@ export async function addProject(project: Omit<Project, 'id' | 'created_at' | 'p
         target_date: newProject.target_date,
         cost: newProject.cost,
         assigned_to: newProject.assigned_to || 'Chris',
+        room: newProject.room,
         status: newProject.status,
         position: newProject.position,
         created_at: newProject.created_at,
