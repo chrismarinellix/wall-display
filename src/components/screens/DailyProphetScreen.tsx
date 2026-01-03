@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dumbbell, Bike, Beef, Salad, Droplet, Moon, Check, AlertTriangle, Clock, Brain, Volume2, VolumeX } from 'lucide-react';
+import { Dumbbell, Bike, Beef, Salad, Droplet, Moon, Check, AlertTriangle, Clock, Brain, Volume2, VolumeX, Utensils } from 'lucide-react';
 import { useWeather } from '../../hooks/useWeather';
 import { useCalendar } from '../../hooks/useCalendar';
 import { useStocks } from '../../hooks/useStocks';
 import { useSettings } from '../../contexts/SettingsContext';
 import { weatherCodeToDescription } from '../../types/weather';
-import { getDailyHabits, toggleHabit, subscribeToHabits, DailyHabit, getCountdowns, CountdownEvent, getTodos, toggleTodo, TodoItem, subscribeToTodos, getPomodoroHistory, PomodoroHistory, getHabitHistory } from '../../services/supabase';
+import { getDailyHabits, toggleHabit, subscribeToHabits, DailyHabit, getCountdowns, CountdownEvent, getTodos, toggleTodo, TodoItem, subscribeToTodos, getPomodoroHistory, PomodoroHistory, getHabitHistory, getCurrentFast, subscribeToFasting, FastingRecord } from '../../services/supabase';
 import { generateNewspaperArticles, NewspaperArticles, NewspaperData } from '../../services/aiService';
 import { getVoiceSettings, saveVoiceSettings, generateSpeech, generateBriefingScript, audioPlayer, VoiceSettings } from '../../services/voiceService';
 import { proverbs } from '../../data/proverbs';
@@ -724,6 +724,7 @@ export function DailyProphetScreen() {
   const [countdowns, setCountdowns] = useState<CountdownEvent[]>([]);
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [pomodoroHistory, setPomodoroHistory] = useState<PomodoroHistory>({});
+  const [currentFast, setCurrentFast] = useState<FastingRecord | null>(null);
   const [historicalMoment, setHistoricalMoment] = useState<HistoricalMoment | null>(null);
   const [currentProverb, setCurrentProverb] = useState(proverbs[0]);
   const [articles, setArticles] = useState<NewspaperArticles | null>(null);
@@ -742,12 +743,14 @@ export function DailyProphetScreen() {
   useEffect(() => { getCountdowns().then(setCountdowns); }, []);
   useEffect(() => { getTodos().then(setTodos); }, []);
   useEffect(() => { getPomodoroHistory().then(setPomodoroHistory); }, []);
+  useEffect(() => { getCurrentFast().then(setCurrentFast); }, []);
 
   // Subscribe to realtime changes
   useEffect(() => {
     const unsubHabits = subscribeToHabits(setHabits);
     const unsubTodos = subscribeToTodos(setTodos);
-    return () => { unsubHabits?.(); unsubTodos?.(); };
+    const unsubFasting = subscribeToFasting(setCurrentFast);
+    return () => { unsubHabits?.(); unsubTodos?.(); unsubFasting?.(); };
   }, []);
 
   // Rotate historical moments
@@ -1320,6 +1323,64 @@ export function DailyProphetScreen() {
             {/* 60-day Pomodoro Heatmap */}
             <PomodoroHeatmapGrid history={pomodoroHistory} />
           </div>
+
+          {/* Fasting Status */}
+          {currentFast && (() => {
+            const startTime = new Date(currentFast.start_time).getTime();
+            const now = Date.now();
+            const elapsedMs = now - startTime;
+            const elapsedHours = elapsedMs / (1000 * 60 * 60);
+            const targetMs = (currentFast.target_hours || 24) * 60 * 60 * 1000;
+            const remainingMs = Math.max(0, targetMs - elapsedMs);
+            const isComplete = elapsedMs >= targetMs;
+            const progress = Math.min(100, (elapsedMs / targetMs) * 100);
+
+            // Get current milestone
+            const milestones = [
+              { hour: 0, title: 'Fast Started' },
+              { hour: 6, title: 'Fat Burning' },
+              { hour: 12, title: 'Ketosis Active' },
+              { hour: 16, title: 'Autophagy' },
+              { hour: 24, title: 'Complete!' },
+            ];
+            const currentMilestone = milestones.filter(m => m.hour <= elapsedHours).pop() || milestones[0];
+            const nextMilestone = milestones.find(m => m.hour > elapsedHours);
+
+            const formatTime = (ms: number) => {
+              const totalHours = Math.floor(ms / (1000 * 60 * 60));
+              const mins = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+              return `${totalHours}h ${mins}m`;
+            };
+
+            return (
+              <div style={{ padding: '12px', background: isComplete ? 'rgba(34, 197, 94, 0.1)' : 'rgba(0,0,0,0.03)', borderRadius: 4, border: isComplete ? '1px solid rgba(34, 197, 94, 0.3)' : 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <Utensils size={14} color={isComplete ? '#22c55e' : '#666'} />
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: isComplete ? '#22c55e' : '#666' }}>Fasting</span>
+                  <span style={{ fontSize: 9, color: isComplete ? '#22c55e' : '#f59e0b', marginLeft: 'auto', fontWeight: 600 }}>
+                    {currentMilestone.title}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                  <span style={{ fontSize: 24, fontWeight: 300, color: isComplete ? '#22c55e' : '#222' }}>{formatTime(elapsedMs)}</span>
+                  <span style={{ fontSize: 11, color: '#888' }}>elapsed</span>
+                </div>
+                {!isComplete && (
+                  <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>
+                    {formatTime(remainingMs)} remaining
+                  </div>
+                )}
+                <div style={{ width: '100%', height: 3, background: '#e5e5e5', borderRadius: 2, marginTop: 6, overflow: 'hidden' }}>
+                  <div style={{ width: `${progress}%`, height: '100%', background: isComplete ? '#22c55e' : 'linear-gradient(90deg, #f59e0b, #ef4444)', transition: 'width 0.3s' }} />
+                </div>
+                {nextMilestone && !isComplete && (
+                  <div style={{ fontSize: 9, color: '#888', marginTop: 4 }}>
+                    Next: {nextMilestone.title} in {Math.ceil(nextMilestone.hour - elapsedHours)}h
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Quick Stats */}
           <div style={{ marginTop: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>

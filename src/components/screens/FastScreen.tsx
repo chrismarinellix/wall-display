@@ -1,28 +1,22 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Play, Pause, RotateCcw } from 'lucide-react';
+import { Play, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { getCurrentFast, startFast, endFast, FastingRecord, subscribeToFasting } from '../../services/supabase';
 
-// Fasting benefits
-const FASTING_BENEFITS = [
-  'Autophagy activated',
-  'Cells regenerating',
-  'Insulin dropping',
-  'Fat burning mode',
-  'HGH increasing',
-  'Mental clarity',
-  'Inflammation down',
-  'Ketones rising',
-  'Gut healing',
-  'Energy stabilizing',
-  'Focus sharpening',
-  'Metabolism resetting',
-  'Detox accelerating',
-  'Longevity genes on',
-  'Brain fog clearing',
-  'Cravings fading',
-  'Discipline building',
-  'Willpower growing',
-  'Body healing',
-  'Mind strengthening',
+// Fasting milestones - what happens at each hour
+const FASTING_MILESTONES = [
+  { hour: 0, title: 'Fast Started', description: 'Blood sugar begins to drop' },
+  { hour: 2, title: 'Digestion Complete', description: 'Stomach emptying, insulin dropping' },
+  { hour: 4, title: 'Blood Sugar Stable', description: 'Body switching fuel sources' },
+  { hour: 6, title: 'Fat Burning Begins', description: 'Glycogen stores depleting' },
+  { hour: 8, title: 'Entering Ketosis', description: 'Liver producing ketones' },
+  { hour: 10, title: 'Growth Hormone Rising', description: 'HGH levels increasing' },
+  { hour: 12, title: 'Ketosis Active', description: 'Brain using ketones for fuel' },
+  { hour: 14, title: 'Autophagy Starting', description: 'Cells begin self-cleaning' },
+  { hour: 16, title: 'Deep Autophagy', description: 'Damaged proteins recycled' },
+  { hour: 18, title: 'Peak Fat Burning', description: 'Maximum metabolic efficiency' },
+  { hour: 20, title: 'Inflammation Down', description: 'Inflammatory markers reducing' },
+  { hour: 22, title: 'Cellular Renewal', description: 'New cell growth stimulated' },
+  { hour: 24, title: 'Fast Complete!', description: 'Maximum benefits achieved' },
 ];
 
 // Speed benefits (marked with *)
@@ -33,31 +27,33 @@ const SPEED_BENEFITS = [
   '* Just action',
   '* Move now',
   '* Done beats perfect',
-  '* Momentum matters',
-  '* Speed wins',
-  '* Bias to action',
-  '* Execute now',
 ];
 
-const ALL_BENEFITS = [...FASTING_BENEFITS, ...SPEED_BENEFITS];
-
-// Rotate benefits every 30 minutes (1800000ms)
-const ROTATION_INTERVAL = 1800000;
 const FAST_DURATION = 24 * 60 * 60 * 1000; // 24 hours in ms
-const STORAGE_KEY = 'fast_start_time';
 
 export function FastScreen() {
-  const [currentPairIndex, setCurrentPairIndex] = useState(() => {
-    const now = new Date();
-    const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
-    return Math.floor(minutesSinceMidnight / 30) % Math.floor(ALL_BENEFITS.length / 2);
-  });
-  const [isVisible, setIsVisible] = useState(true);
-  const [fastStartTime, setFastStartTime] = useState<number | null>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? parseInt(stored, 10) : null;
-  });
+  const [currentFast, setCurrentFast] = useState<FastingRecord | null>(null);
   const [now, setNow] = useState(Date.now());
+  const [loading, setLoading] = useState(true);
+
+  // Load current fast from Supabase
+  useEffect(() => {
+    const loadFast = async () => {
+      const fast = await getCurrentFast();
+      setCurrentFast(fast);
+      setLoading(false);
+    };
+    loadFast();
+
+    // Subscribe to changes
+    const unsubscribe = subscribeToFasting((fast) => {
+      setCurrentFast(fast);
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
 
   // Update current time every second
   useEffect(() => {
@@ -65,36 +61,32 @@ export function FastScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  // Rotate benefits
-  useEffect(() => {
-    const rotateBenefits = () => {
-      setIsVisible(false);
-      setTimeout(() => {
-        setCurrentPairIndex(prev => (prev + 1) % Math.floor(ALL_BENEFITS.length / 2));
-        setIsVisible(true);
-      }, 1500);
-    };
-
-    const interval = setInterval(rotateBenefits, ROTATION_INTERVAL);
-    return () => clearInterval(interval);
+  const handleStartFast = useCallback(async () => {
+    const fast = await startFast(24);
+    setCurrentFast(fast);
   }, []);
 
-  const startFast = useCallback(() => {
-    const startTime = Date.now();
-    setFastStartTime(startTime);
-    localStorage.setItem(STORAGE_KEY, startTime.toString());
-  }, []);
-
-  const resetFast = useCallback(() => {
-    setFastStartTime(null);
-    localStorage.removeItem(STORAGE_KEY);
-  }, []);
+  const handleEndFast = useCallback(async () => {
+    if (currentFast?.id) {
+      const fastStartTime = new Date(currentFast.start_time).getTime();
+      const elapsed = Date.now() - fastStartTime;
+      const completed = elapsed >= FAST_DURATION;
+      await endFast(currentFast.id, completed);
+      setCurrentFast(null);
+    }
+  }, [currentFast]);
 
   // Calculate elapsed and remaining time
+  const fastStartTime = currentFast ? new Date(currentFast.start_time).getTime() : null;
   const elapsedMs = fastStartTime ? now - fastStartTime : 0;
+  const elapsedHours = elapsedMs / (1000 * 60 * 60);
   const remainingMs = fastStartTime ? Math.max(0, FAST_DURATION - elapsedMs) : FAST_DURATION;
   const isComplete = fastStartTime && elapsedMs >= FAST_DURATION;
   const progress = fastStartTime ? Math.min(100, (elapsedMs / FAST_DURATION) * 100) : 0;
+
+  // Get current and next milestone
+  const currentMilestone = FASTING_MILESTONES.filter(m => m.hour <= elapsedHours).pop() || FASTING_MILESTONES[0];
+  const nextMilestone = FASTING_MILESTONES.find(m => m.hour > elapsedHours);
 
   const formatTime = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000);
@@ -104,8 +96,16 @@ export function FastScreen() {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const benefit1 = ALL_BENEFITS[currentPairIndex * 2];
-  const benefit2 = ALL_BENEFITS[currentPairIndex * 2 + 1] || ALL_BENEFITS[0];
+  // Get a speed benefit based on current hour
+  const speedBenefit = SPEED_BENEFITS[Math.floor(elapsedHours) % SPEED_BENEFITS.length];
+
+  if (loading) {
+    return (
+      <div style={{ height: '100%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -115,56 +115,104 @@ export function FastScreen() {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '40px',
+      padding: '30px',
       color: '#fff',
     }}>
       {/* Main word */}
       <h1 style={{
-        fontSize: 'clamp(100px, 22vw, 240px)',
+        fontSize: 'clamp(80px, 18vw, 180px)',
         fontWeight: 800,
         letterSpacing: '-0.03em',
         margin: 0,
-        marginBottom: '20px',
+        marginBottom: '10px',
         color: isComplete ? '#22c55e' : '#fff',
       }}>
         Fast!
       </h1>
+
+      {/* Current milestone */}
+      {currentFast && (
+        <div style={{
+          textAlign: 'center',
+          marginBottom: '20px',
+        }}>
+          <div style={{
+            fontSize: 'clamp(16px, 3vw, 24px)',
+            fontWeight: 600,
+            color: isComplete ? '#22c55e' : '#f59e0b',
+            marginBottom: '4px',
+          }}>
+            {currentMilestone.title}
+          </div>
+          <div style={{
+            fontSize: 'clamp(12px, 2vw, 16px)',
+            color: 'rgba(255,255,255,0.6)',
+          }}>
+            {currentMilestone.description}
+          </div>
+        </div>
+      )}
 
       {/* Timer section */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        marginBottom: '40px',
+        marginBottom: '20px',
+        width: '100%',
+        maxWidth: '500px',
       }}>
-        {/* Progress bar */}
+        {/* Progress bar with milestone markers */}
         <div style={{
-          width: 'clamp(200px, 50vw, 400px)',
-          height: 8,
-          background: 'rgba(255,255,255,0.1)',
-          borderRadius: 4,
-          overflow: 'hidden',
-          marginBottom: '20px',
+          width: '100%',
+          position: 'relative',
+          marginBottom: '24px',
         }}>
           <div style={{
-            width: `${progress}%`,
-            height: '100%',
-            background: isComplete ? '#22c55e' : 'linear-gradient(90deg, #f59e0b, #ef4444)',
+            width: '100%',
+            height: 8,
+            background: 'rgba(255,255,255,0.1)',
             borderRadius: 4,
-            transition: 'width 1s linear',
-          }} />
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              width: `${progress}%`,
+              height: '100%',
+              background: isComplete ? '#22c55e' : 'linear-gradient(90deg, #f59e0b, #ef4444)',
+              borderRadius: 4,
+              transition: 'width 1s linear',
+            }} />
+          </div>
+          {/* Milestone dots */}
+          {currentFast && FASTING_MILESTONES.filter(m => m.hour > 0 && m.hour < 24).map(m => (
+            <div
+              key={m.hour}
+              style={{
+                position: 'absolute',
+                left: `${(m.hour / 24) * 100}%`,
+                top: -2,
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                background: elapsedHours >= m.hour ? '#22c55e' : 'rgba(255,255,255,0.2)',
+                transform: 'translateX(-50%)',
+                border: '2px solid #000',
+              }}
+              title={`${m.hour}h: ${m.title}`}
+            />
+          ))}
         </div>
 
         {/* Time display */}
         <div style={{
           display: 'flex',
-          gap: 'clamp(20px, 5vw, 60px)',
+          gap: 'clamp(20px, 5vw, 50px)',
           alignItems: 'center',
         }}>
           {/* Elapsed time */}
           <div style={{ textAlign: 'center' }}>
             <div style={{
-              fontSize: 'clamp(28px, 6vw, 48px)',
+              fontSize: 'clamp(24px, 5vw, 40px)',
               fontWeight: 700,
               fontFamily: 'monospace',
               color: '#22c55e',
@@ -172,7 +220,7 @@ export function FastScreen() {
               {formatTime(elapsedMs)}
             </div>
             <div style={{
-              fontSize: 'clamp(10px, 2vw, 14px)',
+              fontSize: 'clamp(9px, 1.8vw, 12px)',
               color: 'rgba(255,255,255,0.5)',
               textTransform: 'uppercase',
               letterSpacing: '0.1em',
@@ -184,14 +232,14 @@ export function FastScreen() {
           {/* Divider */}
           <div style={{
             width: 2,
-            height: 40,
+            height: 36,
             background: 'rgba(255,255,255,0.2)',
           }} />
 
           {/* Remaining time */}
           <div style={{ textAlign: 'center' }}>
             <div style={{
-              fontSize: 'clamp(28px, 6vw, 48px)',
+              fontSize: 'clamp(24px, 5vw, 40px)',
               fontWeight: 700,
               fontFamily: 'monospace',
               color: isComplete ? '#22c55e' : '#ef4444',
@@ -199,7 +247,7 @@ export function FastScreen() {
               {isComplete ? '00:00:00' : formatTime(remainingMs)}
             </div>
             <div style={{
-              fontSize: 'clamp(10px, 2vw, 14px)',
+              fontSize: 'clamp(9px, 1.8vw, 12px)',
               color: 'rgba(255,255,255,0.5)',
               textTransform: 'uppercase',
               letterSpacing: '0.1em',
@@ -209,15 +257,26 @@ export function FastScreen() {
           </div>
         </div>
 
+        {/* Next milestone */}
+        {currentFast && nextMilestone && !isComplete && (
+          <div style={{
+            marginTop: '16px',
+            fontSize: 'clamp(10px, 2vw, 13px)',
+            color: 'rgba(255,255,255,0.4)',
+          }}>
+            Next: {nextMilestone.title} in {Math.ceil(nextMilestone.hour - elapsedHours)}h
+          </div>
+        )}
+
         {/* Control buttons */}
         <div style={{
           display: 'flex',
           gap: '16px',
-          marginTop: '24px',
+          marginTop: '20px',
         }}>
-          {!fastStartTime ? (
+          {!currentFast ? (
             <button
-              onClick={startFast}
+              onClick={handleStartFast}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -232,46 +291,39 @@ export function FastScreen() {
                 cursor: 'pointer',
               }}
             >
-              <Play size={20} /> Start Fast
+              <Play size={20} /> Start 24h Fast
             </button>
           ) : (
             <button
-              onClick={resetFast}
+              onClick={handleEndFast}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
                 padding: '12px 24px',
-                background: 'rgba(255,255,255,0.1)',
-                color: '#fff',
-                border: '1px solid rgba(255,255,255,0.2)',
+                background: isComplete ? '#22c55e' : 'rgba(255,255,255,0.1)',
+                color: isComplete ? '#000' : '#fff',
+                border: isComplete ? 'none' : '1px solid rgba(255,255,255,0.2)',
                 borderRadius: '8px',
                 fontSize: '16px',
                 fontWeight: 600,
                 cursor: 'pointer',
               }}
             >
-              <RotateCcw size={18} /> Reset
+              {isComplete ? <CheckCircle2 size={18} /> : <RotateCcw size={18} />}
+              {isComplete ? 'Complete Fast' : 'End Fast'}
             </button>
           )}
         </div>
       </div>
 
-      {/* Two benefits with fade animation */}
+      {/* Speed benefit reminder */}
       <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '32px',
-        fontSize: 'clamp(14px, 2vw, 22px)',
-        fontWeight: 400,
-        color: 'rgba(255,255,255,0.6)',
-        opacity: isVisible ? 1 : 0,
-        transition: 'opacity 1.5s ease-in-out',
+        fontSize: 'clamp(12px, 2vw, 16px)',
+        color: 'rgba(255,255,255,0.4)',
+        marginTop: '10px',
       }}>
-        <span>{benefit1}</span>
-        <span style={{ color: 'rgba(255,255,255,0.3)' }}>•</span>
-        <span>{benefit2}</span>
+        {speedBenefit}
       </div>
     </div>
   );

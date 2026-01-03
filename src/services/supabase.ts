@@ -1567,3 +1567,141 @@ export function subscribeToProjects(callback: (projects: Project[]) => void): ((
     supabase.removeChannel(channel);
   };
 }
+
+// ============ FASTING ============
+
+export interface FastingRecord {
+  id?: string;
+  start_time: string; // ISO timestamp
+  end_time?: string; // ISO timestamp when completed/stopped
+  target_hours: number; // Usually 24
+  completed: boolean;
+  notes?: string;
+  created_at?: string;
+}
+
+const FASTING_STORAGE_KEY = 'current-fast';
+
+// Get current active fast
+export async function getCurrentFast(): Promise<FastingRecord | null> {
+  if (!supabase) {
+    const stored = localStorage.getItem(FASTING_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('fasting')
+      .select('*')
+      .is('end_time', null)
+      .order('start_time', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
+    return data || null;
+  } catch (e) {
+    console.error('Failed to get current fast:', e);
+    const stored = localStorage.getItem(FASTING_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : null;
+  }
+}
+
+// Get fasting history
+export async function getFastingHistory(): Promise<FastingRecord[]> {
+  if (!supabase) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('fasting')
+      .select('*')
+      .not('end_time', 'is', null)
+      .order('start_time', { ascending: false })
+      .limit(30);
+
+    if (error) throw error;
+    return data || [];
+  } catch (e) {
+    console.error('Failed to get fasting history:', e);
+    return [];
+  }
+}
+
+// Start a new fast
+export async function startFast(targetHours: number = 24): Promise<FastingRecord | null> {
+  const newFast: FastingRecord = {
+    id: crypto.randomUUID(),
+    start_time: new Date().toISOString(),
+    target_hours: targetHours,
+    completed: false,
+  };
+
+  if (!supabase) {
+    localStorage.setItem(FASTING_STORAGE_KEY, JSON.stringify(newFast));
+    return newFast;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('fasting')
+      .insert(newFast)
+      .select()
+      .single();
+
+    if (error) throw error;
+    localStorage.setItem(FASTING_STORAGE_KEY, JSON.stringify(data));
+    return data;
+  } catch (e) {
+    console.error('Failed to start fast:', e);
+    localStorage.setItem(FASTING_STORAGE_KEY, JSON.stringify(newFast));
+    return newFast;
+  }
+}
+
+// End/complete a fast
+export async function endFast(id: string, completed: boolean = true): Promise<void> {
+  const endTime = new Date().toISOString();
+
+  if (!supabase) {
+    localStorage.removeItem(FASTING_STORAGE_KEY);
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('fasting')
+      .update({ end_time: endTime, completed })
+      .eq('id', id);
+
+    if (error) throw error;
+    localStorage.removeItem(FASTING_STORAGE_KEY);
+  } catch (e) {
+    console.error('Failed to end fast:', e);
+    localStorage.removeItem(FASTING_STORAGE_KEY);
+  }
+}
+
+// Subscribe to fasting changes
+export function subscribeToFasting(callback: (fast: FastingRecord | null) => void): (() => void) | null {
+  if (!supabase) {
+    return null;
+  }
+
+  const channel = supabase
+    .channel('fasting-changes')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'fasting' },
+      async () => {
+        const fast = await getCurrentFast();
+        callback(fast);
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
