@@ -1,4 +1,11 @@
 export function FastScreen() {
+  const reasons = [
+    'Decide quickly',
+    'Ship daily',
+    'No overthinking',
+    'Just action',
+  ];
+
   return (
     <div style={{
       height: '100%',
@@ -12,53 +19,33 @@ export function FastScreen() {
     }}>
       {/* Main word */}
       <h1 style={{
-        fontSize: 'clamp(120px, 25vw, 300px)',
+        fontSize: 'clamp(140px, 28vw, 320px)',
         fontWeight: 800,
-        letterSpacing: '-0.02em',
+        letterSpacing: '-0.03em',
         margin: 0,
-        marginBottom: '40px',
-        background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        textShadow: '0 0 60px rgba(255,255,255,0.3)',
+        marginBottom: '60px',
+        color: '#fff',
       }}>
-        Fast.
+        Fast!
       </h1>
 
-      {/* Benefits */}
+      {/* Reasons separated by dots */}
       <div style={{
-        maxWidth: '600px',
-        textAlign: 'center',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '24px',
+        fontSize: 'clamp(14px, 2vw, 22px)',
+        fontWeight: 400,
+        color: 'rgba(255,255,255,0.6)',
+        flexWrap: 'wrap',
       }}>
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-          fontSize: 'clamp(16px, 2.5vw, 24px)',
-          fontWeight: 400,
-          color: 'rgba(255,255,255,0.7)',
-          lineHeight: 1.6,
-        }}>
-          <p style={{ margin: 0 }}>
-            Decisions made quickly. Projects completed efficiently.
-          </p>
-          <p style={{ margin: 0 }}>
-            No overthinking. No delays. Just action.
-          </p>
-          <p style={{ margin: 0 }}>
-            Time is the only resource you can't get back.
-          </p>
-        </div>
-
-        <div style={{
-          marginTop: '48px',
-          fontSize: 'clamp(12px, 1.5vw, 16px)',
-          color: 'rgba(255,255,255,0.4)',
-          letterSpacing: '0.2em',
-          textTransform: 'uppercase',
-        }}>
-          Move fast. Stay focused. Ship it.
-        </div>
+        {reasons.map((reason, index) => (
+          <span key={reason} style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+            {index > 0 && <span style={{ color: 'rgba(255,255,255,0.3)' }}>•</span>}
+            <span>{reason}</span>
+          </span>
+        ))}
       </div>
     </div>
   );

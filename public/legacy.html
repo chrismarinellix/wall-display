@@ -13,84 +13,166 @@
       background: #000;
       color: #fff;
       min-height: 100vh;
+      overflow: hidden;
+    }
+    .page {
+      display: none;
+      min-height: 100vh;
       padding: 40px;
+    }
+    .page.active {
+      display: block;
     }
     .container {
       max-width: 800px;
       margin: 0 auto;
     }
-    .time {
-      font-size: 120px;
-      font-weight: 200;
-      text-align: center;
-      letter-spacing: -5px;
-      margin-bottom: 10px;
+
+    /* Navigation dots */
+    .nav-dots {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      z-index: 100;
     }
-    .date {
-      font-size: 24px;
+    .nav-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #333;
+      border: none;
+      cursor: pointer;
+    }
+    .nav-dot.active {
+      background: #fff;
+    }
+
+    /* Page indicator */
+    .page-label {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      font-size: 12px;
+      color: #444;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    /* Tap zones */
+    .tap-left, .tap-right {
+      position: fixed;
+      top: 0;
+      bottom: 80px;
+      width: 25%;
+      z-index: 50;
+      cursor: pointer;
+    }
+    .tap-left { left: 0; }
+    .tap-right { right: 0; }
+
+    /* Time page */
+    .time-big {
+      font-size: 140px;
+      font-weight: 100;
       text-align: center;
+      letter-spacing: -8px;
+      margin-top: 80px;
+    }
+    .date-big {
+      font-size: 28px;
+      text-align: center;
+      color: #666;
+      margin-top: 20px;
+    }
+
+    /* Weather page */
+    .weather-big {
+      text-align: center;
+      margin-top: 60px;
+    }
+    .weather-temp-big {
+      font-size: 160px;
+      font-weight: 100;
+    }
+    .weather-desc-big {
+      font-size: 28px;
       color: #888;
-      margin-bottom: 60px;
+      margin-top: 20px;
     }
-    .weather {
-      text-align: center;
-      margin-bottom: 60px;
-    }
-    .weather-temp {
-      font-size: 80px;
-      font-weight: 200;
-    }
-    .weather-desc {
-      font-size: 20px;
-      color: #888;
-      margin-top: 10px;
-    }
-    .message {
-      text-align: center;
-      padding: 40px;
-      background: #111;
-      border-radius: 20px;
-      margin-bottom: 40px;
-    }
-    .message-title {
-      font-size: 48px;
-      font-weight: 700;
-      margin-bottom: 20px;
-    }
-    .message-sub {
+    .weather-details {
+      margin-top: 60px;
       font-size: 18px;
-      color: #888;
-      line-height: 1.6;
+      color: #666;
     }
-    .projects {
-      background: #111;
-      border-radius: 20px;
-      padding: 30px;
+
+    /* Fast page */
+    .fast-title {
+      font-size: 160px;
+      font-weight: 800;
+      text-align: center;
+      margin-top: 140px;
+      letter-spacing: -5px;
     }
-    .projects-title {
+    .fast-reasons {
+      text-align: center;
+      font-size: 20px;
+      color: #666;
+      margin-top: 60px;
+    }
+    .fast-reasons span {
+      margin: 0 15px;
+    }
+    .fast-dot {
+      color: #444;
+    }
+
+    /* Projects page */
+    .projects-header {
       font-size: 14px;
       color: #666;
       text-transform: uppercase;
       letter-spacing: 2px;
-      margin-bottom: 20px;
+      margin-bottom: 30px;
+      padding-top: 20px;
     }
     .project {
-      padding: 15px 0;
+      padding: 20px 0;
       border-bottom: 1px solid #222;
-      font-size: 18px;
+      font-size: 22px;
     }
     .project:last-child {
       border-bottom: none;
     }
     .project-priority {
       color: #e74c3c;
+      font-weight: 600;
     }
-    .footer {
+    .project-room {
+      font-size: 14px;
+      color: #666;
+      margin-top: 6px;
+    }
+
+    /* Quote page */
+    .quote-text {
+      font-size: 32px;
+      font-weight: 300;
       text-align: center;
-      margin-top: 40px;
-      font-size: 12px;
-      color: #444;
+      line-height: 1.6;
+      margin-top: 100px;
+      padding: 0 20px;
+      font-style: italic;
     }
+    .quote-author {
+      text-align: center;
+      font-size: 18px;
+      color: #666;
+      margin-top: 40px;
+    }
+
     .loading {
       text-align: center;
       padding: 40px;
@@ -99,36 +181,126 @@
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="time" id="time">--:--</div>
-    <div class="date" id="date">Loading...</div>
 
-    <div class="weather" id="weather">
-      <div class="weather-temp" id="weather-temp">--</div>
-      <div class="weather-desc" id="weather-desc">Loading weather...</div>
-    </div>
-
-    <div class="message">
-      <div class="message-title">Fast.</div>
-      <div class="message-sub">
-        Decisions made quickly. Projects completed efficiently.<br>
-        No overthinking. No delays. Just action.
-      </div>
-    </div>
-
-    <div class="projects">
-      <div class="projects-title">Priority Projects</div>
-      <div id="projects-list">
-        <div class="loading">Loading projects...</div>
-      </div>
-    </div>
-
-    <div class="footer">
-      Auto-refreshes every 5 minutes
+  <!-- Page 1: Time -->
+  <div class="page active" id="page-time">
+    <div class="container">
+      <div class="time-big" id="time">--:--</div>
+      <div class="date-big" id="date">Loading...</div>
     </div>
   </div>
 
+  <!-- Page 2: Weather -->
+  <div class="page" id="page-weather">
+    <div class="container">
+      <div class="weather-big">
+        <div class="weather-temp-big" id="weather-temp">--</div>
+        <div class="weather-desc-big" id="weather-desc">Loading...</div>
+        <div class="weather-details" id="weather-details"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page 3: Fast -->
+  <div class="page" id="page-fast">
+    <div class="container">
+      <div class="fast-title">Fast!</div>
+      <div class="fast-reasons">
+        <span>Decide quickly</span>
+        <span class="fast-dot">•</span>
+        <span>Ship daily</span>
+        <span class="fast-dot">•</span>
+        <span>No overthinking</span>
+        <span class="fast-dot">•</span>
+        <span>Just action</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page 4: Projects -->
+  <div class="page" id="page-projects">
+    <div class="container">
+      <div class="projects-header">Priority Projects</div>
+      <div id="projects-list">
+        <div class="loading">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page 5: Quote -->
+  <div class="page" id="page-quote">
+    <div class="container">
+      <div class="quote-text" id="quote-text">"The best time to plant a tree was 20 years ago. The second best time is now."</div>
+      <div class="quote-author" id="quote-author">- Chinese Proverb</div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="nav-dots" id="nav-dots"></div>
+  <div class="page-label" id="page-label">Time</div>
+
+  <!-- Tap zones for navigation -->
+  <div class="tap-left" onclick="prevPage()"></div>
+  <div class="tap-right" onclick="nextPage()"></div>
+
   <script>
+    // Page management
+    var pages = ['time', 'weather', 'fast', 'projects', 'quote'];
+    var pageLabels = ['Time', 'Weather', 'Fast', 'Projects', 'Quote'];
+    var currentPage = 0;
+
+    // Build navigation dots
+    function buildNavDots() {
+      var dotsHtml = '';
+      for (var i = 0; i < pages.length; i++) {
+        var activeClass = i === 0 ? ' active' : '';
+        dotsHtml += '<button class="nav-dot' + activeClass + '" onclick="goToPage(' + i + ')"></button>';
+      }
+      document.getElementById('nav-dots').innerHTML = dotsHtml;
+    }
+
+    // Go to specific page
+    function goToPage(index) {
+      // Hide current page
+      document.getElementById('page-' + pages[currentPage]).className = 'page';
+      document.querySelectorAll('.nav-dot')[currentPage].className = 'nav-dot';
+
+      // Show new page
+      currentPage = index;
+      document.getElementById('page-' + pages[currentPage]).className = 'page active';
+      document.querySelectorAll('.nav-dot')[currentPage].className = 'nav-dot active';
+      document.getElementById('page-label').innerHTML = pageLabels[currentPage];
+    }
+
+    // Next/Previous page
+    function nextPage() {
+      var next = (currentPage + 1) % pages.length;
+      goToPage(next);
+    }
+
+    function prevPage() {
+      var prev = (currentPage - 1 + pages.length) % pages.length;
+      goToPage(prev);
+    }
+
+    // Swipe detection
+    var touchStartX = 0;
+    document.addEventListener('touchstart', function(e) {
+      touchStartX = e.touches[0].clientX;
+    }, false);
+
+    document.addEventListener('touchend', function(e) {
+      var touchEndX = e.changedTouches[0].clientX;
+      var diff = touchStartX - touchEndX;
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) {
+          nextPage();
+        } else {
+          prevPage();
+        }
+      }
+    }, false);
+
     // Update time
     function updateTime() {
       var now = new Date();
@@ -139,7 +311,7 @@
       hours = hours ? hours : 12;
       minutes = minutes < 10 ? '0' + minutes : minutes;
 
-      document.getElementById('time').innerHTML = hours + ':' + minutes + ' <small style="font-size:40px;color:#666">' + ampm + '</small>';
+      document.getElementById('time').innerHTML = hours + ':' + minutes + '<span style="font-size:50px;color:#444;margin-left:10px">' + ampm + '</span>';
 
       var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -150,7 +322,7 @@
     function fetchWeather() {
       var lat = -37.8136;
       var lon = 144.9631;
-      var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&current_weather=true';
+      var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&current_weather=true&daily=temperature_2m_max,temperature_2m_min&timezone=auto';
 
       var xhr = new XMLHttpRequest();
       xhr.open('GET', url, true);
@@ -159,7 +331,7 @@
           try {
             var data = JSON.parse(xhr.responseText);
             var temp = Math.round(data.current_weather.temperature);
-            document.getElementById('weather-temp').innerHTML = temp + '&deg;C';
+            document.getElementById('weather-temp').innerHTML = temp + '&deg;';
 
             var code = data.current_weather.weathercode;
             var desc = 'Clear';
@@ -171,6 +343,13 @@
             if (code >= 95) desc = 'Thunderstorm';
 
             document.getElementById('weather-desc').innerHTML = desc + ' in Melbourne';
+
+            // Show high/low
+            if (data.daily) {
+              var high = Math.round(data.daily.temperature_2m_max[0]);
+              var low = Math.round(data.daily.temperature_2m_min[0]);
+              document.getElementById('weather-details').innerHTML = 'High ' + high + '&deg; &nbsp;&bull;&nbsp; Low ' + low + '&deg;';
+            }
           } catch (e) {
             document.getElementById('weather-desc').innerHTML = 'Weather unavailable';
           }
@@ -181,7 +360,7 @@
 
     // Fetch projects from Supabase
     function fetchProjects() {
-      var url = 'https://gyydvawtndydqjifsubp.supabase.co/rest/v1/projects?status=neq.completed&order=position.asc&limit=5';
+      var url = 'https://gyydvawtndydqjifsubp.supabase.co/rest/v1/projects?status=neq.completed&order=position.asc&limit=6';
       var key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5eWR2YXd0bmR5ZHFqaWZzdWJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ4NTM5NzUsImV4cCI6MjA1MDQyOTk3NX0.aeuK0kHXr0lEfz1muhBG1ATr1V40aGQlMVRhd2gfsXo';
 
       var xhr = new XMLHttpRequest();
@@ -203,7 +382,11 @@
                 var p = projects[i];
                 var cls = p.caroline_priority ? 'project project-priority' : 'project';
                 var prefix = p.caroline_priority ? '! ' : '';
-                html += '<div class="' + cls + '">' + prefix + p.title + '</div>';
+                html += '<div class="' + cls + '">' + prefix + p.title;
+                if (p.room) {
+                  html += '<div class="project-room">' + p.room + '</div>';
+                }
+                html += '</div>';
               }
               list.innerHTML = html;
             } catch (e) {
@@ -217,10 +400,30 @@
       xhr.send();
     }
 
+    // Quotes
+    var quotes = [
+      { text: "The best time to plant a tree was 20 years ago. The second best time is now.", author: "Chinese Proverb" },
+      { text: "Done is better than perfect.", author: "Sheryl Sandberg" },
+      { text: "If you want to go fast, go alone. If you want to go far, go together.", author: "African Proverb" },
+      { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+      { text: "Simplicity is the ultimate sophistication.", author: "Leonardo da Vinci" },
+      { text: "Move fast and break things.", author: "Mark Zuckerberg" },
+      { text: "What gets measured gets managed.", author: "Peter Drucker" },
+      { text: "First, solve the problem. Then, write the code.", author: "John Johnson" }
+    ];
+
+    function updateQuote() {
+      var q = quotes[Math.floor(Math.random() * quotes.length)];
+      document.getElementById('quote-text').innerHTML = '"' + q.text + '"';
+      document.getElementById('quote-author').innerHTML = '- ' + q.author;
+    }
+
     // Initialize
+    buildNavDots();
     updateTime();
     fetchWeather();
     fetchProjects();
+    updateQuote();
 
     // Update time every second
     setInterval(updateTime, 1000);
@@ -229,6 +432,7 @@
     setInterval(function() {
       fetchWeather();
       fetchProjects();
+      updateQuote();
     }, 300000);
 
     // Full page refresh every 30 minutes to clear memory
