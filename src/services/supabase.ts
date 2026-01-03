@@ -1596,9 +1596,9 @@ export async function getCurrentFast(): Promise<FastingRecord | null> {
       .is('end_time', null)
       .order('start_time', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
+    if (error) throw error;
     return data || null;
   } catch (e) {
     console.error('Failed to get current fast:', e);
