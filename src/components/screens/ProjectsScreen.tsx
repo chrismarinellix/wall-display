@@ -1433,6 +1433,7 @@ function TimelineBar({ projects, onUpdateProjectDate }: { projects: Project[]; o
   const [hoveredProject, setHoveredProject] = useState<Project | null>(null);
   const [draggingProject, setDraggingProject] = useState<Project | null>(null);
   const [dragPosition, setDragPosition] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<'year' | number>(0); // 'year' or month index (0-11)
   const timelineRef = useRef<HTMLDivElement>(null);
 
   // Get projects with dates
@@ -1444,11 +1445,21 @@ function TimelineBar({ projects, onUpdateProjectDate }: { projects: Project[]; o
     return null;
   }
 
-  // Calculate timeline range (from now to 12 months ahead)
   const now = new Date();
-  const timelineStart = now;
-  const timelineEnd = addMonths(now, 12);
-  const totalDays = differenceInDays(timelineEnd, timelineStart);
+  const currentMonth = now.getMonth();
+
+  // Calculate timeline range based on view mode
+  const isMonthView = viewMode !== 'year';
+  const viewMonthIndex = isMonthView ? viewMode as number : 0;
+  const viewMonth = isMonthView ? addMonths(now, viewMonthIndex) : now;
+
+  const timelineStart = isMonthView
+    ? new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1)
+    : now;
+  const timelineEnd = isMonthView
+    ? new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0)
+    : addMonths(now, 12);
+  const totalDays = differenceInDays(timelineEnd, timelineStart) || 1;
 
   // Month colors
   const monthColors = [
@@ -1469,21 +1480,42 @@ function TimelineBar({ projects, onUpdateProjectDate }: { projects: Project[]; o
     });
   }
 
-  // Calculate project positions
+  // Calculate project positions based on view mode
   const projectPositions = projectsWithDates.map(project => {
     const projectDate = new Date(project.target_date!);
-    const daysFromStart = differenceInDays(projectDate, timelineStart);
-    const position = Math.max(0, Math.min(100, (daysFromStart / totalDays) * 100));
+    let position: number;
+
+    if (isMonthView) {
+      // For month view, position within the month
+      const dayOfMonth = projectDate.getDate();
+      const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
+      position = ((dayOfMonth - 1) / (daysInMonth - 1)) * 100;
+    } else {
+      // For year view, position across 12 months
+      const daysFromStart = differenceInDays(projectDate, timelineStart);
+      position = Math.max(0, Math.min(100, (daysFromStart / totalDays) * 100));
+    }
+
     const Icon = getProjectIcon(project.title);
-    return { project, position, Icon, isPast: projectDate < now };
-  });
+    const isInView = !isMonthView || (
+      projectDate.getMonth() === viewMonth.getMonth() &&
+      projectDate.getFullYear() === viewMonth.getFullYear()
+    );
+    return { project, position, Icon, isPast: projectDate < now, isInView };
+  }).filter(p => p.isInView);
 
   // Convert position percentage to date
   const positionToDate = (positionPercent: number): Date => {
-    const daysFromStart = (positionPercent / 100) * totalDays;
-    const newDate = new Date(timelineStart);
-    newDate.setDate(newDate.getDate() + Math.round(daysFromStart));
-    return newDate;
+    if (isMonthView) {
+      const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
+      const day = Math.round((positionPercent / 100) * (daysInMonth - 1)) + 1;
+      return new Date(viewMonth.getFullYear(), viewMonth.getMonth(), day);
+    } else {
+      const daysFromStart = (positionPercent / 100) * totalDays;
+      const newDate = new Date(timelineStart);
+      newDate.setDate(newDate.getDate() + Math.round(daysFromStart));
+      return newDate;
+    }
   };
 
   // Drag handlers
@@ -1525,21 +1557,90 @@ function TimelineBar({ projects, onUpdateProjectDate }: { projects: Project[]; o
     setDragPosition(null);
   };
 
+  // Month options for picker
+  const monthOptions = [];
+  for (let i = 0; i < 12; i++) {
+    const m = addMonths(now, i);
+    const projectCount = projectsWithDates.filter(p => {
+      const d = new Date(p.target_date!);
+      return d.getMonth() === m.getMonth() && d.getFullYear() === m.getFullYear();
+    }).length;
+    monthOptions.push({
+      index: i,
+      label: format(m, 'MMM'),
+      fullLabel: format(m, 'MMMM yyyy'),
+      count: projectCount,
+    });
+  }
+
   return (
     <div style={{
-      padding: '16px 20px 14px',
+      padding: '12px 20px 10px',
       borderTop: '1px solid #e5e7eb',
       background: '#fff',
     }}>
+      {/* Header with view toggle */}
       <div style={{
-        fontSize: 11,
-        fontWeight: 600,
-        color: '#6b7280',
-        marginBottom: 14,
-        textTransform: 'uppercase',
-        letterSpacing: '0.08em',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 10,
       }}>
-        Project Timeline
+        <div style={{
+          fontSize: 10,
+          fontWeight: 600,
+          color: '#6b7280',
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+        }}>
+          {isMonthView ? format(viewMonth, 'MMMM yyyy') : 'Year Overview'}
+        </div>
+
+        {/* View toggle */}
+        <div style={{
+          display: 'flex',
+          gap: 4,
+          background: '#f3f4f6',
+          borderRadius: 6,
+          padding: 2,
+        }}>
+          <button
+            onClick={() => setViewMode('year')}
+            style={{
+              padding: '4px 8px',
+              fontSize: 9,
+              fontWeight: 600,
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              background: viewMode === 'year' ? '#fff' : 'transparent',
+              color: viewMode === 'year' ? '#000' : '#6b7280',
+              boxShadow: viewMode === 'year' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+            }}
+          >
+            Year
+          </button>
+          {monthOptions.filter(m => m.count > 0).slice(0, 6).map(m => (
+            <button
+              key={m.index}
+              onClick={() => setViewMode(m.index)}
+              style={{
+                padding: '4px 6px',
+                fontSize: 9,
+                fontWeight: 600,
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+                background: viewMode === m.index ? '#fff' : 'transparent',
+                color: viewMode === m.index ? '#000' : '#6b7280',
+                boxShadow: viewMode === m.index ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+              }}
+              title={`${m.count} project${m.count !== 1 ? 's' : ''}`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Timeline track */}
@@ -1552,24 +1653,24 @@ function TimelineBar({ projects, onUpdateProjectDate }: { projects: Project[]; o
         onTouchEnd={handleDragEnd}
         style={{
           position: 'relative',
-          height: 70,
-          marginBottom: 8,
+          height: isMonthView ? 50 : 55,
+          marginBottom: 6,
           cursor: draggingProject ? 'grabbing' : 'default',
         }}
       >
-        {/* Month color sections */}
-        {months.slice(0, 12).map((month, i) => (
+        {/* Month color sections - only in year view */}
+        {!isMonthView && months.slice(0, 12).map((month, i) => (
           <div
             key={i}
             style={{
               position: 'absolute',
               left: `${month.position}%`,
               width: `${month.width}%`,
-              top: 18,
-              height: 10,
+              top: 14,
+              height: 6,
               background: month.color,
-              opacity: 0.25,
-              borderRadius: i === 0 ? '5px 0 0 5px' : i === 11 ? '0 5px 5px 0' : 0,
+              opacity: 0.3,
+              borderRadius: i === 0 ? '3px 0 0 3px' : i === 11 ? '0 3px 3px 0' : 0,
             }}
           />
         ))}
@@ -1579,31 +1680,34 @@ function TimelineBar({ projects, onUpdateProjectDate }: { projects: Project[]; o
           position: 'absolute',
           left: 0,
           right: 0,
-          top: 20,
-          height: 6,
+          top: 15,
+          height: 4,
           background: '#e5e7eb',
-          borderRadius: 3,
+          borderRadius: 2,
         }} />
 
-        {/* Today marker - Prominent */}
-        <div style={{
-          position: 'absolute',
-          left: 0,
-          top: 23,
-          transform: 'translate(-50%, -50%)',
-          width: 14,
-          height: 14,
-          background: '#1a1a1a',
-          borderRadius: '50%',
-          zIndex: 5,
-          border: '3px solid #fff',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-        }} />
+        {/* Today marker */}
+        {!isMonthView && (
+          <div style={{
+            position: 'absolute',
+            left: 0,
+            top: 17,
+            transform: 'translate(-50%, -50%)',
+            width: 10,
+            height: 10,
+            background: '#1a1a1a',
+            borderRadius: '50%',
+            zIndex: 5,
+            border: '2px solid #fff',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+          }} />
+        )}
 
-        {/* Project dots - Larger touch targets, draggable */}
+        {/* Project dots - compact, draggable */}
         {projectPositions.map(({ project, position, Icon, isPast }) => {
           const isDragging = draggingProject?.id === project.id;
           const displayPosition = isDragging && dragPosition !== null ? dragPosition : position;
+          const dotSize = isMonthView ? 28 : 22;
 
           return (
             <div
@@ -1623,41 +1727,41 @@ function TimelineBar({ projects, onUpdateProjectDate }: { projects: Project[]; o
                 alignItems: 'center',
                 cursor: isDragging ? 'grabbing' : 'grab',
                 zIndex: isDragging ? 100 : (hoveredProject?.id === project.id ? 10 : 1),
-                padding: '4px',
+                padding: '2px',
                 opacity: isDragging ? 0.9 : 1,
                 transition: isDragging ? 'none' : 'left 0.15s ease',
               }}
             >
-              {/* The dot - Larger (36px) */}
+              {/* The dot - smaller */}
               <div style={{
-                width: 36,
-                height: 36,
+                width: dotSize,
+                height: dotSize,
                 background: isDragging ? '#3b82f6' : (isPast ? '#fef2f2' : project.status === 'in_progress' ? '#fffbeb' : '#fff'),
-                border: `3px solid ${isDragging ? '#2563eb' : (isPast ? '#f87171' : project.status === 'in_progress' ? '#f59e0b' : '#374151')}`,
+                border: `2px solid ${isDragging ? '#2563eb' : (isPast ? '#f87171' : project.status === 'in_progress' ? '#f59e0b' : '#6b7280')}`,
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 transition: isDragging ? 'none' : 'transform 0.15s ease, box-shadow 0.15s ease',
-                transform: isDragging ? 'scale(1.2)' : (hoveredProject?.id === project.id ? 'scale(1.15)' : 'scale(1)'),
-                boxShadow: isDragging ? '0 8px 24px rgba(59, 130, 246, 0.4)' : (hoveredProject?.id === project.id ? '0 6px 16px rgba(0,0,0,0.2)' : '0 1px 3px rgba(0,0,0,0.1)'),
+                transform: isDragging ? 'scale(1.2)' : (hoveredProject?.id === project.id ? 'scale(1.1)' : 'scale(1)'),
+                boxShadow: isDragging ? '0 4px 12px rgba(59, 130, 246, 0.4)' : (hoveredProject?.id === project.id ? '0 3px 8px rgba(0,0,0,0.15)' : '0 1px 2px rgba(0,0,0,0.08)'),
               }}>
-                <Icon size={16} strokeWidth={2} color={isDragging ? '#fff' : (isPast ? '#f87171' : project.status === 'in_progress' ? '#d97706' : '#374151')} />
+                <Icon size={isMonthView ? 12 : 10} strokeWidth={2} color={isDragging ? '#fff' : (isPast ? '#f87171' : project.status === 'in_progress' ? '#d97706' : '#374151')} />
               </div>
 
-            {/* Cost label under dot */}
-            {project.cost && project.cost > 0 && (
+            {/* Cost label under dot - only in month view */}
+            {isMonthView && project.cost && project.cost > 0 && (
               <div style={{
-                marginTop: 4,
-                fontSize: 10,
+                marginTop: 2,
+                fontSize: 8,
                 fontWeight: 600,
                 color: isPast ? '#ef4444' : '#059669',
                 background: isPast ? '#fef2f2' : '#ecfdf5',
-                padding: '3px 8px',
-                borderRadius: 6,
+                padding: '2px 5px',
+                borderRadius: 4,
                 whiteSpace: 'nowrap',
               }}>
-                ${project.cost >= 1000 ? `${(project.cost / 1000).toFixed(1)}k` : project.cost}
+                ${project.cost >= 1000 ? `${(project.cost / 1000).toFixed(0)}k` : project.cost}
               </div>
             )}
 
@@ -1668,38 +1772,21 @@ function TimelineBar({ projects, onUpdateProjectDate }: { projects: Project[]; o
                 bottom: '100%',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                marginBottom: 10,
+                marginBottom: 6,
                 background: '#1f2937',
                 color: '#fff',
-                padding: '10px 14px',
-                borderRadius: 10,
-                fontSize: 13,
+                padding: '6px 10px',
+                borderRadius: 6,
+                fontSize: 11,
                 whiteSpace: 'nowrap',
                 zIndex: 100,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
               }}>
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>{project.title}</div>
-                <div style={{ opacity: 0.85, fontSize: 12 }}>
-                  {format(new Date(project.target_date!), 'MMM d, yyyy')}
-                  {project.cost ? ` - $${project.cost.toLocaleString()}` : ''}
+                <div style={{ fontWeight: 600 }}>{project.title}</div>
+                <div style={{ opacity: 0.8, fontSize: 10, marginTop: 2 }}>
+                  {format(new Date(project.target_date!), 'MMM d')}
+                  {project.cost ? ` • $${project.cost >= 1000 ? `${(project.cost / 1000).toFixed(0)}k` : project.cost}` : ''}
                 </div>
-                {project.room && (
-                  <div style={{ opacity: 0.7, fontSize: 11, marginTop: 2 }}>
-                    {project.room}
-                  </div>
-                )}
-                {/* Arrow */}
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: 0,
-                  height: 0,
-                  borderLeft: '8px solid transparent',
-                  borderRight: '8px solid transparent',
-                  borderTop: '8px solid #1f2937',
-                }} />
               </div>
             )}
 
@@ -1727,30 +1814,52 @@ function TimelineBar({ projects, onUpdateProjectDate }: { projects: Project[]; o
         })}
       </div>
 
-      {/* Month labels - More prominent */}
-      <div style={{
-        position: 'relative',
-        height: 20,
-        marginTop: 6,
-      }}>
-        {months.filter((_, i) => i % 2 === 0 || months.length <= 6).map((month, i) => (
-          <div
-            key={i}
-            style={{
-              position: 'absolute',
-              left: `${month.position}%`,
-              transform: 'translateX(-50%)',
-              fontSize: 11,
-              fontWeight: 600,
-              color: month.color,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}
-          >
-            {month.label}
-          </div>
-        ))}
-      </div>
+      {/* Month labels - only in year view */}
+      {!isMonthView && (
+        <div style={{
+          position: 'relative',
+          height: 16,
+          marginTop: 4,
+        }}>
+          {months.filter((_, i) => i % 2 === 0).map((month, i) => (
+            <div
+              key={i}
+              style={{
+                position: 'absolute',
+                left: `${month.position}%`,
+                transform: 'translateX(-50%)',
+                fontSize: 9,
+                fontWeight: 500,
+                color: '#9ca3af',
+                textTransform: 'uppercase',
+                letterSpacing: '0.03em',
+              }}
+            >
+              {month.label}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Day markers for month view */}
+      {isMonthView && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          marginTop: 4,
+          padding: '0 2px',
+        }}>
+          {[1, 8, 15, 22, 29].map(day => {
+            const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
+            if (day > daysInMonth) return null;
+            return (
+              <span key={day} style={{ fontSize: 9, color: '#9ca3af' }}>
+                {day}
+              </span>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
