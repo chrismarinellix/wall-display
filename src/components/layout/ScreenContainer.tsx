@@ -15,6 +15,7 @@ import { DailyProphetScreen } from '../screens/DailyProphetScreen';
 import { SetupScreen } from '../screens/SetupScreen';
 import { VideoScreen } from '../screens/VideoScreen';
 import { ProjectsScreen } from '../screens/ProjectsScreen';
+import { FastScreen } from '../screens/FastScreen';
 import { ScreenType } from '../../types/settings';
 import {
   Cloud,
@@ -31,6 +32,7 @@ import {
   Settings,
   Video,
   ClipboardList,
+  Zap,
 } from 'lucide-react';
 
 const screens: Record<ScreenType, React.ComponentType> = {
@@ -45,6 +47,7 @@ const screens: Record<ScreenType, React.ComponentType> = {
   moments: MomentsScreen,
   summary: DailyProphetScreen,
   projects: ProjectsScreen,
+  fast: FastScreen,
   setup: SetupScreen,
   video: VideoScreen,
 };
@@ -61,6 +64,7 @@ const screenInfo: Record<ScreenType, { title: string; shortTitle: string; Icon: 
   moments: { title: 'Moments', shortTitle: 'History', Icon: Image },
   summary: { title: 'Daily Brief', shortTitle: 'Brief', Icon: LayoutGrid },
   projects: { title: 'Projects', shortTitle: 'Projects', Icon: ClipboardList },
+  fast: { title: 'Fast', shortTitle: 'Fast', Icon: Zap },
   setup: { title: 'Setup', shortTitle: 'Setup', Icon: Settings },
   video: { title: 'Camera', shortTitle: 'Cam', Icon: Video },
 };

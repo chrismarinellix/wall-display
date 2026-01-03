@@ -21,7 +21,7 @@ const ScreenContext = createContext<ScreenContextType | null>(null);
 const NON_CYCLE_SCREENS: ScreenType[] = ['video'];
 
 // Interactive screens that pause auto-cycle while active (user is working on them)
-const INTERACTIVE_SCREENS: ScreenType[] = ['projects', 'setup', 'calendar', 'pomodoro', 'countdown'];
+const INTERACTIVE_SCREENS: ScreenType[] = ['projects', 'setup', 'calendar', 'pomodoro', 'countdown', 'fast'];
 
 // How many screens to auto-cycle between (first N screens in screenOrder)
 const AUTO_CYCLE_COUNT = 4;

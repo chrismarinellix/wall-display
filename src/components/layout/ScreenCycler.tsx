@@ -14,6 +14,7 @@ const screenLabels: Record<ScreenType, string> = {
   moments: 'History',
   summary: 'Brief',
   projects: 'Projects',
+  fast: 'Fast',
   setup: 'Setup',
   video: 'Camera',
 };

@@ -10,6 +10,7 @@ export type ScreenType =
   | 'moments'
   | 'summary'
   | 'projects'
+  | 'fast'
   | 'setup'
   | 'video';
 
@@ -43,7 +44,7 @@ export const defaultSettings: Settings = {
   temperatureUnit: 'celsius',
   timeFormat: '24h',
   // First four screens auto-cycle (Briefing, Weather, Proverbs, History), others available via dock
-  screenOrder: ['summary', 'weather', 'japanese', 'moments', 'quotes', 'calendar', 'projects', 'pomodoro', 'countdown', 'homeassistant', 'stocks', 'setup'],
+  screenOrder: ['summary', 'weather', 'japanese', 'moments', 'quotes', 'calendar', 'projects', 'fast', 'pomodoro', 'countdown', 'homeassistant', 'stocks', 'setup'],
   // Default crypto and stocks
   stockSymbols: ['AAPL', 'GOOGL', 'MSFT'],
   cryptoSymbols: ['bitcoin', 'ethereum', 'solana'],
