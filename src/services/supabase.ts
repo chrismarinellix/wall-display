@@ -1590,6 +1590,7 @@ export async function getCurrentFast(): Promise<FastingRecord | null> {
   }
 
   try {
+    console.log('Fetching current fast from Supabase...');
     const { data, error } = await supabase
       .from('fasting')
       .select('*')
@@ -1598,11 +1599,16 @@ export async function getCurrentFast(): Promise<FastingRecord | null> {
       .limit(1)
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase fetch error:', error);
+      throw error;
+    }
+    console.log('Current fast from Supabase:', data);
     return data || null;
   } catch (e) {
     console.error('Failed to get current fast:', e);
     const stored = localStorage.getItem(FASTING_STORAGE_KEY);
+    console.log('Falling back to localStorage:', stored);
     return stored ? JSON.parse(stored) : null;
   }
 }
@@ -1631,32 +1637,43 @@ export async function getFastingHistory(): Promise<FastingRecord[]> {
 
 // Start a new fast
 export async function startFast(targetHours: number = 24): Promise<FastingRecord | null> {
-  const newFast: FastingRecord = {
-    id: crypto.randomUUID(),
+  // Let Supabase generate the ID
+  const newFast = {
     start_time: new Date().toISOString(),
     target_hours: targetHours,
     completed: false,
   };
 
   if (!supabase) {
-    localStorage.setItem(FASTING_STORAGE_KEY, JSON.stringify(newFast));
-    return newFast;
+    console.log('Supabase not configured, using localStorage');
+    const localFast = { ...newFast, id: crypto.randomUUID() };
+    localStorage.setItem(FASTING_STORAGE_KEY, JSON.stringify(localFast));
+    return localFast;
   }
 
   try {
+    console.log('Starting fast in Supabase:', newFast);
     const { data, error } = await supabase
       .from('fasting')
       .insert(newFast)
-      .select()
-      .single();
+      .select();
 
-    if (error) throw error;
-    localStorage.setItem(FASTING_STORAGE_KEY, JSON.stringify(data));
-    return data;
+    if (error) {
+      console.error('Supabase insert error:', error);
+      throw error;
+    }
+
+    const insertedFast = data?.[0] || null;
+    console.log('Fast started successfully:', insertedFast);
+    if (insertedFast) {
+      localStorage.setItem(FASTING_STORAGE_KEY, JSON.stringify(insertedFast));
+    }
+    return insertedFast;
   } catch (e) {
     console.error('Failed to start fast:', e);
-    localStorage.setItem(FASTING_STORAGE_KEY, JSON.stringify(newFast));
-    return newFast;
+    const localFast = { ...newFast, id: crypto.randomUUID() };
+    localStorage.setItem(FASTING_STORAGE_KEY, JSON.stringify(localFast));
+    return localFast;
   }
 }
 
