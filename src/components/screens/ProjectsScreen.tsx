@@ -48,6 +48,8 @@ export function ProjectsScreen() {
   const [editBlocked, setEditBlocked] = useState(false);
   const [editRequiresPermit, setEditRequiresPermit] = useState(false);
   const [editPermitApproved, setEditPermitApproved] = useState(false);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [roomFilter, setRoomFilter] = useState<ProjectRoom | 'all'>('all');
 
   // Current user (for tracking who made changes)
   const [currentUser, setCurrentUser] = useState<'Chris' | 'Caroline'>('Chris');
@@ -66,9 +68,28 @@ export function ProjectsScreen() {
     return () => unsubscribe?.();
   }, []);
 
-  // Separate pending and completed projects
-  const pendingProjects = useMemo(() => projects.filter(p => p.status !== 'completed'), [projects]);
-  const completedProjects = useMemo(() => projects.filter(p => p.status === 'completed'), [projects]);
+  // Separate pending and completed projects, filtered by room
+  const pendingProjects = useMemo(() => {
+    let filtered = projects.filter(p => p.status !== 'completed');
+    if (roomFilter !== 'all') {
+      filtered = filtered.filter(p => p.room === roomFilter);
+    }
+    return filtered;
+  }, [projects, roomFilter]);
+
+  const completedProjects = useMemo(() => {
+    let filtered = projects.filter(p => p.status === 'completed');
+    if (roomFilter !== 'all') {
+      filtered = filtered.filter(p => p.room === roomFilter);
+    }
+    return filtered;
+  }, [projects, roomFilter]);
+
+  // Get unique rooms from projects for filter dropdown
+  const usedRooms = useMemo(() => {
+    const rooms = new Set(projects.map(p => p.room).filter(Boolean));
+    return Array.from(rooms) as ProjectRoom[];
+  }, [projects]);
 
   // Calculate budget by month for floating widget
   const budgetByMonth = useMemo(() => {
@@ -339,6 +360,30 @@ export function ProjectsScreen() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Room Filter */}
+          {usedRooms.length > 0 && (
+            <select
+              value={roomFilter}
+              onChange={(e) => setRoomFilter(e.target.value as ProjectRoom | 'all')}
+              style={{
+                padding: '8px 12px',
+                fontSize: 12,
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                background: roomFilter !== 'all' ? '#eef2ff' : '#fff',
+                color: roomFilter !== 'all' ? '#4f46e5' : '#374151',
+                fontWeight: roomFilter !== 'all' ? 600 : 400,
+                cursor: 'pointer',
+                minWidth: 120,
+              }}
+            >
+              <option value="all">All Rooms</option>
+              {usedRooms.map(room => (
+                <option key={room} value={room}>{room}</option>
+              ))}
+            </select>
+          )}
+
           {/* User Selector */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Editing as:</span>
@@ -346,13 +391,13 @@ export function ProjectsScreen() {
               <button
                 onClick={() => setCurrentUser('Chris')}
                 style={{
-                  padding: '4px 10px',
-                  fontSize: 11,
+                  padding: '6px 12px',
+                  fontSize: 12,
                   fontWeight: currentUser === 'Chris' ? 600 : 400,
-                  background: currentUser === 'Chris' ? '#3498db' : '#f0f0f0',
-                  color: currentUser === 'Chris' ? '#fff' : '#666',
+                  background: currentUser === 'Chris' ? '#3b82f6' : '#f3f4f6',
+                  color: currentUser === 'Chris' ? '#fff' : '#6b7280',
                   border: 'none',
-                  borderRadius: 4,
+                  borderRadius: 6,
                   cursor: 'pointer',
                 }}
               >
@@ -361,13 +406,13 @@ export function ProjectsScreen() {
               <button
                 onClick={() => setCurrentUser('Caroline')}
                 style={{
-                  padding: '4px 10px',
-                  fontSize: 11,
+                  padding: '6px 12px',
+                  fontSize: 12,
                   fontWeight: currentUser === 'Caroline' ? 600 : 400,
-                  background: currentUser === 'Caroline' ? '#e74c3c' : '#f0f0f0',
-                  color: currentUser === 'Caroline' ? '#fff' : '#666',
+                  background: currentUser === 'Caroline' ? '#dc2626' : '#f3f4f6',
+                  color: currentUser === 'Caroline' ? '#fff' : '#6b7280',
                   border: 'none',
-                  borderRadius: 4,
+                  borderRadius: 6,
                   cursor: 'pointer',
                 }}
               >
@@ -719,7 +764,16 @@ export function ProjectsScreen() {
           <>
             {/* Active Projects */}
             <div style={{ marginBottom: 24 }}>
-              {pendingProjects.map((project, index) => (
+              {pendingProjects.map((project, index) => {
+                // Determine priority border color
+                const priorityBorder = project.caroline_priority
+                  ? '4px solid #e74c3c'
+                  : project.chris_priority
+                    ? '4px solid #3498db'
+                    : 'none';
+                const monthColor = project.target_date ? getMonthColor(project.target_date) : null;
+
+                return (
                 <div
                   key={project.id}
                   data-project-index={index}
@@ -731,64 +785,42 @@ export function ProjectsScreen() {
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
                   style={{
-                    background: project.caroline_priority
-                      ? '#fff5f5'
-                      : project.target_date
-                        ? getMonthColor(project.target_date).bg
-                        : '#fff',
-                    border: project.caroline_priority
-                      ? '2px solid #e74c3c'
-                      : project.target_date
-                        ? `2px solid ${getMonthColor(project.target_date).border}`
-                        : '1px solid #e5e5e5',
-                    borderRadius: 8,
-                    marginBottom: 8,
+                    background: '#fff',
+                    borderRadius: 10,
+                    marginBottom: 10,
                     overflow: 'hidden',
                     opacity: dragState.isDragging && dragState.dragIndex === index ? 0.5 : 1,
                     transform: dragState.dragOverIndex === index ? 'translateY(4px)' : 'none',
                     transition: 'transform 0.15s ease, opacity 0.15s ease',
-                    boxShadow: project.caroline_priority
-                      ? '0 2px 8px rgba(231, 76, 60, 0.2)'
-                      : dragState.dragOverIndex === index ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                    borderLeft: priorityBorder,
                   }}
                 >
-                  {/* Caroline Priority Banner */}
-                  {project.caroline_priority && (
-                    <div style={{
-                      background: 'linear-gradient(90deg, #e74c3c, #c0392b)',
-                      color: '#fff',
-                      padding: '4px 14px',
-                      fontSize: 10,
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.1em',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                    }}>
-                      <Flag size={10} /> Caroline's Priority
-                    </div>
-                  )}
-
-                  {/* Main Row */}
+                  {/* Main Row - Clean and spacious */}
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    padding: '12px 14px',
-                    gap: 12,
+                    padding: '14px 16px',
+                    gap: 14,
                   }}>
-                    {/* Complete Checkbox */}
+                    {/* Complete Checkbox - Larger touch target */}
                     <div
                       onClick={(e) => {
                         e.stopPropagation();
                         handleToggleStatus(project);
                       }}
                       style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: 6,
-                        border: '2px solid #27ae60',
-                        background: project.status === 'completed' ? '#27ae60' : '#fff',
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        border: project.status === 'in_progress'
+                          ? '2px solid #f59e0b'
+                          : '2px solid #22c55e',
+                        background: project.status === 'completed'
+                          ? '#22c55e'
+                          : project.status === 'in_progress'
+                            ? '#fef3c7'
+                            : '#fff',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -796,229 +828,233 @@ export function ProjectsScreen() {
                         flexShrink: 0,
                         transition: 'all 0.15s ease',
                       }}
-                      title="Mark complete"
+                      title={project.status === 'pending' ? 'Start task' : project.status === 'in_progress' ? 'Mark complete' : 'Completed'}
                     >
-                      {project.status === 'completed' && <Check size={14} color="#fff" strokeWidth={3} />}
+                      {project.status === 'completed' && <Check size={18} color="#fff" strokeWidth={3} />}
+                      {project.status === 'in_progress' && <Clock size={16} color="#f59e0b" strokeWidth={2} />}
                     </div>
 
-                    {/* Drag Handle */}
-                    <div style={{ cursor: 'grab', touchAction: 'none', color: '#ccc' }}>
-                      <GripVertical size={16} />
-                    </div>
-
-                    {/* Priority Number */}
+                    {/* Drag Handle - Larger */}
                     <div style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: '50%',
-                      background: project.caroline_priority ? '#e74c3c' : '#1a1a1a',
-                      color: '#fff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 11,
-                      fontWeight: 600,
-                      flexShrink: 0,
+                      cursor: 'grab',
+                      touchAction: 'none',
+                      color: '#d1d5db',
+                      padding: 4,
                     }}>
-                      {index + 1}
-                    </div>
-
-                    {/* Priority Stars */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {project.chris_priority && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Star size={10} fill="#3498db" color="#3498db" />
-                          <span style={{ fontSize: 8, color: '#3498db', fontWeight: 600 }}>C</span>
-                        </div>
-                      )}
-                      {project.caroline_priority && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Star size={10} fill="#e74c3c" color="#e74c3c" />
-                          <span style={{ fontSize: 8, color: '#e74c3c', fontWeight: 600 }}>CL</span>
-                        </div>
-                      )}
+                      <GripVertical size={20} />
                     </div>
 
                     {/* Content */}
                     <div style={{ flex: 1, minWidth: 0 }}>
+                      {/* Title row with room */}
                       <div style={{
-                        fontSize: project.caroline_priority ? 15 : 14,
-                        fontWeight: project.caroline_priority ? 700 : 500,
-                        color: project.caroline_priority ? '#c0392b' : '#1a1a1a',
-                        marginBottom: 4,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        marginBottom: 6,
                       }}>
-                        {project.title}
-                      </div>
-                      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                        {project.when && (
-                          <span style={{ fontSize: 11, color: '#888', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <Clock size={10} /> {project.when}
+                        <div style={{
+                          fontSize: 15,
+                          fontWeight: 600,
+                          color: '#1a1a1a',
+                          flex: 1,
+                        }}>
+                          {project.title}
+                        </div>
+                        {/* Room badge - prominent */}
+                        {project.room && (
+                          <span style={{
+                            fontSize: 11,
+                            color: '#6366f1',
+                            background: '#eef2ff',
+                            padding: '4px 10px',
+                            borderRadius: 6,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            fontWeight: 500,
+                            flexShrink: 0,
+                          }}>
+                            <MapPin size={12} />
+                            {project.room}
                           </span>
                         )}
+                      </div>
+
+                      {/* Metadata row - simplified */}
+                      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+                        {/* Date with month color */}
                         {project.target_date && (
                           <span style={{
-                            fontSize: 10,
+                            fontSize: 12,
                             fontWeight: 600,
-                            color: getMonthColor(project.target_date).border,
-                            background: getMonthColor(project.target_date).bg,
-                            border: `1px solid ${getMonthColor(project.target_date).border}`,
-                            padding: '2px 8px',
-                            borderRadius: 4,
+                            color: monthColor?.border,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 5,
+                          }}>
+                            <Calendar size={13} />
+                            {format(new Date(project.target_date), 'MMM d')}
+                          </span>
+                        )}
+                        {/* Cost */}
+                        {project.cost !== undefined && project.cost > 0 && (
+                          <span style={{
+                            fontSize: 12,
+                            color: '#059669',
+                            fontWeight: 600,
                             display: 'flex',
                             alignItems: 'center',
                             gap: 4,
                           }}>
-                            <Calendar size={10} /> {format(new Date(project.target_date), 'MMM d')}
+                            <DollarSign size={13} />
+                            {project.cost.toLocaleString()}
                           </span>
                         )}
-                        {project.cost !== undefined && project.cost > 0 && (
-                          <span style={{ fontSize: 11, color: '#888', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <DollarSign size={10} /> ${project.cost.toLocaleString()}
-                          </span>
-                        )}
+                        {/* Assigned */}
                         {project.assigned_to && (
                           <span style={{
-                            fontSize: 10,
-                            color: project.assigned_to === 'Contractor' ? '#7b5d2e' : '#2e5d7b',
-                            background: project.assigned_to === 'Contractor' ? '#fff8e8' : '#e8f4ff',
-                            padding: '2px 6px',
-                            borderRadius: 4,
+                            fontSize: 11,
+                            color: project.assigned_to === 'Contractor' ? '#b45309' : '#1e40af',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 3,
-                            fontWeight: 500,
+                            gap: 4,
                           }}>
-                            {project.assigned_to === 'Contractor' ? <HardHat size={10} /> : <User size={10} />}
+                            {project.assigned_to === 'Contractor' ? <HardHat size={13} /> : <User size={13} />}
                             {project.assigned_to}
                           </span>
                         )}
-                        {project.room && (
-                          <span style={{
-                            fontSize: 10,
-                            color: '#5d5d7b',
-                            background: '#f0f0ff',
-                            padding: '2px 6px',
-                            borderRadius: 4,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 3,
-                            fontWeight: 500,
-                          }}>
-                            <MapPin size={10} />
-                            {project.room}
+                        {/* Status indicators */}
+                        {project.blocked && (
+                          <span style={{ fontSize: 11, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <Ban size={12} /> Blocked
+                          </span>
+                        )}
+                        {project.scheduled && !project.blocked && (
+                          <span style={{ fontSize: 11, color: '#059669', display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <CalendarCheck size={12} /> Scheduled
                           </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Status Badge */}
-                    <button
-                      onClick={() => handleToggleStatus(project)}
-                      style={{
-                        padding: '4px 10px',
-                        background: `${getStatusColor(project.status)}20`,
-                        color: getStatusColor(project.status),
-                        border: `1px solid ${getStatusColor(project.status)}40`,
-                        borderRadius: 4,
-                        fontSize: 10,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                      }}
-                    >
-                      {getStatusLabel(project.status)}
-                    </button>
-
-                    {/* Expand Button */}
+                    {/* Expand Button - Larger touch target */}
                     <button
                       onClick={() => setExpandedId(expandedId === project.id ? null : project.id)}
                       style={{
-                        background: 'none',
+                        background: expandedId === project.id ? '#f3f4f6' : 'transparent',
                         border: 'none',
+                        borderRadius: 8,
                         cursor: 'pointer',
-                        padding: 4,
-                        color: '#888',
+                        padding: 10,
+                        color: '#6b7280',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: 44,
+                        minHeight: 44,
                       }}
                     >
-                      {expandedId === project.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                      {expandedId === project.id ? <ChevronUp size={22} /> : <ChevronDown size={22} />}
                     </button>
                   </div>
 
                   {/* Expanded Details / Edit Form */}
                   {expandedId === project.id && (
                     <div style={{
-                      padding: '12px 14px 14px',
-                      paddingLeft: 68,
-                      borderTop: '1px solid #f0f0f0',
-                      background: '#fafafa',
+                      padding: '16px 20px',
+                      borderTop: '1px solid #e5e7eb',
+                      background: '#f9fafb',
                     }}>
                       {editingId === project.id ? (
-                        /* Edit Form */
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        /* Edit Form - Streamlined */
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                          {/* Core Fields */}
                           <div>
-                            <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase' }}>Title</label>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#6b7280', marginBottom: 6 }}>Title</label>
                             <input
                               type="text"
                               value={editTitle}
                               onChange={(e) => setEditTitle(e.target.value)}
-                              style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 4, fontSize: 13 }}
+                              style={{ width: '100%', padding: '12px 14px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14 }}
                             />
                           </div>
+
                           <div>
-                            <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase' }}>Details</label>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#6b7280', marginBottom: 6 }}>Notes / Details</label>
                             <textarea
                               value={editDescription}
                               onChange={(e) => setEditDescription(e.target.value)}
                               rows={2}
-                              style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 4, fontSize: 13, fontFamily: 'inherit' }}
+                              placeholder="Steps, materials, notes..."
+                              style={{ width: '100%', padding: '12px 14px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', resize: 'vertical' }}
                             />
                           </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+
+                          {/* Two-column layout for key fields */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                             <div>
-                              <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase' }}>When</label>
-                              <input
-                                type="text"
-                                value={editWhen}
-                                onChange={(e) => setEditWhen(e.target.value)}
-                                placeholder="This weekend..."
-                                style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 4, fontSize: 13 }}
-                              />
-                            </div>
-                            <div>
-                              <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase' }}>Cost ($)</label>
-                              <input
-                                type="number"
-                                value={editCost}
-                                onChange={(e) => setEditCost(e.target.value)}
-                                style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 4, fontSize: 13 }}
-                              />
-                            </div>
-                          </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                            <div>
-                              <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase' }}>Target Date</label>
+                              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#6b7280', marginBottom: 6 }}>
+                                <Calendar size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                                Target Date
+                              </label>
                               <input
                                 type="date"
                                 value={editDate}
                                 onChange={(e) => setEditDate(e.target.value)}
-                                style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 4, fontSize: 13 }}
+                                style={{ width: '100%', padding: '12px 14px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14 }}
                               />
                             </div>
                             <div>
-                              <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase' }}>Assigned To</label>
-                              <div style={{ display: 'flex', gap: 6 }}>
+                              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#6b7280', marginBottom: 6 }}>
+                                <DollarSign size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                                Estimated Cost
+                              </label>
+                              <input
+                                type="number"
+                                value={editCost}
+                                onChange={(e) => setEditCost(e.target.value)}
+                                placeholder="0"
+                                style={{ width: '100%', padding: '12px 14px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14 }}
+                              />
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                            <div>
+                              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#6b7280', marginBottom: 6 }}>
+                                <MapPin size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                                Room / Location
+                              </label>
+                              <select
+                                value={editRoom}
+                                onChange={(e) => setEditRoom(e.target.value as ProjectRoom)}
+                                style={{ width: '100%', padding: '12px 14px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14, background: '#fff' }}
+                              >
+                                <option value="">Select room...</option>
+                                {PROJECT_ROOMS.map(room => (
+                                  <option key={room} value={room}>{room}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#6b7280', marginBottom: 6 }}>
+                                <User size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                                Assigned To
+                              </label>
+                              <div style={{ display: 'flex', gap: 8 }}>
                                 <button
                                   type="button"
                                   onClick={() => setEditAssignedTo('Chris')}
                                   style={{
                                     flex: 1,
-                                    padding: '8px',
-                                    border: `2px solid ${editAssignedTo === 'Chris' ? '#1a1a1a' : '#ddd'}`,
-                                    borderRadius: 4,
-                                    fontSize: 11,
-                                    background: editAssignedTo === 'Chris' ? '#1a1a1a' : '#fff',
-                                    color: editAssignedTo === 'Chris' ? '#fff' : '#666',
+                                    padding: '12px',
+                                    border: editAssignedTo === 'Chris' ? '2px solid #3b82f6' : '1px solid #d1d5db',
+                                    borderRadius: 8,
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    background: editAssignedTo === 'Chris' ? '#eff6ff' : '#fff',
+                                    color: editAssignedTo === 'Chris' ? '#1d4ed8' : '#6b7280',
                                     cursor: 'pointer',
                                   }}
                                 >
@@ -1029,12 +1065,13 @@ export function ProjectsScreen() {
                                   onClick={() => setEditAssignedTo('Contractor')}
                                   style={{
                                     flex: 1,
-                                    padding: '8px',
-                                    border: `2px solid ${editAssignedTo === 'Contractor' ? '#1a1a1a' : '#ddd'}`,
-                                    borderRadius: 4,
-                                    fontSize: 11,
-                                    background: editAssignedTo === 'Contractor' ? '#1a1a1a' : '#fff',
-                                    color: editAssignedTo === 'Contractor' ? '#fff' : '#666',
+                                    padding: '12px',
+                                    border: editAssignedTo === 'Contractor' ? '2px solid #f59e0b' : '1px solid #d1d5db',
+                                    borderRadius: 8,
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    background: editAssignedTo === 'Contractor' ? '#fffbeb' : '#fff',
+                                    color: editAssignedTo === 'Contractor' ? '#b45309' : '#6b7280',
                                     cursor: 'pointer',
                                   }}
                                 >
@@ -1043,191 +1080,222 @@ export function ProjectsScreen() {
                               </div>
                             </div>
                           </div>
-                          <div>
-                            <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase' }}>
-                              <MapPin size={10} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-                              Room / Location
+
+                          {/* Priority Toggles - Inline */}
+                          <div style={{ display: 'flex', gap: 16, padding: '12px 0', borderTop: '1px solid #e5e7eb' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={editChrisPriority}
+                                onChange={(e) => setEditChrisPriority(e.target.checked)}
+                                style={{ width: 20, height: 20, accentColor: '#3b82f6' }}
+                              />
+                              <span style={{ fontSize: 13, color: editChrisPriority ? '#1d4ed8' : '#6b7280', fontWeight: 500 }}>
+                                Chris Priority
+                              </span>
                             </label>
-                            <select
-                              value={editRoom}
-                              onChange={(e) => setEditRoom(e.target.value as ProjectRoom)}
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={editCarolinePriority}
+                                onChange={(e) => setEditCarolinePriority(e.target.checked)}
+                                style={{ width: 20, height: 20, accentColor: '#dc2626' }}
+                              />
+                              <span style={{ fontSize: 13, color: editCarolinePriority ? '#dc2626' : '#6b7280', fontWeight: 600 }}>
+                                Caroline Priority
+                              </span>
+                            </label>
+                          </div>
+
+                          {/* Collapsible Advanced Options */}
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
                               style={{
-                                width: '100%',
-                                padding: '8px 10px',
-                                border: '1px solid #ddd',
-                                borderRadius: 4,
-                                fontSize: 12,
-                                outline: 'none',
-                                background: '#fff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '10px 0',
+                                background: 'none',
+                                border: 'none',
                                 cursor: 'pointer',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: '#6b7280',
                               }}
                             >
-                              <option value="">Select a room...</option>
-                              {PROJECT_ROOMS.map(room => (
-                                <option key={room} value={room}>{room}</option>
-                              ))}
-                            </select>
-                          </div>
-                          {/* Priority Flags */}
-                          <div style={{ marginTop: 8, padding: 10, background: '#f8f8f8', borderRadius: 6 }}>
-                            <div style={{ fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 8, textTransform: 'uppercase' }}>Priority Flags</div>
-                            <div style={{ display: 'flex', gap: 12 }}>
-                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={editChrisPriority}
-                                  onChange={(e) => setEditChrisPriority(e.target.checked)}
-                                  style={{ width: 16, height: 16, accentColor: '#3498db' }}
-                                />
-                                <Star size={12} color="#3498db" fill={editChrisPriority ? '#3498db' : 'none'} />
-                                <span style={{ fontSize: 12, color: '#3498db', fontWeight: 500 }}>Chris Priority</span>
-                              </label>
-                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={editCarolinePriority}
-                                  onChange={(e) => setEditCarolinePriority(e.target.checked)}
-                                  style={{ width: 16, height: 16, accentColor: '#e74c3c' }}
-                                />
-                                <Flag size={12} color="#e74c3c" fill={editCarolinePriority ? '#e74c3c' : 'none'} />
-                                <span style={{ fontSize: 12, color: '#e74c3c', fontWeight: 600 }}>Caroline Priority</span>
-                              </label>
-                            </div>
-                          </div>
+                              {showAdvancedOptions ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                              Project Status Options
+                            </button>
 
-                          {/* Status Checkboxes */}
-                          <div style={{ marginTop: 8, padding: 10, background: '#f8f8f8', borderRadius: 6 }}>
-                            <div style={{ fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 8, textTransform: 'uppercase' }}>Project Status</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11 }}>
-                                <input type="checkbox" checked={editNeedsQuote} onChange={(e) => setEditNeedsQuote(e.target.checked)} style={{ width: 14, height: 14 }} />
-                                <FileText size={11} color="#666" /> Needs Quote
-                              </label>
-                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11 }}>
-                                <input type="checkbox" checked={editQuoteReceived} onChange={(e) => setEditQuoteReceived(e.target.checked)} style={{ width: 14, height: 14 }} />
-                                <FileCheck size={11} color="#27ae60" /> Quote Received
-                              </label>
-                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11 }}>
-                                <input type="checkbox" checked={editMaterialsNeeded} onChange={(e) => setEditMaterialsNeeded(e.target.checked)} style={{ width: 14, height: 14 }} />
-                                <ShoppingCart size={11} color="#666" /> Materials Needed
-                              </label>
-                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11 }}>
-                                <input type="checkbox" checked={editMaterialsOrdered} onChange={(e) => setEditMaterialsOrdered(e.target.checked)} style={{ width: 14, height: 14 }} />
-                                <ShoppingCart size={11} color="#27ae60" /> Materials Ordered
-                              </label>
-                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11 }}>
-                                <input type="checkbox" checked={editScheduled} onChange={(e) => setEditScheduled(e.target.checked)} style={{ width: 14, height: 14 }} />
-                                <CalendarCheck size={11} color="#27ae60" /> Scheduled
-                              </label>
-                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11 }}>
-                                <input type="checkbox" checked={editBlocked} onChange={(e) => setEditBlocked(e.target.checked)} style={{ width: 14, height: 14 }} />
-                                <Ban size={11} color="#e74c3c" /> Blocked
-                              </label>
-                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11 }}>
-                                <input type="checkbox" checked={editRequiresPermit} onChange={(e) => setEditRequiresPermit(e.target.checked)} style={{ width: 14, height: 14 }} />
-                                <AlertCircle size={11} color="#f39c12" /> Requires Permit
-                              </label>
-                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11 }}>
-                                <input type="checkbox" checked={editPermitApproved} onChange={(e) => setEditPermitApproved(e.target.checked)} style={{ width: 14, height: 14 }} />
-                                <Check size={11} color="#27ae60" /> Permit Approved
-                              </label>
-                            </div>
+                            {showAdvancedOptions && (
+                              <div style={{ padding: '12px', background: '#f3f4f6', borderRadius: 8, marginTop: 8 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+                                    <input type="checkbox" checked={editNeedsQuote} onChange={(e) => setEditNeedsQuote(e.target.checked)} style={{ width: 18, height: 18 }} />
+                                    Needs Quote
+                                  </label>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+                                    <input type="checkbox" checked={editQuoteReceived} onChange={(e) => setEditQuoteReceived(e.target.checked)} style={{ width: 18, height: 18 }} />
+                                    Quote Received
+                                  </label>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+                                    <input type="checkbox" checked={editMaterialsNeeded} onChange={(e) => setEditMaterialsNeeded(e.target.checked)} style={{ width: 18, height: 18 }} />
+                                    Materials Needed
+                                  </label>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+                                    <input type="checkbox" checked={editMaterialsOrdered} onChange={(e) => setEditMaterialsOrdered(e.target.checked)} style={{ width: 18, height: 18 }} />
+                                    Materials Ordered
+                                  </label>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+                                    <input type="checkbox" checked={editScheduled} onChange={(e) => setEditScheduled(e.target.checked)} style={{ width: 18, height: 18 }} />
+                                    Scheduled
+                                  </label>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: editBlocked ? '#dc2626' : 'inherit' }}>
+                                    <input type="checkbox" checked={editBlocked} onChange={(e) => setEditBlocked(e.target.checked)} style={{ width: 18, height: 18 }} />
+                                    Blocked
+                                  </label>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+                                    <input type="checkbox" checked={editRequiresPermit} onChange={(e) => setEditRequiresPermit(e.target.checked)} style={{ width: 18, height: 18 }} />
+                                    Requires Permit
+                                  </label>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+                                    <input type="checkbox" checked={editPermitApproved} onChange={(e) => setEditPermitApproved(e.target.checked)} style={{ width: 18, height: 18 }} />
+                                    Permit Approved
+                                  </label>
+                                </div>
+                              </div>
+                            )}
                           </div>
 
-                          {/* Last updated info */}
-                          {project.updated_by && (
-                            <div style={{ fontSize: 10, color: '#aaa', marginTop: 8, fontStyle: 'italic' }}>
-                              Last updated by {project.updated_by}
-                              {project.updated_at && ` on ${format(new Date(project.updated_at), 'MMM d, h:mm a')}`}
-                            </div>
-                          )}
-
-                          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                          {/* Action Buttons - Larger */}
+                          <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
                             <button
                               onClick={() => handleSaveEdit(project.id)}
                               style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: 4,
-                                padding: '8px 14px',
+                                justifyContent: 'center',
+                                gap: 8,
+                                padding: '14px 24px',
                                 background: '#1a1a1a',
                                 border: 'none',
-                                borderRadius: 4,
-                                fontSize: 12,
-                                fontWeight: 500,
+                                borderRadius: 8,
+                                fontSize: 14,
+                                fontWeight: 600,
                                 color: '#fff',
                                 cursor: 'pointer',
+                                minHeight: 48,
                               }}
                             >
-                              <Save size={12} /> Save
+                              <Save size={16} /> Save Changes
                             </button>
                             <button
                               onClick={handleCancelEdit}
                               style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: 4,
-                                padding: '8px 14px',
+                                justifyContent: 'center',
+                                gap: 8,
+                                padding: '14px 24px',
                                 background: '#fff',
-                                border: '1px solid #ddd',
-                                borderRadius: 4,
-                                fontSize: 12,
-                                color: '#666',
+                                border: '1px solid #d1d5db',
+                                borderRadius: 8,
+                                fontSize: 14,
+                                fontWeight: 500,
+                                color: '#6b7280',
                                 cursor: 'pointer',
+                                minHeight: 48,
                               }}
                             >
                               Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        /* View Mode */
-                        <>
-                          {project.description && (
-                            <div style={{ marginBottom: 12 }}>
-                              <div style={{ fontSize: 10, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                How / Details
-                              </div>
-                              <div style={{ fontSize: 13, color: '#444', lineHeight: 1.5 }}>
-                                {project.description}
-                              </div>
-                            </div>
-                          )}
-
-                          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                            <button
-                              onClick={() => handleStartEdit(project)}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 4,
-                                padding: '6px 10px',
-                                background: '#1a1a1a',
-                                border: 'none',
-                                borderRadius: 4,
-                                fontSize: 11,
-                                color: '#fff',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              <Pencil size={12} /> Edit
                             </button>
                             <button
                               onClick={() => handleDelete(project.id)}
                               style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: 4,
-                                padding: '6px 10px',
-                                background: '#fff',
-                                border: '1px solid #ddd',
-                                borderRadius: 4,
-                                fontSize: 11,
-                                color: '#c44',
+                                justifyContent: 'center',
+                                gap: 8,
+                                padding: '14px 20px',
+                                background: '#fef2f2',
+                                border: '1px solid #fecaca',
+                                borderRadius: 8,
+                                fontSize: 14,
+                                fontWeight: 500,
+                                color: '#dc2626',
                                 cursor: 'pointer',
+                                minHeight: 48,
+                                marginLeft: 'auto',
                               }}
                             >
-                              <Trash2 size={12} /> Delete
+                              <Trash2 size={16} /> Delete
+                            </button>
+                          </div>
+
+                          {/* Last updated info */}
+                          {project.updated_by && (
+                            <div style={{ fontSize: 11, color: '#9ca3af', fontStyle: 'italic' }}>
+                              Last updated by {project.updated_by}
+                              {project.updated_at && ` on ${format(new Date(project.updated_at), 'MMM d, h:mm a')}`}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        /* View Mode */
+                        <>
+                          {project.description && (
+                            <div style={{ marginBottom: 16 }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', marginBottom: 6 }}>
+                                Notes / Details
+                              </div>
+                              <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.6 }}>
+                                {project.description}
+                              </div>
+                            </div>
+                          )}
+
+                          <div style={{ display: 'flex', gap: 12 }}>
+                            <button
+                              onClick={() => handleStartEdit(project)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 8,
+                                padding: '12px 20px',
+                                background: '#1a1a1a',
+                                border: 'none',
+                                borderRadius: 8,
+                                fontSize: 14,
+                                fontWeight: 600,
+                                color: '#fff',
+                                cursor: 'pointer',
+                                minHeight: 44,
+                              }}
+                            >
+                              <Pencil size={16} /> Edit Project
+                            </button>
+                            <button
+                              onClick={() => handleDelete(project.id)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 8,
+                                padding: '12px 20px',
+                                background: '#fef2f2',
+                                border: '1px solid #fecaca',
+                                borderRadius: 8,
+                                fontSize: 14,
+                                fontWeight: 500,
+                                color: '#dc2626',
+                                cursor: 'pointer',
+                                minHeight: 44,
+                              }}
+                            >
+                              <Trash2 size={16} /> Delete
                             </button>
                           </div>
                         </>
@@ -1235,7 +1303,8 @@ export function ProjectsScreen() {
                     </div>
                   )}
                 </div>
-              ))}
+              );
+              })}
             </div>
 
             {/* Completed Projects */}
@@ -1398,26 +1467,26 @@ function TimelineBar({ projects }: { projects: Project[] }) {
 
   return (
     <div style={{
-      padding: '16px 20px 12px',
-      borderTop: '1px solid #e5e5e5',
+      padding: '16px 20px 14px',
+      borderTop: '1px solid #e5e7eb',
       background: '#fff',
     }}>
       <div style={{
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 600,
-        color: '#888',
-        marginBottom: 12,
+        color: '#6b7280',
+        marginBottom: 14,
         textTransform: 'uppercase',
-        letterSpacing: '0.1em',
+        letterSpacing: '0.08em',
       }}>
-        Timeline
+        Project Timeline
       </div>
 
       {/* Timeline track */}
       <div style={{
         position: 'relative',
-        height: 56,
-        marginBottom: 4,
+        height: 70,
+        marginBottom: 8,
       }}>
         {/* Month color sections */}
         {months.slice(0, 12).map((month, i) => (
@@ -1427,45 +1496,46 @@ function TimelineBar({ projects }: { projects: Project[] }) {
               position: 'absolute',
               left: `${month.position}%`,
               width: `${month.width}%`,
-              top: 12,
-              height: 8,
+              top: 18,
+              height: 10,
               background: month.color,
-              opacity: 0.3,
-              borderRadius: i === 0 ? '4px 0 0 4px' : i === 11 ? '0 4px 4px 0' : 0,
+              opacity: 0.25,
+              borderRadius: i === 0 ? '5px 0 0 5px' : i === 11 ? '0 5px 5px 0' : 0,
             }}
           />
         ))}
 
-        {/* Background track overlay */}
+        {/* Background track */}
         <div style={{
           position: 'absolute',
           left: 0,
           right: 0,
-          top: 14,
-          height: 4,
-          background: 'rgba(0,0,0,0.1)',
-          borderRadius: 2,
+          top: 20,
+          height: 6,
+          background: '#e5e7eb',
+          borderRadius: 3,
         }} />
 
-        {/* Today marker */}
+        {/* Today marker - Prominent */}
         <div style={{
           position: 'absolute',
           left: 0,
-          top: 14,
+          top: 23,
           transform: 'translate(-50%, -50%)',
-          width: 10,
-          height: 10,
+          width: 14,
+          height: 14,
           background: '#1a1a1a',
           borderRadius: '50%',
           zIndex: 5,
-          border: '2px solid #fff',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+          border: '3px solid #fff',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
         }} />
 
-        {/* Project dots */}
+        {/* Project dots - Larger touch targets */}
         {projectPositions.map(({ project, position, Icon, isPast }) => (
           <div
             key={project.id}
+            onClick={() => setHoveredProject(hoveredProject?.id === project.id ? null : project)}
             onMouseEnter={() => setHoveredProject(project)}
             onMouseLeave={() => setHoveredProject(null)}
             style={{
@@ -1478,34 +1548,36 @@ function TimelineBar({ projects }: { projects: Project[] }) {
               alignItems: 'center',
               cursor: 'pointer',
               zIndex: hoveredProject?.id === project.id ? 10 : 1,
+              padding: '4px',
             }}
           >
-            {/* The dot */}
+            {/* The dot - Larger (36px) */}
             <div style={{
-              width: 28,
-              height: 28,
-              background: isPast ? '#ffebee' : project.status === 'in_progress' ? '#fff8e1' : '#fff',
-              border: `2px solid ${isPast ? '#e57373' : project.status === 'in_progress' ? '#ffb74d' : '#1a1a1a'}`,
+              width: 36,
+              height: 36,
+              background: isPast ? '#fef2f2' : project.status === 'in_progress' ? '#fffbeb' : '#fff',
+              border: `3px solid ${isPast ? '#f87171' : project.status === 'in_progress' ? '#f59e0b' : '#374151'}`,
               borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-              boxShadow: hoveredProject?.id === project.id ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
+              transform: hoveredProject?.id === project.id ? 'scale(1.15)' : 'scale(1)',
+              boxShadow: hoveredProject?.id === project.id ? '0 6px 16px rgba(0,0,0,0.2)' : '0 1px 3px rgba(0,0,0,0.1)',
             }}>
-              <Icon size={12} color={isPast ? '#e57373' : project.status === 'in_progress' ? '#ff8f00' : '#1a1a1a'} />
+              <Icon size={16} strokeWidth={2} color={isPast ? '#f87171' : project.status === 'in_progress' ? '#d97706' : '#374151'} />
             </div>
 
             {/* Cost label under dot */}
             {project.cost && project.cost > 0 && (
               <div style={{
                 marginTop: 4,
-                fontSize: 9,
+                fontSize: 10,
                 fontWeight: 600,
-                color: isPast ? '#e57373' : '#4a7a4a',
-                background: isPast ? '#ffebee' : '#e8f5e9',
-                padding: '2px 6px',
-                borderRadius: 4,
+                color: isPast ? '#ef4444' : '#059669',
+                background: isPast ? '#fef2f2' : '#ecfdf5',
+                padding: '3px 8px',
+                borderRadius: 6,
                 whiteSpace: 'nowrap',
               }}>
                 ${project.cost >= 1000 ? `${(project.cost / 1000).toFixed(1)}k` : project.cost}
@@ -1519,20 +1591,26 @@ function TimelineBar({ projects }: { projects: Project[] }) {
                 bottom: '100%',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                marginBottom: 8,
-                background: '#1a1a1a',
+                marginBottom: 10,
+                background: '#1f2937',
                 color: '#fff',
-                padding: '6px 10px',
-                borderRadius: 6,
-                fontSize: 11,
+                padding: '10px 14px',
+                borderRadius: 10,
+                fontSize: 13,
                 whiteSpace: 'nowrap',
                 zIndex: 100,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
               }}>
-                <div style={{ fontWeight: 600, marginBottom: 2 }}>{project.title}</div>
-                <div style={{ opacity: 0.8 }}>
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>{project.title}</div>
+                <div style={{ opacity: 0.85, fontSize: 12 }}>
                   {format(new Date(project.target_date!), 'MMM d, yyyy')}
                   {project.cost ? ` - $${project.cost.toLocaleString()}` : ''}
                 </div>
+                {project.room && (
+                  <div style={{ opacity: 0.7, fontSize: 11, marginTop: 2 }}>
+                    {project.room}
+                  </div>
+                )}
                 {/* Arrow */}
                 <div style={{
                   position: 'absolute',
@@ -1541,9 +1619,9 @@ function TimelineBar({ projects }: { projects: Project[] }) {
                   transform: 'translateX(-50%)',
                   width: 0,
                   height: 0,
-                  borderLeft: '6px solid transparent',
-                  borderRight: '6px solid transparent',
-                  borderTop: '6px solid #1a1a1a',
+                  borderLeft: '8px solid transparent',
+                  borderRight: '8px solid transparent',
+                  borderTop: '8px solid #1f2937',
                 }} />
               </div>
             )}
@@ -1551,11 +1629,11 @@ function TimelineBar({ projects }: { projects: Project[] }) {
         ))}
       </div>
 
-      {/* Month labels */}
+      {/* Month labels - More prominent */}
       <div style={{
         position: 'relative',
-        height: 16,
-        marginTop: 4,
+        height: 20,
+        marginTop: 6,
       }}>
         {months.filter((_, i) => i % 2 === 0 || months.length <= 6).map((month, i) => (
           <div
@@ -1564,8 +1642,9 @@ function TimelineBar({ projects }: { projects: Project[] }) {
               position: 'absolute',
               left: `${month.position}%`,
               transform: 'translateX(-50%)',
-              fontSize: 9,
-              color: '#aaa',
+              fontSize: 11,
+              fontWeight: 600,
+              color: month.color,
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
             }}

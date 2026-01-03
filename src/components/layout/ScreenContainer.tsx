@@ -69,7 +69,7 @@ const screenInfo: Record<ScreenType, { title: string; shortTitle: string; Icon: 
 const nonCycleScreens: ScreenType[] = ['video'];
 
 export function ScreenContainer() {
-  const { currentScreen, currentIndex, totalScreens, nextScreen, prevScreen, goToScreen, isPaused } = useScreen();
+  const { currentScreen, currentIndex, totalScreens, nextScreen, prevScreen, goToScreen, isPaused, isInteractiveScreen } = useScreen();
   const { settings } = useSettings();
   const [navExpanded, setNavExpanded] = useState(false);
   const [hoveredScreen, setHoveredScreen] = useState<ScreenType | null>(null);
@@ -191,8 +191,8 @@ export function ScreenContainer() {
           startHideTimer();
         }}
       >
-        {/* Pause indicator */}
-        {isPaused && (
+        {/* Pause indicator - shown when manually paused or on interactive screen */}
+        {(isPaused || isInteractiveScreen) && (
           <div
             style={{
               display: 'flex',
@@ -200,13 +200,13 @@ export function ScreenContainer() {
               justifyContent: 'center',
               width: 24,
               height: 24,
-              background: 'rgba(0, 0, 0, 0.04)',
+              background: isInteractiveScreen ? 'rgba(59, 130, 246, 0.1)' : 'rgba(0, 0, 0, 0.04)',
               borderRadius: 6,
               marginRight: 2,
             }}
-            title="Auto-cycle paused - resumes in 30s"
+            title={isInteractiveScreen ? "Auto-cycle paused on this screen" : "Auto-cycle paused"}
           >
-            <Pause size={11} strokeWidth={2} color="#bbb" />
+            <Pause size={11} strokeWidth={2} color={isInteractiveScreen ? '#3b82f6' : '#bbb'} />
           </div>
         )}
         {activeScreens.filter(s => !nonCycleScreens.includes(s)).map((screen) => {

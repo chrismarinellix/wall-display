@@ -12,12 +12,16 @@ interface ScreenContextType {
   isPaused: boolean;
   setIsPaused: (paused: boolean) => void;
   isNonCycleScreen: boolean;
+  isInteractiveScreen: boolean;
 }
 
 const ScreenContext = createContext<ScreenContextType | null>(null);
 
 // Screens that don't participate in auto-cycle (accessed via dedicated icon)
 const NON_CYCLE_SCREENS: ScreenType[] = ['video'];
+
+// Interactive screens that pause auto-cycle while active (user is working on them)
+const INTERACTIVE_SCREENS: ScreenType[] = ['projects', 'setup', 'calendar', 'pomodoro', 'countdown'];
 
 // How many screens to auto-cycle between (first N screens in screenOrder)
 const AUTO_CYCLE_COUNT = 4;
@@ -42,6 +46,7 @@ export function ScreenProvider({ children }: { children: ReactNode }) {
   const screens = settings.screenOrder;
   const currentScreen = nonCycleScreen || screens[currentIndex];
   const isNonCycleScreen = nonCycleScreen !== null;
+  const isInteractiveScreen = INTERACTIVE_SCREENS.includes(currentScreen);
 
   // Get duration for current screen
   const getCurrentDuration = useCallback(() => {
@@ -51,8 +56,8 @@ export function ScreenProvider({ children }: { children: ReactNode }) {
 
   // Auto-cycle between first N screens (Weather, Prophet, History)
   const goToNextCycleScreen = useCallback(() => {
-    // Don't auto-cycle when on a non-cycle screen or paused
-    if (nonCycleScreen || isPaused) return;
+    // Don't auto-cycle when on a non-cycle screen, interactive screen, or paused
+    if (nonCycleScreen || isPaused || isInteractiveScreen) return;
 
     setCurrentIndex(prev => {
       // Only cycle between first AUTO_CYCLE_COUNT screens
@@ -60,7 +65,7 @@ export function ScreenProvider({ children }: { children: ReactNode }) {
       if (prev >= maxCycleIndex) return 0;
       return prev + 1;
     });
-  }, [screens.length, nonCycleScreen, isPaused]);
+  }, [screens.length, nonCycleScreen, isPaused, isInteractiveScreen]);
 
   // Schedule next screen transition based on current screen's duration
   const scheduleNextTransition = useCallback(() => {
@@ -148,6 +153,7 @@ export function ScreenProvider({ children }: { children: ReactNode }) {
       isPaused,
       setIsPaused,
       isNonCycleScreen,
+      isInteractiveScreen,
     }}>
       {children}
     </ScreenContext.Provider>
