@@ -21,14 +21,15 @@ const ScreenContext = createContext<ScreenContextType | null>(null);
 const NON_CYCLE_SCREENS: ScreenType[] = ['video'];
 
 // Interactive screens that pause auto-cycle while active (user is working on them)
-const INTERACTIVE_SCREENS: ScreenType[] = ['projects', 'setup', 'calendar', 'pomodoro', 'countdown', 'fast'];
+const INTERACTIVE_SCREENS: ScreenType[] = ['projects', 'setup', 'calendar', 'pomodoro', 'countdown'];
 
 // How many screens to auto-cycle between (first N screens in screenOrder)
 const AUTO_CYCLE_COUNT = 4;
 
 // Per-screen display durations (in ms)
 const SCREEN_DURATIONS: Record<string, number> = {
-  'summary': 300000,   // 5 minutes - daily briefing first
+  'fast': 1800000,     // 30 minutes - Fast is the main screen
+  'summary': 300000,   // 5 minutes - daily briefing
   'weather': 180000,   // 3 minutes - weather
   'japanese': 120000,  // 2 minutes - proverbs
   'moments': 120000,   // 2 minutes - history

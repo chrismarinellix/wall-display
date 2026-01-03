@@ -203,6 +203,16 @@ export function ProjectsScreen() {
     setEditingId(null);
   };
 
+  // Handle project date update from timeline drag
+  const handleUpdateProjectDate = async (projectId: string, newDate: string) => {
+    await updateProject(projectId, {
+      target_date: newDate,
+    });
+
+    const updated = await getProjects();
+    setProjects(updated);
+  };
+
   // Handle status toggle
   const handleToggleStatus = async (project: Project) => {
     const newStatus = project.status === 'completed' ? 'pending' :
@@ -1399,8 +1409,8 @@ export function ProjectsScreen() {
         background: '#fff',
         borderTop: '2px solid #1a1a1a',
       }}>
-        {/* Timeline Progress Bar - Always visible */}
-        <TimelineBar projects={projects} />
+        {/* Timeline Progress Bar - Always visible, drag to reschedule */}
+        <TimelineBar projects={projects} onUpdateProjectDate={handleUpdateProjectDate} />
       </div>
     </div>
   );
@@ -1419,8 +1429,11 @@ function getProjectIcon(title: string) {
 }
 
 // Timeline component showing projects over time
-function TimelineBar({ projects }: { projects: Project[] }) {
+function TimelineBar({ projects, onUpdateProjectDate }: { projects: Project[]; onUpdateProjectDate: (projectId: string, newDate: string) => Promise<void> }) {
   const [hoveredProject, setHoveredProject] = useState<Project | null>(null);
+  const [draggingProject, setDraggingProject] = useState<Project | null>(null);
+  const [dragPosition, setDragPosition] = useState<number | null>(null);
+  const timelineRef = useRef<HTMLDivElement>(null);
 
   // Get projects with dates
   const projectsWithDates = useMemo(() => {
@@ -1465,6 +1478,53 @@ function TimelineBar({ projects }: { projects: Project[] }) {
     return { project, position, Icon, isPast: projectDate < now };
   });
 
+  // Convert position percentage to date
+  const positionToDate = (positionPercent: number): Date => {
+    const daysFromStart = (positionPercent / 100) * totalDays;
+    const newDate = new Date(timelineStart);
+    newDate.setDate(newDate.getDate() + Math.round(daysFromStart));
+    return newDate;
+  };
+
+  // Drag handlers
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent, project: Project) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDraggingProject(project);
+
+    const rect = timelineRef.current?.getBoundingClientRect();
+    if (rect) {
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const position = ((clientX - rect.left) / rect.width) * 100;
+      setDragPosition(Math.max(0, Math.min(100, position)));
+    }
+  };
+
+  const handleDragMove = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!draggingProject || !timelineRef.current) return;
+
+    const rect = timelineRef.current.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const position = ((clientX - rect.left) / rect.width) * 100;
+    setDragPosition(Math.max(0, Math.min(100, position)));
+  };
+
+  const handleDragEnd = async () => {
+    if (!draggingProject || dragPosition === null) {
+      setDraggingProject(null);
+      setDragPosition(null);
+      return;
+    }
+
+    const newDate = positionToDate(dragPosition);
+    const dateString = format(newDate, 'yyyy-MM-dd');
+
+    await onUpdateProjectDate(draggingProject.id, dateString);
+
+    setDraggingProject(null);
+    setDragPosition(null);
+  };
+
   return (
     <div style={{
       padding: '16px 20px 14px',
@@ -1483,11 +1543,20 @@ function TimelineBar({ projects }: { projects: Project[] }) {
       </div>
 
       {/* Timeline track */}
-      <div style={{
-        position: 'relative',
-        height: 70,
-        marginBottom: 8,
-      }}>
+      <div
+        ref={timelineRef}
+        onMouseMove={handleDragMove}
+        onMouseUp={handleDragEnd}
+        onMouseLeave={handleDragEnd}
+        onTouchMove={handleDragMove}
+        onTouchEnd={handleDragEnd}
+        style={{
+          position: 'relative',
+          height: 70,
+          marginBottom: 8,
+          cursor: draggingProject ? 'grabbing' : 'default',
+        }}
+      >
         {/* Month color sections */}
         {months.slice(0, 12).map((month, i) => (
           <div
@@ -1531,42 +1600,50 @@ function TimelineBar({ projects }: { projects: Project[] }) {
           boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
         }} />
 
-        {/* Project dots - Larger touch targets */}
-        {projectPositions.map(({ project, position, Icon, isPast }) => (
-          <div
-            key={project.id}
-            onClick={() => setHoveredProject(hoveredProject?.id === project.id ? null : project)}
-            onMouseEnter={() => setHoveredProject(project)}
-            onMouseLeave={() => setHoveredProject(null)}
-            style={{
-              position: 'absolute',
-              left: `${position}%`,
-              top: 0,
-              transform: 'translateX(-50%)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              cursor: 'pointer',
-              zIndex: hoveredProject?.id === project.id ? 10 : 1,
-              padding: '4px',
-            }}
-          >
-            {/* The dot - Larger (36px) */}
-            <div style={{
-              width: 36,
-              height: 36,
-              background: isPast ? '#fef2f2' : project.status === 'in_progress' ? '#fffbeb' : '#fff',
-              border: `3px solid ${isPast ? '#f87171' : project.status === 'in_progress' ? '#f59e0b' : '#374151'}`,
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-              transform: hoveredProject?.id === project.id ? 'scale(1.15)' : 'scale(1)',
-              boxShadow: hoveredProject?.id === project.id ? '0 6px 16px rgba(0,0,0,0.2)' : '0 1px 3px rgba(0,0,0,0.1)',
-            }}>
-              <Icon size={16} strokeWidth={2} color={isPast ? '#f87171' : project.status === 'in_progress' ? '#d97706' : '#374151'} />
-            </div>
+        {/* Project dots - Larger touch targets, draggable */}
+        {projectPositions.map(({ project, position, Icon, isPast }) => {
+          const isDragging = draggingProject?.id === project.id;
+          const displayPosition = isDragging && dragPosition !== null ? dragPosition : position;
+
+          return (
+            <div
+              key={project.id}
+              onMouseDown={(e) => handleDragStart(e, project)}
+              onTouchStart={(e) => handleDragStart(e, project)}
+              onClick={() => !draggingProject && setHoveredProject(hoveredProject?.id === project.id ? null : project)}
+              onMouseEnter={() => !draggingProject && setHoveredProject(project)}
+              onMouseLeave={() => !draggingProject && setHoveredProject(null)}
+              style={{
+                position: 'absolute',
+                left: `${displayPosition}%`,
+                top: 0,
+                transform: 'translateX(-50%)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                cursor: isDragging ? 'grabbing' : 'grab',
+                zIndex: isDragging ? 100 : (hoveredProject?.id === project.id ? 10 : 1),
+                padding: '4px',
+                opacity: isDragging ? 0.9 : 1,
+                transition: isDragging ? 'none' : 'left 0.15s ease',
+              }}
+            >
+              {/* The dot - Larger (36px) */}
+              <div style={{
+                width: 36,
+                height: 36,
+                background: isDragging ? '#3b82f6' : (isPast ? '#fef2f2' : project.status === 'in_progress' ? '#fffbeb' : '#fff'),
+                border: `3px solid ${isDragging ? '#2563eb' : (isPast ? '#f87171' : project.status === 'in_progress' ? '#f59e0b' : '#374151')}`,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: isDragging ? 'none' : 'transform 0.15s ease, box-shadow 0.15s ease',
+                transform: isDragging ? 'scale(1.2)' : (hoveredProject?.id === project.id ? 'scale(1.15)' : 'scale(1)'),
+                boxShadow: isDragging ? '0 8px 24px rgba(59, 130, 246, 0.4)' : (hoveredProject?.id === project.id ? '0 6px 16px rgba(0,0,0,0.2)' : '0 1px 3px rgba(0,0,0,0.1)'),
+              }}>
+                <Icon size={16} strokeWidth={2} color={isDragging ? '#fff' : (isPast ? '#f87171' : project.status === 'in_progress' ? '#d97706' : '#374151')} />
+              </div>
 
             {/* Cost label under dot */}
             {project.cost && project.cost > 0 && (
@@ -1625,8 +1702,29 @@ function TimelineBar({ projects }: { projects: Project[] }) {
                 }} />
               </div>
             )}
+
+            {/* Drag date indicator */}
+            {isDragging && dragPosition !== null && (
+              <div style={{
+                position: 'absolute',
+                top: -28,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                background: '#3b82f6',
+                color: '#fff',
+                padding: '4px 8px',
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
+              }}>
+                {format(positionToDate(dragPosition), 'MMM d')}
+              </div>
+            )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Month labels - More prominent */}

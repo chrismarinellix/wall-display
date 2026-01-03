@@ -351,11 +351,16 @@ export function CalendarScreen() {
   const [newEventTime, setNewEventTime] = useState('');
   const [editingEvent, setEditingEvent] = useState<CalendarEventRecord | null>(null);
   const [draggedEvent, setDraggedEvent] = useState<CalendarEvent | null>(null);
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null);
+  const [touchDragEvent, setTouchDragEvent] = useState<CalendarEvent | null>(null);
+  const [touchDragPosition, setTouchDragPosition] = useState<{ x: number; y: number } | null>(null);
 
   // Swipe navigation for touch devices
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const longPressTimerRef = useRef<number | null>(null);
+  const isDraggingRef = useRef(false);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     // Don't interfere with modal interactions
@@ -499,17 +504,23 @@ export function CalendarScreen() {
     loadCustomEvents();
   };
 
-  // Drag and drop handlers
+  // Drag and drop handlers (desktop)
   const handleDragStart = (event: CalendarEvent) => {
     if (event.isCustom) {
       setDraggedEvent(event);
     }
   };
 
-  const handleDrop = async (targetDate: Date) => {
-    if (!draggedEvent || !draggedEvent.isCustom) return;
+  const handleDragEnd = () => {
+    setDraggedEvent(null);
+    setDragOverDate(null);
+  };
 
-    const customEvent = customEvents.find(e => e.id === draggedEvent.id);
+  const handleDrop = async (targetDate: Date) => {
+    const eventToDrop = draggedEvent || touchDragEvent;
+    if (!eventToDrop || !eventToDrop.isCustom) return;
+
+    const customEvent = customEvents.find(e => e.id === eventToDrop.id);
     if (!customEvent) return;
 
     const isAllDay = customEvent.all_day;
@@ -517,12 +528,83 @@ export function CalendarScreen() {
       ? format(targetDate, 'yyyy-MM-dd')
       : `${format(targetDate, 'yyyy-MM-dd')}T${customEvent.start_date.split('T')[1] || '12:00'}`;
 
-    await updateCalendarEvent(draggedEvent.id, {
+    await updateCalendarEvent(eventToDrop.id, {
       start_date: newStartDate,
     });
 
     setDraggedEvent(null);
+    setTouchDragEvent(null);
+    setTouchDragPosition(null);
+    setDragOverDate(null);
+    isDraggingRef.current = false;
     loadCustomEvents();
+  };
+
+  // Touch drag handlers for mobile
+  const handleEventTouchStart = (e: React.TouchEvent, event: CalendarEvent) => {
+    if (!event.isCustom) return;
+
+    e.stopPropagation();
+    const touch = e.touches[0];
+
+    // Start long press timer
+    longPressTimerRef.current = window.setTimeout(() => {
+      isDraggingRef.current = true;
+      setTouchDragEvent(event);
+      setTouchDragPosition({ x: touch.clientX, y: touch.clientY });
+      // Vibrate for haptic feedback if available
+      if (navigator.vibrate) navigator.vibrate(50);
+    }, 300); // 300ms long press to start drag
+  };
+
+  const handleEventTouchMove = (e: React.TouchEvent) => {
+    if (!isDraggingRef.current || !touchDragEvent) {
+      // Cancel long press if moving before drag starts
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const touch = e.touches[0];
+    setTouchDragPosition({ x: touch.clientX, y: touch.clientY });
+
+    // Find which day cell we're over
+    const elementsAtPoint = document.elementsFromPoint(touch.clientX, touch.clientY);
+    const dayCell = elementsAtPoint.find(el => el.getAttribute('data-date'));
+    if (dayCell) {
+      setDragOverDate(dayCell.getAttribute('data-date'));
+    } else {
+      setDragOverDate(null);
+    }
+  };
+
+  const handleEventTouchEnd = (e: React.TouchEvent) => {
+    // Clear long press timer
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+
+    if (!isDraggingRef.current || !touchDragEvent) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Find drop target
+    if (dragOverDate) {
+      const targetDate = new Date(dragOverDate + 'T12:00:00');
+      handleDrop(targetDate);
+    } else {
+      // Cancel drag
+      setTouchDragEvent(null);
+      setTouchDragPosition(null);
+      isDraggingRef.current = false;
+    }
   };
 
   // Merge Google Calendar events, custom events, and projects
@@ -665,34 +747,34 @@ export function CalendarScreen() {
           return (
             <div
               key={dateKey}
-              onClick={() => handleDayClick(day)}
+              data-date={dateKey}
+              onClick={() => !isDraggingRef.current && handleDayClick(day)}
               onDragOver={(e) => {
                 e.preventDefault();
-                if (!isCurrentDay) {
-                  e.currentTarget.style.background = '#e8f4ff';
-                }
+                setDragOverDate(dateKey);
               }}
-              onDragLeave={(e) => {
-                if (!isCurrentDay) {
-                  e.currentTarget.style.background = '#fff';
-                }
+              onDragLeave={() => {
+                setDragOverDate(null);
               }}
               onDrop={(e) => {
                 e.preventDefault();
-                if (!isCurrentDay) {
-                  e.currentTarget.style.background = '#fff';
-                }
+                setDragOverDate(null);
                 handleDrop(day);
               }}
               style={{
                 ...styles.dayCell,
-                background: isCurrentDay
-                  ? 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)'
-                  : '#fff',
+                background: dragOverDate === dateKey
+                  ? '#e8f4ff'
+                  : isCurrentDay
+                    ? 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)'
+                    : '#fff',
                 opacity: isCurrentMonth ? 1 : 0.4,
                 boxShadow: isCurrentDay
                   ? 'inset 0 0 0 2px #000, 0 2px 8px rgba(0,0,0,0.15)'
-                  : 'none',
+                  : dragOverDate === dateKey
+                    ? 'inset 0 0 0 2px #4a90d9'
+                    : 'none',
+                transition: 'all 0.15s ease',
               }}
             >
               {/* Day number */}
@@ -741,27 +823,37 @@ export function CalendarScreen() {
                   ? customEvents.find(e => e.id === event.id)
                   : null;
                 const isProjectEvent = event.isProject === true;
+                const isBeingDragged = (draggedEvent?.id === event.id) || (touchDragEvent?.id === event.id);
 
                 return (
                   <div
                     key={event.id}
-                    draggable={event.isCustom && !isMobile}
+                    draggable={event.isCustom}
                     onDragStart={(e) => {
                       e.stopPropagation();
                       handleDragStart(event);
                     }}
+                    onDragEnd={handleDragEnd}
+                    onTouchStart={(e) => handleEventTouchStart(e, event)}
+                    onTouchMove={handleEventTouchMove}
+                    onTouchEnd={handleEventTouchEnd}
                     style={{
                       ...styles.eventTag,
-                      background: isProjectEvent
-                        ? (isCurrentDay ? 'rgba(100, 149, 237, 0.9)' : '#6495ed')
-                        : isCurrentDay
-                          ? (event.isCustom ? 'rgba(255,255,255,0.85)' : '#fff')
-                          : (event.isCustom ? '#333' : '#000'),
-                      color: isProjectEvent ? '#fff' : (isCurrentDay ? '#000' : '#fff'),
-                      cursor: event.isCustom && !isMobile ? 'grab' : 'default',
+                      background: isBeingDragged
+                        ? '#4a90d9'
+                        : isProjectEvent
+                          ? (isCurrentDay ? 'rgba(100, 149, 237, 0.9)' : '#6495ed')
+                          : isCurrentDay
+                            ? (event.isCustom ? 'rgba(255,255,255,0.85)' : '#fff')
+                            : (event.isCustom ? '#333' : '#000'),
+                      color: isBeingDragged ? '#fff' : (isProjectEvent ? '#fff' : (isCurrentDay ? '#000' : '#fff')),
+                      cursor: event.isCustom ? 'grab' : 'default',
                       border: isProjectEvent ? '1px solid rgba(255,255,255,0.3)' : 'none',
+                      opacity: isBeingDragged ? 0.5 : 1,
+                      transform: isBeingDragged ? 'scale(0.95)' : 'none',
+                      transition: 'all 0.15s ease',
                     }}
-                    title={`${event.title}${event.allDay ? '' : ` - ${format(event.start, 'h:mm a')}`}${event.isCustom ? ' (drag to move)' : ''}${isProjectEvent ? ' (Project)' : ''}`}
+                    title={`${event.title}${event.allDay ? '' : ` - ${format(event.start, 'h:mm a')}`}${event.isCustom ? ' (hold & drag to move)' : ''}${isProjectEvent ? ' (Project)' : ''}`}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -806,6 +898,32 @@ export function CalendarScreen() {
       <div style={{ fontSize: 'clamp(9px, 2.5vw, 11px)', color: '#999', textAlign: 'center', paddingTop: 'clamp(4px, 1.5vw, 8px)' }}>
         {allEvents.length} events this month
       </div>
+
+      {/* Floating drag indicator for touch */}
+      {touchDragEvent && touchDragPosition && (
+        <div
+          style={{
+            position: 'fixed',
+            left: touchDragPosition.x - 60,
+            top: touchDragPosition.y - 20,
+            background: '#4a90d9',
+            color: '#fff',
+            padding: '8px 16px',
+            borderRadius: 8,
+            fontSize: 12,
+            fontWeight: 600,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            pointerEvents: 'none',
+            zIndex: 2000,
+            maxWidth: 140,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {touchDragEvent.title}
+        </div>
+      )}
 
       {/* Add/Edit Event Modal */}
       {showAddModal && selectedDate && (
