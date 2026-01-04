@@ -1722,3 +1722,123 @@ export function subscribeToFasting(callback: (fast: FastingRecord | null) => voi
     supabase.removeChannel(channel);
   };
 }
+
+// Fasting diary notes
+export interface FastingNote {
+  id?: string;
+  fasting_id: string;
+  hour_mark: number; // What hour of the fast this note was recorded
+  mood: 'great' | 'good' | 'okay' | 'tough' | 'difficult';
+  energy_level: number; // 1-5
+  hunger_level: number; // 1-5
+  note: string;
+  created_at?: string;
+}
+
+const FASTING_NOTES_STORAGE_KEY = 'fasting-notes';
+
+// Get notes for a specific fast
+export async function getFastingNotes(fastingId: string): Promise<FastingNote[]> {
+  if (!supabase) {
+    const stored = localStorage.getItem(FASTING_NOTES_STORAGE_KEY);
+    const allNotes: FastingNote[] = stored ? JSON.parse(stored) : [];
+    return allNotes.filter(n => n.fasting_id === fastingId);
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('fasting_notes')
+      .select('*')
+      .eq('fasting_id', fastingId)
+      .order('hour_mark', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  } catch (e) {
+    console.error('Failed to get fasting notes:', e);
+    return [];
+  }
+}
+
+// Add a note to a fast
+export async function addFastingNote(note: Omit<FastingNote, 'id' | 'created_at'>): Promise<FastingNote | null> {
+  if (!supabase) {
+    const stored = localStorage.getItem(FASTING_NOTES_STORAGE_KEY);
+    const allNotes: FastingNote[] = stored ? JSON.parse(stored) : [];
+    const newNote: FastingNote = { ...note, id: crypto.randomUUID(), created_at: new Date().toISOString() };
+    allNotes.push(newNote);
+    localStorage.setItem(FASTING_NOTES_STORAGE_KEY, JSON.stringify(allNotes));
+    return newNote;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('fasting_notes')
+      .insert(note)
+      .select();
+
+    if (error) throw error;
+    return data?.[0] || null;
+  } catch (e) {
+    console.error('Failed to add fasting note:', e);
+    return null;
+  }
+}
+
+// Get fasting history with notes count
+export async function getFastingHistoryWithNotes(): Promise<(FastingRecord & { notes_count: number })[]> {
+  if (!supabase) {
+    return [];
+  }
+
+  try {
+    const { data: fasts, error: fastsError } = await supabase
+      .from('fasting')
+      .select('*')
+      .not('end_time', 'is', null)
+      .order('start_time', { ascending: false })
+      .limit(30);
+
+    if (fastsError) throw fastsError;
+    if (!fasts) return [];
+
+    // Get notes count for each fast
+    const fastsWithNotes = await Promise.all(
+      fasts.map(async (fast) => {
+        const { count } = await supabase
+          .from('fasting_notes')
+          .select('*', { count: 'exact', head: true })
+          .eq('fasting_id', fast.id);
+        return { ...fast, notes_count: count || 0 };
+      })
+    );
+
+    return fastsWithNotes;
+  } catch (e) {
+    console.error('Failed to get fasting history with notes:', e);
+    return [];
+  }
+}
+
+// Subscribe to fasting notes changes
+export function subscribeToFastingNotes(fastingId: string, callback: (notes: FastingNote[]) => void): (() => void) | null {
+  if (!supabase) {
+    return null;
+  }
+
+  const channel = supabase
+    .channel(`fasting-notes-${fastingId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'fasting_notes', filter: `fasting_id=eq.${fastingId}` },
+      async () => {
+        const notes = await getFastingNotes(fastingId);
+        callback(notes);
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
