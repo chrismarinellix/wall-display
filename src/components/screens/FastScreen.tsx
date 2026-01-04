@@ -352,7 +352,7 @@ export function FastScreen() {
 
   if (loading) {
     return (
-      <div style={{ height: '100%', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+      <div style={{ height: '100%', background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#333' }}>
         Loading...
       </div>
     );
@@ -361,11 +361,11 @@ export function FastScreen() {
   return (
     <div style={{
       height: '100%',
-      background: '#000',
+      background: '#fafafa',
       display: 'flex',
       flexDirection: 'column',
       overflow: 'auto',
-      color: '#fff',
+      color: '#1a1a1a',
     }}>
       {/* Hero section - centered Fast! with timer */}
       <div style={{
@@ -383,7 +383,7 @@ export function FastScreen() {
           letterSpacing: '-0.03em',
           margin: 0,
           marginBottom: currentFast ? '16px' : '24px',
-          color: isComplete ? '#22c55e' : '#fff',
+          color: isComplete ? '#22c55e' : '#1a1a1a',
           textAlign: 'center',
         }}>
           Fast!
@@ -410,7 +410,7 @@ export function FastScreen() {
             </div>
             <div style={{
               fontSize: 'clamp(13px, 2.5vw, 18px)',
-              color: 'rgba(255,255,255,0.6)',
+              color: 'rgba(0,0,0,0.5)',
             }}>
               {currentMilestone.shortDesc}
             </div>
@@ -431,14 +431,14 @@ export function FastScreen() {
                 fontSize: 'clamp(32px, 8vw, 56px)',
                 fontWeight: 700,
                 fontFamily: 'ui-monospace, monospace',
-                color: '#22c55e',
+                color: '#16a34a',
                 lineHeight: 1,
               }}>
                 {formatTime(elapsedMs)}
               </div>
               <div style={{
                 fontSize: 'clamp(10px, 2vw, 14px)',
-                color: 'rgba(255,255,255,0.5)',
+                color: 'rgba(0,0,0,0.4)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.1em',
                 marginTop: 6,
@@ -451,7 +451,7 @@ export function FastScreen() {
             <div style={{
               width: 2,
               height: 50,
-              background: 'rgba(255,255,255,0.2)',
+              background: 'rgba(0,0,0,0.1)',
             }} />
 
             {/* Remaining time */}
@@ -460,14 +460,14 @@ export function FastScreen() {
                 fontSize: 'clamp(32px, 8vw, 56px)',
                 fontWeight: 700,
                 fontFamily: 'ui-monospace, monospace',
-                color: isComplete ? '#22c55e' : '#ef4444',
+                color: isComplete ? '#16a34a' : '#dc2626',
                 lineHeight: 1,
               }}>
                 {isComplete ? '00:00:00' : formatTime(remainingMs)}
               </div>
               <div style={{
                 fontSize: 'clamp(10px, 2vw, 14px)',
-                color: 'rgba(255,255,255,0.5)',
+                color: 'rgba(0,0,0,0.4)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.1em',
                 marginTop: 6,
@@ -484,7 +484,7 @@ export function FastScreen() {
             <div style={{
               width: '100%',
               height: 10,
-              background: 'rgba(255,255,255,0.1)',
+              background: 'rgba(0,0,0,0.08)',
               borderRadius: 5,
               overflow: 'hidden',
             }}>
@@ -507,9 +507,9 @@ export function FastScreen() {
                   width: 12,
                   height: 12,
                   borderRadius: '50%',
-                  background: elapsedHours >= m.hour ? '#22c55e' : 'rgba(255,255,255,0.2)',
+                  background: elapsedHours >= m.hour ? '#22c55e' : 'rgba(0,0,0,0.15)',
                   transform: 'translateX(-50%)',
-                  border: '2px solid #000',
+                  border: '2px solid #fafafa',
                 }}
                 title={`${m.hour}h: ${m.title}`}
               />
@@ -521,10 +521,10 @@ export function FastScreen() {
         {currentFast && nextMilestone && !isComplete && (
           <div style={{
             fontSize: 'clamp(11px, 2vw, 14px)',
-            color: 'rgba(255,255,255,0.4)',
+            color: 'rgba(0,0,0,0.4)',
             marginBottom: '20px',
           }}>
-            Next: <span style={{ color: nextMilestone.color }}>{nextMilestone.title}</span> in {Math.ceil(nextMilestone.hour - elapsedHours)}h
+            Next: <span style={{ color: nextMilestone.color, fontWeight: 600 }}>{nextMilestone.title}</span> in {Math.ceil(nextMilestone.hour - elapsedHours)}h
           </div>
         )}
 
@@ -539,13 +539,13 @@ export function FastScreen() {
                 gap: 8,
                 padding: '14px 32px',
                 background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-                color: '#000',
+                color: '#fff',
                 border: 'none',
                 borderRadius: 12,
                 fontSize: 18,
                 fontWeight: 700,
                 cursor: 'pointer',
-                boxShadow: '0 4px 24px rgba(34, 197, 94, 0.4)',
+                boxShadow: '0 4px 24px rgba(34, 197, 94, 0.3)',
               }}
             >
               <Play size={22} /> Start 24h Fast
@@ -559,9 +559,9 @@ export function FastScreen() {
                   alignItems: 'center',
                   gap: 8,
                   padding: '12px 20px',
-                  background: showDiary ? 'rgba(139, 92, 246, 0.3)' : 'rgba(255,255,255,0.1)',
-                  color: '#fff',
-                  border: showDiary ? '1px solid rgba(139, 92, 246, 0.5)' : '1px solid rgba(255,255,255,0.2)',
+                  background: showDiary ? 'rgba(139, 92, 246, 0.15)' : '#fff',
+                  color: showDiary ? '#7c3aed' : '#333',
+                  border: showDiary ? '1px solid rgba(139, 92, 246, 0.4)' : '1px solid rgba(0,0,0,0.1)',
                   borderRadius: 10,
                   fontSize: 14,
                   fontWeight: 600,
@@ -578,9 +578,9 @@ export function FastScreen() {
                   alignItems: 'center',
                   gap: 8,
                   padding: '12px 20px',
-                  background: showAllMilestones ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.1)',
-                  color: '#fff',
-                  border: '1px solid rgba(255,255,255,0.2)',
+                  background: showAllMilestones ? 'rgba(0,0,0,0.06)' : '#fff',
+                  color: '#333',
+                  border: '1px solid rgba(0,0,0,0.1)',
                   borderRadius: 10,
                   fontSize: 14,
                   fontWeight: 600,
@@ -597,9 +597,9 @@ export function FastScreen() {
                   alignItems: 'center',
                   gap: 8,
                   padding: '12px 20px',
-                  background: showHistory ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.1)',
-                  color: '#fff',
-                  border: '1px solid rgba(255,255,255,0.2)',
+                  background: showHistory ? 'rgba(0,0,0,0.06)' : '#fff',
+                  color: '#333',
+                  border: '1px solid rgba(0,0,0,0.1)',
                   borderRadius: 10,
                   fontSize: 14,
                   fontWeight: 600,
@@ -616,9 +616,9 @@ export function FastScreen() {
                   alignItems: 'center',
                   gap: 8,
                   padding: '12px 20px',
-                  background: isComplete ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' : 'rgba(239, 68, 68, 0.2)',
-                  color: isComplete ? '#000' : '#ef4444',
-                  border: isComplete ? 'none' : '1px solid rgba(239, 68, 68, 0.3)',
+                  background: isComplete ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' : '#fff',
+                  color: isComplete ? '#fff' : '#dc2626',
+                  border: isComplete ? 'none' : '1px solid rgba(220, 38, 38, 0.3)',
                   borderRadius: 10,
                   fontSize: 14,
                   fontWeight: 600,
@@ -639,18 +639,19 @@ export function FastScreen() {
         {/* Diary input panel */}
         {showDiary && currentFast && (
           <div style={{
-            background: 'rgba(139, 92, 246, 0.1)',
-            border: '1px solid rgba(139, 92, 246, 0.3)',
+            background: '#fff',
+            border: '1px solid rgba(139, 92, 246, 0.2)',
             borderRadius: 16,
             padding: 20,
+            boxShadow: '0 2px 12px rgba(139, 92, 246, 0.08)',
           }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, color: '#a78bfa' }}>
-              How are you feeling? <span style={{ fontWeight: 400, opacity: 0.7 }}>Hour {Math.floor(elapsedHours)}</span>
+            <h3 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, color: '#7c3aed' }}>
+              How are you feeling? <span style={{ fontWeight: 400, opacity: 0.6 }}>Hour {Math.floor(elapsedHours)}</span>
             </h3>
 
             {/* Overall Mood selector */}
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Overall Mood</div>
+              <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Overall Mood</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {MOODS.map(mood => (
                   <button
@@ -658,9 +659,9 @@ export function FastScreen() {
                     onClick={() => setDiaryMood(mood.value)}
                     style={{
                       padding: '10px 18px',
-                      background: diaryMood === mood.value ? mood.color : 'rgba(255,255,255,0.05)',
-                      color: diaryMood === mood.value ? '#000' : '#fff',
-                      border: diaryMood === mood.value ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                      background: diaryMood === mood.value ? mood.color : '#f5f5f5',
+                      color: diaryMood === mood.value ? '#fff' : '#333',
+                      border: diaryMood === mood.value ? 'none' : '1px solid rgba(0,0,0,0.08)',
                       borderRadius: 24,
                       fontSize: 14,
                       cursor: 'pointer',
@@ -680,7 +681,7 @@ export function FastScreen() {
             {/* Energy & Hunger sliders */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
               <div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                   Energy: {diaryEnergy}/5
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -691,10 +692,10 @@ export function FastScreen() {
                       style={{
                         width: 40,
                         height: 40,
-                        background: n <= diaryEnergy ? '#eab308' : 'rgba(255,255,255,0.08)',
+                        background: n <= diaryEnergy ? '#eab308' : '#f0f0f0',
                         border: 'none',
                         borderRadius: 10,
-                        color: n <= diaryEnergy ? '#000' : '#555',
+                        color: n <= diaryEnergy ? '#fff' : '#999',
                         fontWeight: 600,
                         cursor: 'pointer',
                         display: 'flex',
@@ -708,7 +709,7 @@ export function FastScreen() {
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                   Hunger: {diaryHunger}/5
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -719,10 +720,10 @@ export function FastScreen() {
                       style={{
                         width: 40,
                         height: 40,
-                        background: n <= diaryHunger ? '#ef4444' : 'rgba(255,255,255,0.08)',
+                        background: n <= diaryHunger ? '#ef4444' : '#f0f0f0',
                         border: 'none',
                         borderRadius: 10,
-                        color: n <= diaryHunger ? '#fff' : '#555',
+                        color: n <= diaryHunger ? '#fff' : '#999',
                         fontWeight: 700,
                         cursor: 'pointer',
                         fontSize: 14,
@@ -737,12 +738,12 @@ export function FastScreen() {
 
             {/* Feeling selectors by category */}
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                 What are you experiencing? <span style={{ opacity: 0.6 }}>(tap all that apply)</span>
               </div>
               {Object.entries(FEELING_OPTIONS).map(([categoryId, category]) => (
                 <div key={categoryId} style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>{category.label}</div>
+                  <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.35)', marginBottom: 8 }}>{category.label}</div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {category.options.map(option => {
                       const isSelected = selectedFeelings.includes(option.id);
@@ -752,9 +753,9 @@ export function FastScreen() {
                           onClick={() => toggleFeeling(option.id)}
                           style={{
                             padding: '8px 14px',
-                            background: isSelected ? 'rgba(139, 92, 246, 0.4)' : 'rgba(255,255,255,0.05)',
-                            color: isSelected ? '#fff' : 'rgba(255,255,255,0.7)',
-                            border: isSelected ? '1px solid rgba(139, 92, 246, 0.6)' : '1px solid rgba(255,255,255,0.1)',
+                            background: isSelected ? 'rgba(139, 92, 246, 0.15)' : '#f5f5f5',
+                            color: isSelected ? '#7c3aed' : '#555',
+                            border: isSelected ? '1px solid rgba(139, 92, 246, 0.4)' : '1px solid rgba(0,0,0,0.06)',
                             borderRadius: 20,
                             fontSize: 13,
                             cursor: 'pointer',
@@ -778,11 +779,11 @@ export function FastScreen() {
             {selectedFeelings.length > 0 && (
               <div style={{
                 padding: 12,
-                background: 'rgba(139, 92, 246, 0.2)',
+                background: 'rgba(139, 92, 246, 0.08)',
                 borderRadius: 10,
                 marginBottom: 16,
                 fontSize: 13,
-                color: 'rgba(255,255,255,0.8)',
+                color: '#555',
               }}>
                 <strong>Selected:</strong> {selectedFeelings.map(id => {
                   for (const category of Object.values(FEELING_OPTIONS)) {
@@ -796,7 +797,7 @@ export function FastScreen() {
 
             {/* Optional additional note */}
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                 Additional notes <span style={{ opacity: 0.6 }}>(optional)</span>
               </div>
               <textarea
@@ -807,10 +808,10 @@ export function FastScreen() {
                   width: '100%',
                   minHeight: 70,
                   padding: 14,
-                  background: 'rgba(0,0,0,0.3)',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: '#f8f8f8',
+                  border: '1px solid rgba(0,0,0,0.08)',
                   borderRadius: 12,
-                  color: '#fff',
+                  color: '#333',
                   fontSize: 14,
                   resize: 'vertical',
                 }}
@@ -822,14 +823,14 @@ export function FastScreen() {
               disabled={(selectedFeelings.length === 0 && !diaryNote.trim()) || savingNote}
               style={{
                 padding: '14px 28px',
-                background: (selectedFeelings.length > 0 || diaryNote.trim()) ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' : 'rgba(255,255,255,0.1)',
-                color: (selectedFeelings.length > 0 || diaryNote.trim()) ? '#fff' : '#666',
+                background: (selectedFeelings.length > 0 || diaryNote.trim()) ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' : '#e5e5e5',
+                color: (selectedFeelings.length > 0 || diaryNote.trim()) ? '#fff' : '#999',
                 border: 'none',
                 borderRadius: 12,
                 fontSize: 15,
                 fontWeight: 700,
                 cursor: (selectedFeelings.length > 0 || diaryNote.trim()) ? 'pointer' : 'not-allowed',
-                boxShadow: (selectedFeelings.length > 0 || diaryNote.trim()) ? '0 4px 20px rgba(139, 92, 246, 0.3)' : 'none',
+                boxShadow: (selectedFeelings.length > 0 || diaryNote.trim()) ? '0 4px 20px rgba(139, 92, 246, 0.25)' : 'none',
               }}
             >
               {savingNote ? 'Saving...' : 'Save Entry'}
@@ -840,11 +841,12 @@ export function FastScreen() {
         {/* Previous notes for this fast */}
         {currentFast && notes.length > 0 && (
           <div style={{
-            background: 'rgba(255,255,255,0.03)',
+            background: '#fff',
             borderRadius: 16,
             padding: 20,
+            border: '1px solid rgba(0,0,0,0.06)',
           }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 600, color: 'rgba(0,0,0,0.5)' }}>
               Your Journey ({notes.length} {notes.length === 1 ? 'note' : 'notes'})
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -855,18 +857,18 @@ export function FastScreen() {
                     display: 'flex',
                     gap: 12,
                     padding: 12,
-                    background: 'rgba(255,255,255,0.03)',
+                    background: '#f8f8f8',
                     borderRadius: 10,
-                    borderLeft: `3px solid ${mood?.color || '#666'}`,
+                    borderLeft: `3px solid ${mood?.color || '#999'}`,
                   }}>
                     <div style={{ fontSize: 24 }}>{mood?.emoji}</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', gap: 12, marginBottom: 6, fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
+                      <div style={{ display: 'flex', gap: 12, marginBottom: 6, fontSize: 12, color: 'rgba(0,0,0,0.4)' }}>
                         <span>Hour {note.hour_mark}</span>
                         <span>Energy: {note.energy_level}/5</span>
                         <span>Hunger: {note.hunger_level}/5</span>
                       </div>
-                      <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)' }}>{note.note}</div>
+                      <div style={{ fontSize: 14, color: '#333' }}>{note.note}</div>
                     </div>
                   </div>
                 );
@@ -878,8 +880,8 @@ export function FastScreen() {
         {/* Current milestone detail */}
         {currentFast && (
           <div style={{
-            background: `linear-gradient(135deg, ${currentMilestone.color}15 0%, ${currentMilestone.color}05 100%)`,
-            border: `1px solid ${currentMilestone.color}40`,
+            background: '#fff',
+            border: `1px solid ${currentMilestone.color}30`,
             borderRadius: 16,
             padding: 20,
           }}>
@@ -888,7 +890,7 @@ export function FastScreen() {
                 width: 48,
                 height: 48,
                 borderRadius: 12,
-                background: `${currentMilestone.color}30`,
+                background: `${currentMilestone.color}15`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -897,7 +899,7 @@ export function FastScreen() {
                 <MilestoneIcon icon={currentMilestone.icon} size={24} />
               </div>
               <div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                   Current Stage • Hour {currentMilestone.hour}
                 </div>
                 <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: currentMilestone.color }}>
@@ -906,7 +908,7 @@ export function FastScreen() {
               </div>
             </div>
 
-            <p style={{ margin: '0 0 16px', fontSize: 14, color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
+            <p style={{ margin: '0 0 16px', fontSize: 14, color: '#555', lineHeight: 1.6 }}>
               {currentMilestone.detail}
             </p>
 
@@ -914,10 +916,11 @@ export function FastScreen() {
               {currentMilestone.benefits.map((benefit, i) => (
                 <span key={i} style={{
                   padding: '6px 12px',
-                  background: `${currentMilestone.color}20`,
+                  background: `${currentMilestone.color}12`,
                   borderRadius: 20,
                   fontSize: 12,
                   color: currentMilestone.color,
+                  fontWeight: 500,
                 }}>
                   {benefit}
                 </span>
@@ -929,8 +932,8 @@ export function FastScreen() {
         {/* Next milestone preview */}
         {currentFast && nextMilestone && !isComplete && (
           <div style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: '#fff',
+            border: '1px solid rgba(0,0,0,0.06)',
             borderRadius: 12,
             padding: 16,
           }}>
@@ -940,7 +943,7 @@ export function FastScreen() {
                   width: 36,
                   height: 36,
                   borderRadius: 8,
-                  background: `${nextMilestone.color}20`,
+                  background: `${nextMilestone.color}15`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -949,15 +952,15 @@ export function FastScreen() {
                   <MilestoneIcon icon={nextMilestone.icon} size={18} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Next milestone</div>
+                  <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)' }}>Next milestone</div>
                   <div style={{ fontSize: 14, fontWeight: 600, color: nextMilestone.color }}>{nextMilestone.title}</div>
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#333' }}>
                   {Math.ceil(nextMilestone.hour - elapsedHours)}h
                 </div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>to go</div>
+                <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)' }}>to go</div>
               </div>
             </div>
           </div>
@@ -966,9 +969,10 @@ export function FastScreen() {
         {/* All milestones timeline */}
         {currentFast && (
           <div style={{
-            background: 'rgba(255,255,255,0.02)',
+            background: '#fff',
             borderRadius: 16,
             overflow: 'hidden',
+            border: '1px solid rgba(0,0,0,0.06)',
           }}>
             <button
               onClick={() => setShowAllMilestones(!showAllMilestones)}
@@ -977,7 +981,7 @@ export function FastScreen() {
                 padding: '16px 20px',
                 background: 'transparent',
                 border: 'none',
-                color: '#fff',
+                color: '#333',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -998,31 +1002,31 @@ export function FastScreen() {
                       display: 'flex',
                       gap: 12,
                       padding: '12px 0',
-                      borderBottom: i < FASTING_MILESTONES.length - 2 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                      borderBottom: i < FASTING_MILESTONES.length - 2 ? '1px solid rgba(0,0,0,0.05)' : 'none',
                       opacity: isPassed ? 1 : 0.4,
                     }}>
                       <div style={{
                         width: 32,
                         height: 32,
                         borderRadius: 8,
-                        background: isPassed ? `${m.color}30` : 'rgba(255,255,255,0.05)',
+                        background: isPassed ? `${m.color}15` : '#f5f5f5',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: isPassed ? m.color : 'rgba(255,255,255,0.3)',
+                        color: isPassed ? m.color : '#ccc',
                       }}>
                         <MilestoneIcon icon={m.icon} size={16} />
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: isPassed ? m.color : 'rgba(255,255,255,0.5)' }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: isPassed ? m.color : '#999' }}>
                             {m.title}
                           </span>
-                          {isCurrent && <span style={{ fontSize: 10, background: m.color, color: '#000', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>NOW</span>}
+                          {isCurrent && <span style={{ fontSize: 10, background: m.color, color: '#fff', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>NOW</span>}
                         </div>
-                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{m.shortDesc}</div>
+                        <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.4)' }}>{m.shortDesc}</div>
                       </div>
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>{m.hour}h</div>
+                      <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.35)', fontWeight: 600 }}>{m.hour}h</div>
                     </div>
                   );
                 })}
@@ -1034,13 +1038,14 @@ export function FastScreen() {
         {/* Past fasts history */}
         {showHistory && (
           <div style={{
-            background: 'rgba(255,255,255,0.03)',
+            background: '#fff',
             borderRadius: 16,
             padding: 20,
+            border: '1px solid rgba(0,0,0,0.06)',
           }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 600 }}>Past Fasts</h3>
+            <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 600, color: '#333' }}>Past Fasts</h3>
             {pastFasts.length === 0 ? (
-              <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>No completed fasts yet</div>
+              <div style={{ color: 'rgba(0,0,0,0.4)', fontSize: 14 }}>No completed fasts yet</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {pastFasts.map((fast) => {
@@ -1053,7 +1058,7 @@ export function FastScreen() {
                       alignItems: 'center',
                       gap: 12,
                       padding: 12,
-                      background: 'rgba(255,255,255,0.03)',
+                      background: '#f8f8f8',
                       borderRadius: 10,
                       borderLeft: `3px solid ${fast.completed ? '#22c55e' : '#ef4444'}`,
                     }}>
@@ -1061,7 +1066,7 @@ export function FastScreen() {
                         width: 40,
                         height: 40,
                         borderRadius: 8,
-                        background: fast.completed ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                        background: fast.completed ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -1070,18 +1075,18 @@ export function FastScreen() {
                         {fast.completed ? <CheckCircle2 size={20} /> : <RotateCcw size={20} />}
                       </div>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#333' }}>
                           {format(startDate, 'MMM d, yyyy')}
                         </div>
-                        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
+                        <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.4)' }}>
                           {duration.toFixed(1)}h • {fast.notes_count} {fast.notes_count === 1 ? 'note' : 'notes'}
                         </div>
                       </div>
                       <div style={{
                         padding: '4px 10px',
                         borderRadius: 12,
-                        background: fast.completed ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                        color: fast.completed ? '#22c55e' : '#ef4444',
+                        background: fast.completed ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                        color: fast.completed ? '#16a34a' : '#dc2626',
                         fontSize: 11,
                         fontWeight: 600,
                       }}>
@@ -1099,8 +1104,8 @@ export function FastScreen() {
         {!currentFast && !showHistory && (
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>🍽️</div>
-            <h2 style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 700 }}>Ready to Fast?</h2>
-            <p style={{ margin: '0 0 24px', color: 'rgba(255,255,255,0.6)', maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
+            <h2 style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 700, color: '#333' }}>Ready to Fast?</h2>
+            <p style={{ margin: '0 0 24px', color: 'rgba(0,0,0,0.5)', maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
               Start a 24-hour fast to experience the benefits of autophagy, ketosis, and metabolic renewal.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 300, margin: '0 auto' }}>
@@ -1114,25 +1119,26 @@ export function FastScreen() {
                   alignItems: 'center',
                   gap: 12,
                   padding: '10px 16px',
-                  background: 'rgba(255,255,255,0.03)',
+                  background: '#fff',
                   borderRadius: 10,
                   textAlign: 'left',
+                  border: '1px solid rgba(0,0,0,0.06)',
                 }}>
                   <div style={{
                     width: 36,
                     height: 36,
                     borderRadius: 8,
-                    background: 'rgba(34, 197, 94, 0.2)',
+                    background: 'rgba(34, 197, 94, 0.12)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#22c55e',
+                    color: '#16a34a',
                     fontWeight: 700,
                     fontSize: 12,
                   }}>
                     {hour}h
                   </div>
-                  <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>{benefit}</span>
+                  <span style={{ fontSize: 13, color: '#555' }}>{benefit}</span>
                 </div>
               ))}
             </div>
