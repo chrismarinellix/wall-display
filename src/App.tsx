@@ -3,11 +3,27 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { MsalProvider } from '@azure/msal-react';
 import { msalInstance, initializeMsal } from './services/microsoft/microsoftAuth';
 import { SettingsProvider } from './contexts/SettingsContext';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ScreenProvider } from './contexts/ScreenContext';
 import { ScreenContainer } from './components/layout/ScreenContainer';
-import { AnnouncementProvider } from './components/AnnouncementProvider';
+import { LoginScreen } from './components/screens/LoginScreen';
 import './index.css';
+// AnnouncementProvider removed - not currently used
+
+// Auth gate component - shows login screen if not authenticated
+function AuthGate() {
+  const { isAppAuthenticated } = useAuth();
+
+  if (!isAppAuthenticated) {
+    return <LoginScreen />;
+  }
+
+  return (
+    <ScreenProvider>
+      <ScreenContainer />
+    </ScreenProvider>
+  );
+}
 
 function App() {
   // Initialize MSAL on app load
@@ -21,9 +37,7 @@ function App() {
   const content = (
     <SettingsProvider>
       <AuthProvider>
-        <ScreenProvider>
-          <ScreenContainer />
-        </ScreenProvider>
+        <AuthGate />
       </AuthProvider>
     </SettingsProvider>
   );

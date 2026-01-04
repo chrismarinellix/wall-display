@@ -2004,3 +2004,228 @@ export function subscribeToEyeGazing(callback: (history: EyeGazingHistory) => vo
     supabase.removeChannel(channel);
   };
 }
+
+// ============ PASSKEY AUTHENTICATION ============
+
+export interface PasskeyCredential {
+  id?: string;
+  user_id: string;
+  user_name: string;
+  credential_id: string;
+  public_key: string;
+  counter: number;
+  created_at?: string;
+}
+
+const PASSKEY_STORAGE_KEY = 'wall-display-passkeys';
+const AUTH_SESSION_KEY = 'wall-display-auth-session';
+
+// Get all registered passkeys
+export async function getPasskeys(): Promise<PasskeyCredential[]> {
+  if (!supabase) {
+    // Fallback to localStorage
+    const stored = localStorage.getItem(PASSKEY_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('passkeys')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (e) {
+    console.error('Failed to get passkeys:', e);
+    // Fallback to localStorage
+    const stored = localStorage.getItem(PASSKEY_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  }
+}
+
+// Register a new passkey
+export async function registerPasskey(credential: PasskeyCredential): Promise<PasskeyCredential | null> {
+  if (!supabase) {
+    // Fallback to localStorage
+    const stored = localStorage.getItem(PASSKEY_STORAGE_KEY);
+    const passkeys: PasskeyCredential[] = stored ? JSON.parse(stored) : [];
+    const newCredential = { ...credential, id: crypto.randomUUID(), created_at: new Date().toISOString() };
+    passkeys.push(newCredential);
+    localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify(passkeys));
+    return newCredential;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('passkeys')
+      .insert(credential)
+      .select();
+
+    if (error) throw error;
+
+    // Also save to localStorage as backup
+    const stored = localStorage.getItem(PASSKEY_STORAGE_KEY);
+    const passkeys: PasskeyCredential[] = stored ? JSON.parse(stored) : [];
+    passkeys.push(data?.[0] || credential);
+    localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify(passkeys));
+
+    console.log('Passkey registered successfully');
+    return data?.[0] || null;
+  } catch (e) {
+    console.error('Failed to register passkey:', e);
+    // Fallback to localStorage
+    const stored = localStorage.getItem(PASSKEY_STORAGE_KEY);
+    const passkeys: PasskeyCredential[] = stored ? JSON.parse(stored) : [];
+    const newCredential = { ...credential, id: crypto.randomUUID(), created_at: new Date().toISOString() };
+    passkeys.push(newCredential);
+    localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify(passkeys));
+    return newCredential;
+  }
+}
+
+// Update passkey counter after authentication
+export async function updatePasskeyCounter(credentialId: string, newCounter: number): Promise<void> {
+  if (!supabase) {
+    // Update in localStorage
+    const stored = localStorage.getItem(PASSKEY_STORAGE_KEY);
+    if (stored) {
+      const passkeys: PasskeyCredential[] = JSON.parse(stored);
+      const idx = passkeys.findIndex(p => p.credential_id === credentialId);
+      if (idx >= 0) {
+        passkeys[idx].counter = newCounter;
+        localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify(passkeys));
+      }
+    }
+    return;
+  }
+
+  try {
+    await supabase
+      .from('passkeys')
+      .update({ counter: newCounter })
+      .eq('credential_id', credentialId);
+  } catch (e) {
+    console.error('Failed to update passkey counter:', e);
+  }
+}
+
+// Get passkey by credential ID
+export async function getPasskeyByCredentialId(credentialId: string): Promise<PasskeyCredential | null> {
+  const passkeys = await getPasskeys();
+  return passkeys.find(p => p.credential_id === credentialId) || null;
+}
+
+// Session management
+export function saveAuthSession(userId: string, userName: string): void {
+  const session = {
+    userId,
+    userName,
+    authenticatedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
+  };
+  localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
+}
+
+export function getAuthSession(): { userId: string; userName: string; authenticatedAt: string } | null {
+  const stored = localStorage.getItem(AUTH_SESSION_KEY);
+  if (!stored) return null;
+
+  try {
+    const session = JSON.parse(stored);
+    // Check if session is expired
+    if (new Date(session.expiresAt) < new Date()) {
+      localStorage.removeItem(AUTH_SESSION_KEY);
+      return null;
+    }
+    return session;
+  } catch {
+    return null;
+  }
+}
+
+export function clearAuthSession(): void {
+  localStorage.removeItem(AUTH_SESSION_KEY);
+}
+
+// ============ ACTIVITY LOGGING ============
+
+export interface ActivityLog {
+  id?: string;
+  user_email: string;
+  action: string;
+  details?: string;
+  screen?: string;
+  created_at?: string;
+}
+
+// Log user activity
+export async function logActivity(
+  userEmail: string,
+  action: string,
+  details?: string,
+  screen?: string
+): Promise<void> {
+  const log: ActivityLog = {
+    user_email: userEmail,
+    action,
+    details,
+    screen,
+    created_at: new Date().toISOString(),
+  };
+
+  // Always log to console for debugging
+  console.log(`[Activity] ${userEmail}: ${action}${details ? ` - ${details}` : ''}`);
+
+  if (!supabase) {
+    // Store locally if no Supabase
+    const stored = localStorage.getItem('activity-log');
+    const logs: ActivityLog[] = stored ? JSON.parse(stored) : [];
+    logs.push({ ...log, id: crypto.randomUUID() });
+    // Keep only last 500 entries
+    if (logs.length > 500) {
+      logs.splice(0, logs.length - 500);
+    }
+    localStorage.setItem('activity-log', JSON.stringify(logs));
+    return;
+  }
+
+  try {
+    await supabase
+      .from('activity_log')
+      .insert(log);
+  } catch (e) {
+    console.error('Failed to log activity:', e);
+    // Fallback to localStorage
+    const stored = localStorage.getItem('activity-log');
+    const logs: ActivityLog[] = stored ? JSON.parse(stored) : [];
+    logs.push({ ...log, id: crypto.randomUUID() });
+    if (logs.length > 500) {
+      logs.splice(0, logs.length - 500);
+    }
+    localStorage.setItem('activity-log', JSON.stringify(logs));
+  }
+}
+
+// Get activity logs (for admin viewing)
+export async function getActivityLogs(limit: number = 100): Promise<ActivityLog[]> {
+  if (!supabase) {
+    const stored = localStorage.getItem('activity-log');
+    const logs: ActivityLog[] = stored ? JSON.parse(stored) : [];
+    return logs.slice(-limit).reverse();
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('activity_log')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return data || [];
+  } catch (e) {
+    console.error('Failed to get activity logs:', e);
+    return [];
+  }
+}
