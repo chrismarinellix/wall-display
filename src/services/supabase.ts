@@ -287,14 +287,18 @@ export interface CountdownEvent {
   created_at?: string;
 }
 
-// Get all countdown events
+// Get all countdown events (only future events)
 export async function getCountdowns(): Promise<CountdownEvent[]> {
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
   if (!supabase) {
     console.log('Supabase not configured, using localStorage');
     const stored = localStorage.getItem('countdown-events');
     if (stored) {
       try {
-        return JSON.parse(stored);
+        const events = JSON.parse(stored) as CountdownEvent[];
+        // Filter to only future events
+        return events.filter(e => e.target_date >= today);
       } catch {
         return [];
       }
@@ -306,6 +310,7 @@ export async function getCountdowns(): Promise<CountdownEvent[]> {
     const { data, error } = await supabase
       .from('countdowns')
       .select('*')
+      .gte('target_date', today) // Only future events
       .order('target_date', { ascending: true });
 
     if (error) throw error;
