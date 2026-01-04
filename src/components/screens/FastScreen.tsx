@@ -361,56 +361,74 @@ export function FastScreen() {
   return (
     <div style={{
       height: '100%',
-      background: 'linear-gradient(180deg, #0a0a0a 0%, #111 100%)',
+      background: '#000',
       display: 'flex',
       flexDirection: 'column',
       overflow: 'auto',
       color: '#fff',
     }}>
-      {/* Header with timer */}
+      {/* Hero section - centered Fast! with timer */}
       <div style={{
-        padding: '24px 24px 20px',
-        borderBottom: '1px solid rgba(255,255,255,0.1)',
-        background: 'rgba(0,0,0,0.3)',
+        padding: '30px 24px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: currentFast ? 'auto' : '50vh',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h1 style={{
-            fontSize: 'clamp(32px, 8vw, 48px)',
-            fontWeight: 800,
-            letterSpacing: '-0.02em',
-            margin: 0,
-            color: isComplete ? '#22c55e' : '#fff',
-          }}>
-            {currentFast ? (isComplete ? 'Complete!' : 'Fasting') : 'Fast'}
-          </h1>
+        {/* Big FAST! title */}
+        <h1 style={{
+          fontSize: 'clamp(80px, 18vw, 160px)',
+          fontWeight: 800,
+          letterSpacing: '-0.03em',
+          margin: 0,
+          marginBottom: currentFast ? '16px' : '24px',
+          color: isComplete ? '#22c55e' : '#fff',
+          textAlign: 'center',
+        }}>
+          Fast!
+        </h1>
 
-          {/* History toggle */}
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            style={{
+        {/* Current milestone - shown when fasting */}
+        {currentFast && (
+          <div style={{
+            textAlign: 'center',
+            marginBottom: '24px',
+          }}>
+            <div style={{
+              fontSize: 'clamp(18px, 4vw, 28px)',
+              fontWeight: 600,
+              color: isComplete ? '#22c55e' : currentMilestone.color,
+              marginBottom: '6px',
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              padding: '8px 12px',
-              background: showHistory ? 'rgba(255,255,255,0.1)' : 'transparent',
-              border: '1px solid rgba(255,255,255,0.2)',
-              borderRadius: 8,
-              color: '#fff',
-              fontSize: 13,
-              cursor: 'pointer',
-            }}
-          >
-            <History size={16} />
-            History
-          </button>
-        </div>
+              justifyContent: 'center',
+              gap: 10,
+            }}>
+              <MilestoneIcon icon={currentMilestone.icon} size={24} />
+              {currentMilestone.title}
+            </div>
+            <div style={{
+              fontSize: 'clamp(13px, 2.5vw, 18px)',
+              color: 'rgba(255,255,255,0.6)',
+            }}>
+              {currentMilestone.shortDesc}
+            </div>
+          </div>
+        )}
 
-        {/* Timer display */}
+        {/* Timer display - big and centered */}
         {currentFast && (
-          <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div>
+          <div style={{
+            display: 'flex',
+            gap: 'clamp(24px, 6vw, 60px)',
+            alignItems: 'center',
+            marginBottom: '24px',
+          }}>
+            {/* Elapsed time */}
+            <div style={{ textAlign: 'center' }}>
               <div style={{
-                fontSize: 'clamp(36px, 10vw, 56px)',
+                fontSize: 'clamp(32px, 8vw, 56px)',
                 fontWeight: 700,
                 fontFamily: 'ui-monospace, monospace',
                 color: '#22c55e',
@@ -418,24 +436,42 @@ export function FastScreen() {
               }}>
                 {formatTime(elapsedMs)}
               </div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>
+              <div style={{
+                fontSize: 'clamp(10px, 2vw, 14px)',
+                color: 'rgba(255,255,255,0.5)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                marginTop: 6,
+              }}>
                 Fasted
               </div>
             </div>
 
-            <div style={{ width: 1, height: 48, background: 'rgba(255,255,255,0.2)' }} />
+            {/* Divider */}
+            <div style={{
+              width: 2,
+              height: 50,
+              background: 'rgba(255,255,255,0.2)',
+            }} />
 
-            <div>
+            {/* Remaining time */}
+            <div style={{ textAlign: 'center' }}>
               <div style={{
-                fontSize: 'clamp(24px, 6vw, 36px)',
-                fontWeight: 600,
+                fontSize: 'clamp(32px, 8vw, 56px)',
+                fontWeight: 700,
                 fontFamily: 'ui-monospace, monospace',
                 color: isComplete ? '#22c55e' : '#ef4444',
                 lineHeight: 1,
               }}>
                 {isComplete ? '00:00:00' : formatTime(remainingMs)}
               </div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>
+              <div style={{
+                fontSize: 'clamp(10px, 2vw, 14px)',
+                color: 'rgba(255,255,255,0.5)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                marginTop: 6,
+              }}>
                 {isComplete ? 'Complete!' : 'Remaining'}
               </div>
             </div>
@@ -444,33 +480,56 @@ export function FastScreen() {
 
         {/* Progress bar */}
         {currentFast && (
-          <div style={{ marginTop: 20, position: 'relative' }}>
+          <div style={{ width: '100%', maxWidth: 500, position: 'relative', marginBottom: '20px' }}>
             <div style={{
               width: '100%',
-              height: 8,
+              height: 10,
               background: 'rgba(255,255,255,0.1)',
-              borderRadius: 4,
+              borderRadius: 5,
               overflow: 'hidden',
             }}>
               <div style={{
                 width: `${progress}%`,
                 height: '100%',
                 background: isComplete ? '#22c55e' : `linear-gradient(90deg, ${currentMilestone.color}, ${nextMilestone?.color || '#22c55e'})`,
-                borderRadius: 4,
+                borderRadius: 5,
                 transition: 'width 1s linear',
               }} />
             </div>
-            {/* Hour markers */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>
-              {[0, 6, 12, 18, 24].map(h => (
-                <span key={h} style={{ color: elapsedHours >= h ? 'rgba(255,255,255,0.6)' : undefined }}>{h}h</span>
-              ))}
-            </div>
+            {/* Milestone dots */}
+            {FASTING_MILESTONES.filter(m => m.hour > 0 && m.hour < 24).map(m => (
+              <div
+                key={m.hour}
+                style={{
+                  position: 'absolute',
+                  left: `${(m.hour / 24) * 100}%`,
+                  top: -1,
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  background: elapsedHours >= m.hour ? '#22c55e' : 'rgba(255,255,255,0.2)',
+                  transform: 'translateX(-50%)',
+                  border: '2px solid #000',
+                }}
+                title={`${m.hour}h: ${m.title}`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Next milestone */}
+        {currentFast && nextMilestone && !isComplete && (
+          <div style={{
+            fontSize: 'clamp(11px, 2vw, 14px)',
+            color: 'rgba(255,255,255,0.4)',
+            marginBottom: '20px',
+          }}>
+            Next: <span style={{ color: nextMilestone.color }}>{nextMilestone.title}</span> in {Math.ceil(nextMilestone.hour - elapsedHours)}h
           </div>
         )}
 
         {/* Control buttons */}
-        <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
           {!currentFast ? (
             <button
               onClick={handleStartFast}
@@ -478,18 +537,18 @@ export function FastScreen() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
-                padding: '14px 28px',
+                padding: '14px 32px',
                 background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
                 color: '#000',
                 border: 'none',
                 borderRadius: 12,
-                fontSize: 16,
+                fontSize: 18,
                 fontWeight: 700,
                 cursor: 'pointer',
-                boxShadow: '0 4px 20px rgba(34, 197, 94, 0.3)',
+                boxShadow: '0 4px 24px rgba(34, 197, 94, 0.4)',
               }}
             >
-              <Play size={20} /> Start 24h Fast
+              <Play size={22} /> Start 24h Fast
             </button>
           ) : (
             <>
@@ -500,7 +559,7 @@ export function FastScreen() {
                   alignItems: 'center',
                   gap: 8,
                   padding: '12px 20px',
-                  background: showDiary ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255,255,255,0.1)',
+                  background: showDiary ? 'rgba(139, 92, 246, 0.3)' : 'rgba(255,255,255,0.1)',
                   color: '#fff',
                   border: showDiary ? '1px solid rgba(139, 92, 246, 0.5)' : '1px solid rgba(255,255,255,0.2)',
                   borderRadius: 10,
@@ -509,7 +568,45 @@ export function FastScreen() {
                   cursor: 'pointer',
                 }}
               >
-                <PenLine size={18} /> Add Note
+                <PenLine size={18} /> Journal
+              </button>
+
+              <button
+                onClick={() => setShowAllMilestones(!showAllMilestones)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '12px 20px',
+                  background: showAllMilestones ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.1)',
+                  color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <Sparkles size={18} /> Stages
+              </button>
+
+              <button
+                onClick={() => setShowHistory(!showHistory)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '12px 20px',
+                  background: showHistory ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.1)',
+                  color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <History size={18} /> History
               </button>
 
               <button
@@ -519,9 +616,9 @@ export function FastScreen() {
                   alignItems: 'center',
                   gap: 8,
                   padding: '12px 20px',
-                  background: isComplete ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' : 'rgba(255,255,255,0.05)',
-                  color: isComplete ? '#000' : '#fff',
-                  border: isComplete ? 'none' : '1px solid rgba(255,255,255,0.2)',
+                  background: isComplete ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' : 'rgba(239, 68, 68, 0.2)',
+                  color: isComplete ? '#000' : '#ef4444',
+                  border: isComplete ? 'none' : '1px solid rgba(239, 68, 68, 0.3)',
                   borderRadius: 10,
                   fontSize: 14,
                   fontWeight: 600,
@@ -529,15 +626,15 @@ export function FastScreen() {
                 }}
               >
                 {isComplete ? <CheckCircle2 size={18} /> : <RotateCcw size={18} />}
-                {isComplete ? 'Complete Fast' : 'End Fast'}
+                {isComplete ? 'Complete!' : 'End'}
               </button>
             </>
           )}
         </div>
       </div>
 
-      {/* Main content area */}
-      <div style={{ flex: 1, padding: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* Expandable content area */}
+      <div style={{ flex: 1, padding: '0 24px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* Diary input panel */}
         {showDiary && currentFast && (
