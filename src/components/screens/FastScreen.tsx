@@ -478,42 +478,125 @@ export function FastScreen() {
           </div>
         )}
 
-        {/* Progress bar */}
+        {/* Progress bar - full width */}
         {currentFast && (
-          <div style={{ width: '100%', maxWidth: 500, position: 'relative', marginBottom: '20px' }}>
+          <div style={{
+            width: 'calc(100% + 48px)',
+            marginLeft: -24,
+            marginRight: -24,
+            position: 'relative',
+            marginBottom: '20px',
+            padding: '0 24px',
+          }}>
+            {/* Percentage display */}
             <div style={{
-              width: '100%',
-              height: 10,
-              background: 'rgba(0,0,0,0.08)',
-              borderRadius: 5,
-              overflow: 'hidden',
+              textAlign: 'center',
+              marginBottom: 8,
+              fontSize: 'clamp(12px, 2.5vw, 16px)',
+              fontWeight: 700,
+              color: isComplete ? '#16a34a' : currentMilestone.color,
             }}>
-              <div style={{
-                width: `${progress}%`,
-                height: '100%',
-                background: isComplete ? '#22c55e' : `linear-gradient(90deg, ${currentMilestone.color}, ${nextMilestone?.color || '#22c55e'})`,
-                borderRadius: 5,
-                transition: 'width 1s linear',
-              }} />
+              {Math.round(progress)}% Complete
             </div>
-            {/* Milestone dots */}
-            {FASTING_MILESTONES.filter(m => m.hour > 0 && m.hour < 24).map(m => (
-              <div
-                key={m.hour}
-                style={{
-                  position: 'absolute',
-                  left: `${(m.hour / 24) * 100}%`,
-                  top: -1,
-                  width: 12,
-                  height: 12,
-                  borderRadius: '50%',
-                  background: elapsedHours >= m.hour ? '#22c55e' : 'rgba(0,0,0,0.15)',
-                  transform: 'translateX(-50%)',
-                  border: '2px solid #fafafa',
-                }}
-                title={`${m.hour}h: ${m.title}`}
-              />
-            ))}
+
+            <div style={{ position: 'relative' }}>
+              <div style={{
+                width: '100%',
+                height: 12,
+                background: 'rgba(0,0,0,0.08)',
+                borderRadius: 6,
+                overflow: 'hidden',
+              }}>
+                <div style={{
+                  width: `${progress}%`,
+                  height: '100%',
+                  background: isComplete ? '#22c55e' : `linear-gradient(90deg, ${currentMilestone.color}, ${nextMilestone?.color || '#22c55e'})`,
+                  borderRadius: 6,
+                  transition: 'width 1s linear',
+                }} />
+              </div>
+
+              {/* Milestone dots with hover tooltips */}
+              {FASTING_MILESTONES.filter(m => m.hour > 0 && m.hour <= 24).map(m => {
+                const isPassed = elapsedHours >= m.hour;
+                return (
+                  <div
+                    key={m.hour}
+                    className="milestone-dot"
+                    style={{
+                      position: 'absolute',
+                      left: `${(m.hour / 24) * 100}%`,
+                      top: -2,
+                      transform: 'translateX(-50%)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {/* The dot */}
+                    <div style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: '50%',
+                      background: isPassed ? m.color : 'rgba(0,0,0,0.15)',
+                      border: '2px solid #fafafa',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                      transition: 'transform 0.2s, box-shadow 0.2s',
+                    }} />
+
+                    {/* Tooltip */}
+                    <div
+                      className="milestone-tooltip"
+                      style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        marginBottom: 8,
+                        padding: '8px 12px',
+                        background: '#fff',
+                        border: `2px solid ${m.color}`,
+                        borderRadius: 8,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        whiteSpace: 'nowrap',
+                        opacity: 0,
+                        pointerEvents: 'none',
+                        transition: 'opacity 0.2s',
+                        zIndex: 10,
+                      }}
+                    >
+                      <div style={{ fontSize: 12, fontWeight: 700, color: m.color }}>{m.hour}h — {m.title}</div>
+                      <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>{m.shortDesc}</div>
+                      {isPassed && <div style={{ fontSize: 10, color: '#16a34a', marginTop: 4 }}>✓ Achieved</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Hour markers */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginTop: 6,
+              fontSize: 10,
+              color: 'rgba(0,0,0,0.35)',
+            }}>
+              <span>0h</span>
+              <span>6h</span>
+              <span>12h</span>
+              <span>18h</span>
+              <span>24h</span>
+            </div>
+
+            {/* CSS for hover effect */}
+            <style>{`
+              .milestone-dot:hover > div:first-child {
+                transform: scale(1.3);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+              }
+              .milestone-dot:hover .milestone-tooltip {
+                opacity: 1 !important;
+              }
+            `}</style>
           </div>
         )}
 
