@@ -1847,3 +1847,160 @@ export function subscribeToFastingNotes(fastingId: string, callback: (notes: Fas
     supabase.removeChannel(channel);
   };
 }
+
+// ============ EYE GAZING ============
+
+export interface EyeGazingSession {
+  id?: string;
+  user: 'Chris' | 'Caroline';
+  duration_seconds: number;
+  completed_at: string; // ISO timestamp
+  created_at?: string;
+}
+
+export interface EyeGazingHistory {
+  [date: string]: { chris: number; caroline: number };
+}
+
+const EYE_GAZING_STORAGE_KEY = 'eye-gazing-sessions';
+
+// Get eye gazing history for past N days
+export async function getEyeGazingHistory(days: number = 60): Promise<EyeGazingHistory> {
+  const history: EyeGazingHistory = {};
+
+  if (!supabase) {
+    // Fallback to localStorage
+    const stored = localStorage.getItem(EYE_GAZING_STORAGE_KEY);
+    if (stored) {
+      try {
+        const sessions = JSON.parse(stored) as EyeGazingSession[];
+        sessions.forEach(s => {
+          const date = s.completed_at.split('T')[0];
+          if (!history[date]) {
+            history[date] = { chris: 0, caroline: 0 };
+          }
+          if (s.user === 'Chris') {
+            history[date].chris++;
+          } else {
+            history[date].caroline++;
+          }
+        });
+      } catch {}
+    }
+    return history;
+  }
+
+  try {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - (days - 1));
+
+    const { data, error } = await supabase
+      .from('eye_gazing')
+      .select('*')
+      .gte('completed_at', startDate.toISOString())
+      .order('completed_at', { ascending: false });
+
+    if (error) throw error;
+
+    (data || []).forEach((s: EyeGazingSession) => {
+      const date = s.completed_at.split('T')[0];
+      if (!history[date]) {
+        history[date] = { chris: 0, caroline: 0 };
+      }
+      if (s.user === 'Chris') {
+        history[date].chris++;
+      } else {
+        history[date].caroline++;
+      }
+    });
+
+    console.log(`Loaded ${data?.length || 0} eye gazing sessions`);
+    return history;
+  } catch (e) {
+    console.error('Failed to get eye gazing history:', e);
+    return {};
+  }
+}
+
+// Record an eye gazing session
+export async function recordEyeGazingSession(user: 'Chris' | 'Caroline', durationSeconds: number): Promise<EyeGazingSession | null> {
+  const session: EyeGazingSession = {
+    user,
+    duration_seconds: durationSeconds,
+    completed_at: new Date().toISOString(),
+  };
+
+  if (!supabase) {
+    // Fallback to localStorage
+    const stored = localStorage.getItem(EYE_GAZING_STORAGE_KEY);
+    const sessions: EyeGazingSession[] = stored ? JSON.parse(stored) : [];
+    const newSession = { ...session, id: crypto.randomUUID() };
+    sessions.push(newSession);
+    // Keep only last 200 sessions
+    if (sessions.length > 200) {
+      sessions.splice(0, sessions.length - 200);
+    }
+    localStorage.setItem(EYE_GAZING_STORAGE_KEY, JSON.stringify(sessions));
+    return newSession;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('eye_gazing')
+      .insert(session)
+      .select();
+
+    if (error) throw error;
+
+    // Also save to localStorage as backup
+    const stored = localStorage.getItem(EYE_GAZING_STORAGE_KEY);
+    const sessions: EyeGazingSession[] = stored ? JSON.parse(stored) : [];
+    sessions.push(data?.[0] || session);
+    if (sessions.length > 200) {
+      sessions.splice(0, sessions.length - 200);
+    }
+    localStorage.setItem(EYE_GAZING_STORAGE_KEY, JSON.stringify(sessions));
+
+    console.log(`Recorded eye gazing session for ${user}`);
+    return data?.[0] || null;
+  } catch (e) {
+    console.error('Failed to record eye gazing session:', e);
+    // Fallback to localStorage
+    const stored = localStorage.getItem(EYE_GAZING_STORAGE_KEY);
+    const sessions: EyeGazingSession[] = stored ? JSON.parse(stored) : [];
+    const newSession = { ...session, id: crypto.randomUUID() };
+    sessions.push(newSession);
+    localStorage.setItem(EYE_GAZING_STORAGE_KEY, JSON.stringify(sessions));
+    return newSession;
+  }
+}
+
+// Get today's eye gazing count
+export async function getTodayEyeGazingCount(): Promise<{ chris: number; caroline: number }> {
+  const today = new Date().toISOString().split('T')[0];
+  const history = await getEyeGazingHistory(1);
+  return history[today] || { chris: 0, caroline: 0 };
+}
+
+// Subscribe to eye gazing changes
+export function subscribeToEyeGazing(callback: (history: EyeGazingHistory) => void): (() => void) | null {
+  if (!supabase) {
+    return null;
+  }
+
+  const channel = supabase
+    .channel('eye-gazing-changes')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'eye_gazing' },
+      async () => {
+        const history = await getEyeGazingHistory(60);
+        callback(history);
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
