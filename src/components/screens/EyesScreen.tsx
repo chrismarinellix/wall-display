@@ -33,341 +33,158 @@ function getLast60Days(): string[] {
   return days;
 }
 
-// Realistic pencil-sketch style feminine eyes
+// Minimalist elegant eyes - simple and calming
 function BlinkingEyes({ isBlinking }: { isBlinking: boolean }) {
   return (
     <svg
-      viewBox="0 0 400 120"
+      viewBox="0 0 300 100"
       style={{
         width: '100%',
-        maxWidth: 440,
+        maxWidth: 400,
         height: 'auto',
       }}
     >
       <defs>
-        {/* Subtle pencil texture */}
-        <filter id="pencil" x="-5%" y="-5%" width="110%" height="110%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="3" result="noise"/>
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="0.5" xChannelSelector="R" yChannelSelector="G"/>
-        </filter>
-        {/* Soft shadow for depth */}
-        <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur"/>
-          <feOffset in="blur" dx="0" dy="1" result="offsetBlur"/>
-          <feMerge>
-            <feMergeNode in="offsetBlur"/>
-            <feMergeNode in="SourceGraphic"/>
-          </feMerge>
-        </filter>
-        {/* Iris gradient for realism */}
-        <radialGradient id="irisGradient" cx="40%" cy="40%">
-          <stop offset="0%" stopColor="#8B7355"/>
-          <stop offset="40%" stopColor="#5C4033"/>
-          <stop offset="100%" stopColor="#2C1810"/>
+        {/* Soft gradient for iris */}
+        <radialGradient id="irisGradient" cx="30%" cy="30%">
+          <stop offset="0%" stopColor="#6B8E9F"/>
+          <stop offset="60%" stopColor="#4A6670"/>
+          <stop offset="100%" stopColor="#2D3E45"/>
         </radialGradient>
+        {/* Subtle shadow */}
+        <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1" floodOpacity="0.15"/>
+        </filter>
       </defs>
 
-      {/* Left eye - positioned with proper spacing */}
-      <g transform="translate(45, 60)" style={{ filter: 'url(#pencil)' }}>
-        {/* Eyebrow - soft curved stroke */}
-        <path
-          d="M-5,-38 Q35,-52 85,-42"
-          fill="none"
-          stroke="#4a4a4a"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          opacity={isBlinking ? 0.6 : 0.7}
-        />
-        <path
-          d="M0,-36 Q35,-48 80,-40"
-          fill="none"
-          stroke="#5a5a5a"
+      {/* Left eye */}
+      <g transform="translate(75, 50)">
+        {/* Eye outline - elegant almond shape */}
+        <ellipse
+          cx="0"
+          cy="0"
+          rx="38"
+          ry={isBlinking ? 2 : 22}
+          fill="#fefefe"
+          stroke="#333"
           strokeWidth="1.5"
-          strokeLinecap="round"
-          opacity={isBlinking ? 0.3 : 0.4}
-        />
-
-        {/* Upper eyelid crease */}
-        <path
-          d={isBlinking ? "M2,-4 Q40,-6 78,-4" : "M2,-22 Q40,-32 78,-22"}
-          fill="none"
-          stroke="#888"
-          strokeWidth="0.8"
-          strokeLinecap="round"
-          opacity={isBlinking ? 0.3 : 0.5}
-          style={{ transition: 'all 0.15s ease-in-out' }}
-        />
-
-        {/* Eye shape - elegant almond */}
-        <path
-          d={isBlinking
-            ? "M0,0 C20,-3 60,-3 80,0 C60,3 20,3 0,0"
-            : "M0,0 C15,-22 65,-22 80,0 C65,18 15,18 0,0"
-          }
-          fill={isBlinking ? "none" : "#faf8f5"}
-          stroke="#3a3a3a"
-          strokeWidth="1.2"
-          strokeLinecap="round"
-          style={{ transition: 'all 0.15s ease-in-out' }}
-        />
-
-        {/* Inner corner detail */}
-        <path
-          d={isBlinking ? "" : "M-2,0 Q2,-2 5,0 Q2,2 -2,0"}
-          fill="#e8d4c8"
-          stroke="#999"
-          strokeWidth="0.5"
-          opacity={isBlinking ? 0 : 0.6}
-          style={{ transition: 'opacity 0.15s ease-in-out' }}
+          style={{
+            transition: 'ry 0.12s ease-in-out',
+            filter: 'url(#softShadow)'
+          }}
         />
 
         {/* Iris */}
         <circle
-          cx="40"
+          cx="0"
           cy="0"
-          r={isBlinking ? 0 : 14}
+          r={isBlinking ? 0 : 15}
           fill="url(#irisGradient)"
-          stroke="#2a2a2a"
-          strokeWidth="0.8"
-          style={{ transition: 'all 0.15s ease-in-out' }}
+          style={{ transition: 'r 0.12s ease-in-out' }}
         />
-
-        {/* Iris detail lines */}
-        {!isBlinking && (
-          <g opacity="0.3">
-            <path d="M40,-14 L40,-5" stroke="#1a1a1a" strokeWidth="0.3"/>
-            <path d="M33,-12 L36,-5" stroke="#1a1a1a" strokeWidth="0.3"/>
-            <path d="M47,-12 L44,-5" stroke="#1a1a1a" strokeWidth="0.3"/>
-            <path d="M28,-8 L34,-4" stroke="#1a1a1a" strokeWidth="0.3"/>
-            <path d="M52,-8 L46,-4" stroke="#1a1a1a" strokeWidth="0.3"/>
-          </g>
-        )}
 
         {/* Pupil */}
         <circle
-          cx="40"
+          cx="0"
           cy="0"
           r={isBlinking ? 0 : 6}
-          fill="#0a0a0a"
-          style={{ transition: 'all 0.15s ease-in-out' }}
+          fill="#111"
+          style={{ transition: 'r 0.12s ease-in-out' }}
         />
 
-        {/* Light reflections */}
+        {/* Light reflection */}
         <circle
-          cx="44"
+          cx="4"
           cy="-4"
-          r={isBlinking ? 0 : 2.5}
+          r={isBlinking ? 0 : 3}
           fill="#fff"
-          opacity="0.9"
-          style={{ transition: 'all 0.15s ease-in-out' }}
+          opacity="0.85"
+          style={{ transition: 'r 0.12s ease-in-out' }}
         />
         <circle
-          cx="36"
-          cy="3"
-          r={isBlinking ? 0 : 1}
+          cx="-3"
+          cy="2"
+          r={isBlinking ? 0 : 1.5}
           fill="#fff"
-          opacity="0.5"
-          style={{ transition: 'all 0.15s ease-in-out' }}
+          opacity="0.4"
+          style={{ transition: 'r 0.12s ease-in-out' }}
         />
 
-        {/* Upper lashes - curved and natural */}
+        {/* Upper lid line - adds depth when open */}
         {!isBlinking && (
-          <g stroke="#2a2a2a" strokeLinecap="round">
-            <path d="M8,-15 Q6,-22 3,-28" strokeWidth="1.2"/>
-            <path d="M14,-18 Q13,-26 11,-33" strokeWidth="1.3"/>
-            <path d="M20,-20 Q20,-29 19,-37" strokeWidth="1.4"/>
-            <path d="M27,-21 Q28,-31 28,-40" strokeWidth="1.5"/>
-            <path d="M34,-22 Q36,-32 37,-42" strokeWidth="1.5"/>
-            <path d="M41,-22 Q44,-32 47,-41" strokeWidth="1.5"/>
-            <path d="M48,-21 Q52,-30 56,-38" strokeWidth="1.4"/>
-            <path d="M55,-19 Q60,-27 65,-34" strokeWidth="1.3"/>
-            <path d="M62,-16 Q68,-23 74,-28" strokeWidth="1.2"/>
-            <path d="M68,-13 Q74,-18 80,-22" strokeWidth="1.1"/>
-            {/* Second row of lashes for fullness */}
-            <path d="M11,-16 Q9,-22 7,-27" strokeWidth="0.9" opacity="0.7"/>
-            <path d="M17,-19 Q16,-25 15,-31" strokeWidth="1" opacity="0.7"/>
-            <path d="M24,-20 Q24,-27 24,-34" strokeWidth="1.1" opacity="0.7"/>
-            <path d="M31,-21 Q32,-28 33,-36" strokeWidth="1.2" opacity="0.7"/>
-            <path d="M38,-22 Q40,-29 42,-37" strokeWidth="1.2" opacity="0.7"/>
-            <path d="M45,-21 Q48,-28 51,-35" strokeWidth="1.1" opacity="0.7"/>
-            <path d="M52,-19 Q56,-25 60,-31" strokeWidth="1" opacity="0.7"/>
-            <path d="M59,-16 Q64,-21 69,-26" strokeWidth="0.9" opacity="0.7"/>
-          </g>
+          <path
+            d="M-38,-10 Q0,-28 38,-10"
+            fill="none"
+            stroke="#555"
+            strokeWidth="0.8"
+            opacity="0.4"
+          />
         )}
-
-        {/* Lower lash line - subtle */}
-        {!isBlinking && (
-          <g stroke="#4a4a4a" strokeLinecap="round" opacity="0.6">
-            <path d="M15,12 Q14,15 12,17" strokeWidth="0.6"/>
-            <path d="M22,14 Q22,17 21,19" strokeWidth="0.6"/>
-            <path d="M30,15 Q30,18 30,21" strokeWidth="0.7"/>
-            <path d="M38,15 Q39,18 39,21" strokeWidth="0.7"/>
-            <path d="M46,15 Q47,18 48,20" strokeWidth="0.7"/>
-            <path d="M54,14 Q55,17 57,19" strokeWidth="0.6"/>
-            <path d="M62,12 Q64,14 66,16" strokeWidth="0.6"/>
-          </g>
-        )}
-
-        {/* Waterline highlight */}
-        <path
-          d={isBlinking ? "" : "M5,1 Q40,6 75,1"}
-          fill="none"
-          stroke="#ddd"
-          strokeWidth="0.5"
-          opacity={isBlinking ? 0 : 0.4}
-          style={{ transition: 'opacity 0.15s ease-in-out' }}
-        />
       </g>
 
-      {/* Right eye - mirrored with proper spacing */}
-      <g transform="translate(355, 60) scale(-1, 1)" style={{ filter: 'url(#pencil)' }}>
-        {/* Eyebrow */}
-        <path
-          d="M-5,-38 Q35,-52 85,-42"
-          fill="none"
-          stroke="#4a4a4a"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          opacity={isBlinking ? 0.6 : 0.7}
-        />
-        <path
-          d="M0,-36 Q35,-48 80,-40"
-          fill="none"
-          stroke="#5a5a5a"
+      {/* Right eye */}
+      <g transform="translate(225, 50)">
+        {/* Eye outline */}
+        <ellipse
+          cx="0"
+          cy="0"
+          rx="38"
+          ry={isBlinking ? 2 : 22}
+          fill="#fefefe"
+          stroke="#333"
           strokeWidth="1.5"
-          strokeLinecap="round"
-          opacity={isBlinking ? 0.3 : 0.4}
-        />
-
-        {/* Upper eyelid crease */}
-        <path
-          d={isBlinking ? "M2,-4 Q40,-6 78,-4" : "M2,-22 Q40,-32 78,-22"}
-          fill="none"
-          stroke="#888"
-          strokeWidth="0.8"
-          strokeLinecap="round"
-          opacity={isBlinking ? 0.3 : 0.5}
-          style={{ transition: 'all 0.15s ease-in-out' }}
-        />
-
-        {/* Eye shape */}
-        <path
-          d={isBlinking
-            ? "M0,0 C20,-3 60,-3 80,0 C60,3 20,3 0,0"
-            : "M0,0 C15,-22 65,-22 80,0 C65,18 15,18 0,0"
-          }
-          fill={isBlinking ? "none" : "#faf8f5"}
-          stroke="#3a3a3a"
-          strokeWidth="1.2"
-          strokeLinecap="round"
-          style={{ transition: 'all 0.15s ease-in-out' }}
-        />
-
-        {/* Inner corner detail */}
-        <path
-          d={isBlinking ? "" : "M-2,0 Q2,-2 5,0 Q2,2 -2,0"}
-          fill="#e8d4c8"
-          stroke="#999"
-          strokeWidth="0.5"
-          opacity={isBlinking ? 0 : 0.6}
-          style={{ transition: 'opacity 0.15s ease-in-out' }}
+          style={{
+            transition: 'ry 0.12s ease-in-out',
+            filter: 'url(#softShadow)'
+          }}
         />
 
         {/* Iris */}
         <circle
-          cx="40"
+          cx="0"
           cy="0"
-          r={isBlinking ? 0 : 14}
+          r={isBlinking ? 0 : 15}
           fill="url(#irisGradient)"
-          stroke="#2a2a2a"
-          strokeWidth="0.8"
-          style={{ transition: 'all 0.15s ease-in-out' }}
+          style={{ transition: 'r 0.12s ease-in-out' }}
         />
-
-        {/* Iris detail lines */}
-        {!isBlinking && (
-          <g opacity="0.3">
-            <path d="M40,-14 L40,-5" stroke="#1a1a1a" strokeWidth="0.3"/>
-            <path d="M33,-12 L36,-5" stroke="#1a1a1a" strokeWidth="0.3"/>
-            <path d="M47,-12 L44,-5" stroke="#1a1a1a" strokeWidth="0.3"/>
-            <path d="M28,-8 L34,-4" stroke="#1a1a1a" strokeWidth="0.3"/>
-            <path d="M52,-8 L46,-4" stroke="#1a1a1a" strokeWidth="0.3"/>
-          </g>
-        )}
 
         {/* Pupil */}
         <circle
-          cx="40"
+          cx="0"
           cy="0"
           r={isBlinking ? 0 : 6}
-          fill="#0a0a0a"
-          style={{ transition: 'all 0.15s ease-in-out' }}
+          fill="#111"
+          style={{ transition: 'r 0.12s ease-in-out' }}
         />
 
-        {/* Light reflections - flipped for right eye */}
+        {/* Light reflection */}
         <circle
-          cx="36"
+          cx="4"
           cy="-4"
-          r={isBlinking ? 0 : 2.5}
+          r={isBlinking ? 0 : 3}
           fill="#fff"
-          opacity="0.9"
-          style={{ transition: 'all 0.15s ease-in-out' }}
+          opacity="0.85"
+          style={{ transition: 'r 0.12s ease-in-out' }}
         />
         <circle
-          cx="44"
-          cy="3"
-          r={isBlinking ? 0 : 1}
+          cx="-3"
+          cy="2"
+          r={isBlinking ? 0 : 1.5}
           fill="#fff"
-          opacity="0.5"
-          style={{ transition: 'all 0.15s ease-in-out' }}
+          opacity="0.4"
+          style={{ transition: 'r 0.12s ease-in-out' }}
         />
 
-        {/* Upper lashes */}
+        {/* Upper lid line */}
         {!isBlinking && (
-          <g stroke="#2a2a2a" strokeLinecap="round">
-            <path d="M8,-15 Q6,-22 3,-28" strokeWidth="1.2"/>
-            <path d="M14,-18 Q13,-26 11,-33" strokeWidth="1.3"/>
-            <path d="M20,-20 Q20,-29 19,-37" strokeWidth="1.4"/>
-            <path d="M27,-21 Q28,-31 28,-40" strokeWidth="1.5"/>
-            <path d="M34,-22 Q36,-32 37,-42" strokeWidth="1.5"/>
-            <path d="M41,-22 Q44,-32 47,-41" strokeWidth="1.5"/>
-            <path d="M48,-21 Q52,-30 56,-38" strokeWidth="1.4"/>
-            <path d="M55,-19 Q60,-27 65,-34" strokeWidth="1.3"/>
-            <path d="M62,-16 Q68,-23 74,-28" strokeWidth="1.2"/>
-            <path d="M68,-13 Q74,-18 80,-22" strokeWidth="1.1"/>
-            <path d="M11,-16 Q9,-22 7,-27" strokeWidth="0.9" opacity="0.7"/>
-            <path d="M17,-19 Q16,-25 15,-31" strokeWidth="1" opacity="0.7"/>
-            <path d="M24,-20 Q24,-27 24,-34" strokeWidth="1.1" opacity="0.7"/>
-            <path d="M31,-21 Q32,-28 33,-36" strokeWidth="1.2" opacity="0.7"/>
-            <path d="M38,-22 Q40,-29 42,-37" strokeWidth="1.2" opacity="0.7"/>
-            <path d="M45,-21 Q48,-28 51,-35" strokeWidth="1.1" opacity="0.7"/>
-            <path d="M52,-19 Q56,-25 60,-31" strokeWidth="1" opacity="0.7"/>
-            <path d="M59,-16 Q64,-21 69,-26" strokeWidth="0.9" opacity="0.7"/>
-          </g>
+          <path
+            d="M-38,-10 Q0,-28 38,-10"
+            fill="none"
+            stroke="#555"
+            strokeWidth="0.8"
+            opacity="0.4"
+          />
         )}
-
-        {/* Lower lash line */}
-        {!isBlinking && (
-          <g stroke="#4a4a4a" strokeLinecap="round" opacity="0.6">
-            <path d="M15,12 Q14,15 12,17" strokeWidth="0.6"/>
-            <path d="M22,14 Q22,17 21,19" strokeWidth="0.6"/>
-            <path d="M30,15 Q30,18 30,21" strokeWidth="0.7"/>
-            <path d="M38,15 Q39,18 39,21" strokeWidth="0.7"/>
-            <path d="M46,15 Q47,18 48,20" strokeWidth="0.7"/>
-            <path d="M54,14 Q55,17 57,19" strokeWidth="0.6"/>
-            <path d="M62,12 Q64,14 66,16" strokeWidth="0.6"/>
-          </g>
-        )}
-
-        {/* Waterline highlight */}
-        <path
-          d={isBlinking ? "" : "M5,1 Q40,6 75,1"}
-          fill="none"
-          stroke="#ddd"
-          strokeWidth="0.5"
-          opacity={isBlinking ? 0 : 0.4}
-          style={{ transition: 'opacity 0.15s ease-in-out' }}
-        />
       </g>
     </svg>
   );
