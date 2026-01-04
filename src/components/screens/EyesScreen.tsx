@@ -231,23 +231,65 @@ function EyeGazingHeatmap({ history }: { history: EyeGazingHistory }) {
                 gap: 1,
               }}
             >
-              {/* Stack of 2 boxes - one for each person */}
-              <div
-                style={{
-                  height: 16,
-                  background: dayData.caroline > 0 ? '#888' : '#e5e5e5',
-                  transition: 'background 0.3s ease',
-                }}
-                title={`Caroline: ${dayData.caroline}`}
-              />
-              <div
-                style={{
-                  height: 16,
-                  background: dayData.chris > 0 ? '#333' : '#e5e5e5',
-                  transition: 'background 0.3s ease',
-                }}
-                title={`Chris: ${dayData.chris}`}
-              />
+              {/* Stack boxes - expand if more than 3 total sessions */}
+              {(() => {
+                const total = dayData.chris + dayData.caroline;
+                const expanded = total > 3;
+
+                if (expanded) {
+                  // Show individual session boxes
+                  const boxes = [];
+                  for (let i = 0; i < dayData.caroline; i++) {
+                    boxes.push(
+                      <div
+                        key={`c-${i}`}
+                        style={{
+                          flex: 1,
+                          minHeight: 4,
+                          background: '#888',
+                          transition: 'background 0.3s ease',
+                        }}
+                      />
+                    );
+                  }
+                  for (let i = 0; i < dayData.chris; i++) {
+                    boxes.push(
+                      <div
+                        key={`ch-${i}`}
+                        style={{
+                          flex: 1,
+                          minHeight: 4,
+                          background: '#5a5a5a',
+                          transition: 'background 0.3s ease',
+                        }}
+                      />
+                    );
+                  }
+                  return boxes;
+                }
+
+                // Default: 2 boxes
+                return (
+                  <>
+                    <div
+                      style={{
+                        height: 16,
+                        background: dayData.caroline > 0 ? '#888' : '#e5e5e5',
+                        transition: 'background 0.3s ease',
+                      }}
+                      title={`Caroline: ${dayData.caroline}`}
+                    />
+                    <div
+                      style={{
+                        height: 16,
+                        background: dayData.chris > 0 ? '#5a5a5a' : '#e5e5e5',
+                        transition: 'background 0.3s ease',
+                      }}
+                      title={`Chris: ${dayData.chris}`}
+                    />
+                  </>
+                );
+              })()}
             </div>
           );
         })}
@@ -255,7 +297,7 @@ function EyeGazingHeatmap({ history }: { history: EyeGazingHistory }) {
       <div className="flex flex--between" style={{ marginTop: 8 }}>
         <span style={{ fontSize: 10, color: '#999' }}>60 days ago</span>
         <div className="flex gap--medium">
-          <span style={{ fontSize: 10, color: '#333' }}>Chris</span>
+          <span style={{ fontSize: 10, color: '#5a5a5a' }}>Chris</span>
           <span style={{ fontSize: 10, color: '#888' }}>Caroline</span>
         </div>
         <span style={{ fontSize: 10, color: '#999' }}>Today</span>
@@ -369,8 +411,8 @@ export function EyesScreen() {
       <div style={{
         position: 'absolute',
         top: 0,
-        left: -24,
-        right: -24,
+        left: '-16px',
+        right: '-16px',
         height: 4,
         background: '#e5e5e5',
         overflow: 'hidden',

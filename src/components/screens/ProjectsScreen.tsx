@@ -345,14 +345,14 @@ export function ProjectsScreen() {
     }}>
       {/* Header */}
       <div style={{
-        padding: '12px 20px',
+        padding: '12px 16px',
         borderBottom: '2px solid #1a1a1a',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         background: '#fff',
         flexWrap: 'wrap',
-        gap: 10,
+        gap: 8,
       }}>
         <div>
           <h1 style={{
@@ -369,14 +369,14 @@ export function ProjectsScreen() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {/* Room Filter */}
           {usedRooms.length > 0 && (
             <select
               value={roomFilter}
               onChange={(e) => setRoomFilter(e.target.value as ProjectRoom | 'all')}
               style={{
-                padding: '8px 12px',
+                padding: '8px 10px',
                 fontSize: 12,
                 border: '1px solid #d1d5db',
                 borderRadius: 6,
@@ -384,7 +384,8 @@ export function ProjectsScreen() {
                 color: roomFilter !== 'all' ? '#4f46e5' : '#374151',
                 fontWeight: roomFilter !== 'all' ? 600 : 400,
                 cursor: 'pointer',
-                minWidth: 120,
+                minWidth: 0,
+                maxWidth: 120,
               }}
             >
               <option value="all">All Rooms</option>
@@ -394,41 +395,42 @@ export function ProjectsScreen() {
             </select>
           )}
 
-          {/* User Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Editing as:</span>
-            <div style={{ display: 'flex', gap: 4 }}>
-              <button
-                onClick={() => setCurrentUser('Chris')}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: 12,
-                  fontWeight: currentUser === 'Chris' ? 600 : 400,
-                  background: currentUser === 'Chris' ? '#3b82f6' : '#f3f4f6',
-                  color: currentUser === 'Chris' ? '#fff' : '#6b7280',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                }}
-              >
-                Chris
-              </button>
-              <button
-                onClick={() => setCurrentUser('Caroline')}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: 12,
-                  fontWeight: currentUser === 'Caroline' ? 600 : 400,
-                  background: currentUser === 'Caroline' ? '#dc2626' : '#f3f4f6',
-                  color: currentUser === 'Caroline' ? '#fff' : '#6b7280',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                }}
-              >
-                Caroline
-              </button>
-            </div>
+          {/* User Selector - compact on mobile */}
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button
+              onClick={() => setCurrentUser('Chris')}
+              style={{
+                padding: '6px 10px',
+                fontSize: 11,
+                fontWeight: currentUser === 'Chris' ? 600 : 400,
+                background: currentUser === 'Chris' ? '#3b82f6' : '#f3f4f6',
+                color: currentUser === 'Chris' ? '#fff' : '#6b7280',
+                border: 'none',
+                borderRadius: 6,
+                cursor: 'pointer',
+                minHeight: 32,
+                minWidth: 32,
+              }}
+            >
+              C
+            </button>
+            <button
+              onClick={() => setCurrentUser('Caroline')}
+              style={{
+                padding: '6px 10px',
+                fontSize: 11,
+                fontWeight: currentUser === 'Caroline' ? 600 : 400,
+                background: currentUser === 'Caroline' ? '#dc2626' : '#f3f4f6',
+                color: currentUser === 'Caroline' ? '#fff' : '#6b7280',
+                border: 'none',
+                borderRadius: 6,
+                cursor: 'pointer',
+                minHeight: 32,
+                minWidth: 32,
+              }}
+            >
+              C
+            </button>
           </div>
 
           <button
@@ -436,8 +438,9 @@ export function ProjectsScreen() {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              padding: '8px 14px',
+              justifyContent: 'center',
+              gap: 4,
+              padding: '8px 12px',
               background: '#1a1a1a',
               color: '#fff',
               border: 'none',
@@ -445,10 +448,11 @@ export function ProjectsScreen() {
               fontSize: 12,
               fontWeight: 500,
               cursor: 'pointer',
+              minHeight: 36,
             }}
           >
             <Plus size={14} />
-            Add Project
+            <span className="mobile-hide">Add Project</span>
           </button>
         </div>
       </div>
@@ -460,18 +464,22 @@ export function ProjectsScreen() {
           inset: 0,
           background: 'rgba(0,0,0,0.5)',
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           justifyContent: 'center',
           zIndex: 1000,
-          padding: 20,
+          padding: '16px',
+          paddingTop: 'max(16px, env(safe-area-inset-top))',
+          paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+          overflowY: 'auto',
         }}>
           <div style={{
             background: '#fff',
             borderRadius: 12,
-            padding: 24,
+            padding: '20px 16px',
             width: '100%',
             maxWidth: 400,
             boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+            margin: 'auto 0',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>New Project</h2>
@@ -710,22 +718,24 @@ export function ProjectsScreen() {
         </div>
       )}
 
-      {/* Floating Budget Widget */}
+      {/* Floating Budget Widget - hidden on mobile */}
       {totalBudget > 0 && (
-        <div style={{
-          position: 'absolute',
-          top: 70,
-          right: 16,
-          background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          borderRadius: 12,
-          padding: '14px 16px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-          border: '1px solid rgba(0,0,0,0.06)',
-          zIndex: 50,
-          minWidth: 180,
-        }}>
+        <div
+          className="mobile-hide"
+          style={{
+            position: 'absolute',
+            top: 70,
+            right: 16,
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            borderRadius: 12,
+            padding: '14px 16px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+            border: '1px solid rgba(0,0,0,0.06)',
+            zIndex: 50,
+            minWidth: 180,
+          }}>
           <div style={{ fontSize: 10, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
             Budget Estimate
           </div>
@@ -759,7 +769,6 @@ export function ProjectsScreen() {
         flex: 1,
         overflow: 'auto',
         padding: '12px 16px',
-        paddingRight: totalBudget > 0 ? 210 : 16, // Make room for floating widget
       }}>
         {pendingProjects.length === 0 && completedProjects.length === 0 ? (
           <div style={{

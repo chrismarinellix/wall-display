@@ -176,7 +176,7 @@ export function ScreenContainer() {
           display: 'flex',
           alignItems: 'center',
           gap: 2,
-          padding: '6px 10px',
+          padding: '6px 8px',
           background: 'rgba(255, 255, 255, 0.85)',
           backdropFilter: 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)',
@@ -187,6 +187,8 @@ export function ScreenContainer() {
           opacity: dockVisible ? (navExpanded ? 1 : 0.6) : 0,
           pointerEvents: dockVisible ? 'auto' : 'none',
           transition: 'opacity 0.3s ease',
+          maxWidth: 'calc(100vw - 32px)',
+          overflowX: 'auto',
         }}
         onMouseEnter={() => {
           stopHideTimer();
