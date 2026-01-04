@@ -478,6 +478,22 @@ export function FastScreen() {
           </div>
         )}
 
+        {/* Fast end time */}
+        {currentFast && fastStartTime && (
+          <div style={{
+            textAlign: 'center',
+            marginBottom: '20px',
+            fontSize: 'clamp(13px, 2.5vw, 16px)',
+            color: 'rgba(0,0,0,0.5)',
+          }}>
+            {isComplete ? (
+              <span>Completed at <strong style={{ color: '#16a34a' }}>{format(new Date(fastStartTime + FAST_DURATION), 'h:mm a')}</strong></span>
+            ) : (
+              <span>Ends at <strong style={{ color: '#333' }}>{format(new Date(fastStartTime + FAST_DURATION), 'h:mm a')}</strong> ({format(new Date(fastStartTime + FAST_DURATION), 'EEE')})</span>
+            )}
+          </div>
+        )}
+
         {/* Progress bar - full width */}
         {currentFast && (
           <div style={{
